@@ -12,7 +12,7 @@ HERE = pathlib.Path(__file__).parent
 DATA_JS = HERE.parent / 'data.js'
 LEDGER = HERE / 'ledger.json'
 PROPOSALS = HERE / 'proposals'   # 개발부 산출물. 코드에 자동 적용하지 않는다
-MODEL = 'claude-sonnet-4-5'  # 대회용. 품질 아쉬우면 opus
+MODEL = os.environ.get('LC_MODEL', 'claude-sonnet-5-5')  # 대회용. 품질 아쉬우면 LC_MODEL=claude-opus-5-5
 
 # ---------- 서류 종류와 뽑을 칸 (= 추출 스키마). 종류 추가 = 줄 하나 ----------
 SCHEMAS = {
@@ -101,7 +101,7 @@ def llm(instruction: str, path: str | None = None, want: Literal['json', 'text']
             content.append({'type': 'text', 'text': sheet_text(p)[:30000]})
     content.append({'type': 'text', 'text': instruction + ('\nJSON만 출력. 값이 없으면 null. 읽은 위치(page/cell)를 _src 에 적어라.' if want == 'json' else '')})
     r = anthropic.Anthropic().messages.create(model=MODEL, max_tokens=4000, messages=[{'role': 'user', 'content': content}])
-    txt = r.content[0].text
+    txt = ''.join(b.text for b in r.content if getattr(b, 'type', '') == 'text')   # 생각 블록은 건너뜀
     if want == 'text': return txt
     m = re.search(r'\{.*\}|\[.*\]', txt, re.S)
     return json.loads(m.group(0)) if m else {}
