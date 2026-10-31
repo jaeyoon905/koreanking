@@ -39,7 +39,7 @@ NAME_HINTS = [('Declaration', '수입신고서'), ('선하증권', 'BL'), ('KMTC
               ('영양', '영양성적서'), ('성적서', '영양성적서'), ('規格書', '규격서양식'), ('규격서', '규격서양식'), ('Specification', '규격서양식'), ('Spec', '규격서양식'), ('spec', '규격서양식'), ('仕様書', '바이어지시'),
               ('表示案', '바이어지시'), ('패킹', '패킹리스트'), ('인보이스', '패킹리스트'), ('입고', '입고검사서'), ('가공일지', '가공일지'),
               ('포장', '포장일지'), ('위생증명', '위생증명서'), ('HACCP', 'HACCP인증서'), ('라벨', '라벨'), ('제품사진', '라벨'), ('메일', '메일'),
-              ('고시', '고시문'), ('告示', '고시문'), ('基準', '고시문')]
+              ('고시', '고시문'), ('告示', '고시문'), ('基準', '고시문'), ('公告', '고시문'), ('解读', '고시문'), ('改正', '고시문'), ('通则', '고시문')]
 SENSITIVE = {'패킹리스트', '메일', '수입인보이스'}  # 계좌·단가가 섞일 수 있는 종류. masked=True 아니면 LLM 금지
 
 # 손글씨·고정 양식 전용 힌트. 추출 프롬프트 뒤에 붙는다. 실제 회사 양식(2026-04 서류) 기준
@@ -60,6 +60,9 @@ FORM_HINTS = {
     '규격서양식': ('바이어가 보낸 상품규격서 양식(xlsx·PDF). fields 는 양식의 입력 칸 라벨을 원문 그대로, 위→아래 순서대로 배열(예시값·설명문 말고 칸 이름만). '
                   '표 섹션(配合·調味液·重点管理·包装資材, Ingredients table 등)은 섹션 제목 하나를 라벨로 넣는다. buyer 는 양식을 보낸 바이어 이름(표제·파일명 기준), form_title 은 표제. '
                   '예시값이 채워져 있으면 recipe·seasoning·qc·packaging 도 뽑는다.'),
+    '고시문':     ('정부가 낸 식품표시 규정 개정 고시·공고·해설(중국 GB 공告·解读, 일본 消費者庁 告示, 홍콩·대만·태국 공고 등). country 는 ISO 두 글자(CN·JP·HK·TW·TH), '
+                  'title 은 규정 이름+번호, effective 는 시행일 YYYY-MM-DD(유예기간 끝나는 날이 따로 있으면 note 에). changed_articles 는 [{article: 조항 번호·이름, before: 전, after: 후}] 로 바뀐 조항만. '
+                  'affects 는 라벨에서 고쳐야 할 표시 항목 이름 목록(예: 保质期到期日, 致敏物质, 数字标签). 문서에 없는 내용은 만들지 말고 null.'),
     '수입신고서': ('일본 정부 "Declaration for the import into the Republic of Korea of Food from Japan". Consignment Code, Declaration Number(NS…KR…), '
                   '제품명·포장 수·순중량, 승선지(embarked at)·승선일·선박, 제조소(establishment 이름·주소), 체크박스 3개 중 어느 것인지(prefecture_flag: "2011-03-11 이전" / "17개 도현 외" / "17개 도현 내, 검사함"), '
                   '시료 채취일(sampled)·분석일(analyzed)·검사기관(lab)·보고서 번호(report_no), 발급 기관·일자(issued). 한 장에 제품 하나다.'),
@@ -100,10 +103,12 @@ def llm(instruction: str, path: str | None = None, want: Literal['json', 'text']
         elif p.suffix.lower() in ('.png', '.jpg', '.jpeg'):
             mt = 'image/png' if p.suffix.lower() == '.png' else 'image/jpeg'
             content.append({'type': 'image', 'source': {'type': 'base64', 'media_type': mt, 'data': data}})
+        elif p.suffix.lower() in ('.txt', '.md', '.csv'):
+            content.append({'type': 'text', 'text': p.read_text('utf-8', errors='replace')[:30000]})
         else:  # xlsx 등은 텍스트로 풀어서
             content.append({'type': 'text', 'text': sheet_text(p)[:30000]})
     content.append({'type': 'text', 'text': instruction + ('\nJSON만 출력. 값이 없으면 null. 읽은 위치(page/cell)를 _src 에 적어라.' if want == 'json' else '')})
-    r = anthropic.Anthropic().messages.create(model=MODEL, max_tokens=4000, messages=[{'role': 'user', 'content': content}])
+    r = anthropic.Anthropic().messages.create(model=MODEL, max_tokens=16000, messages=[{'role': 'user', 'content': content}])
     txt = ''.join(b.text for b in r.content if getattr(b, 'type', '') == 'text')   # 생각 블록은 건너뜀
     if want == 'text': return txt
     m = re.search(r'\{.*\}|\[.*\]', txt, re.S)
@@ -233,8 +238,8 @@ def rule_patch(s: S) -> S:  # 개정 고시문 → data.js 규칙 수정안 (AI 
     e = s.get('extracted', {}); country = (e.get('country') or '')[:2].upper()
     cur = ''
     if country:
-        m = re.search('  ' + country + r': \{.*?\n  \},', DATA_JS.read_text('utf-8'), re.S)
-        if m: cur = m.group(0)[:6000]
+        src = DATA_JS.read_text('utf-8'); m = re.search(chr(10) + '  ' + country + ': ' + chr(123), src)
+        if m: cur = src[m.start():m.start() + 6000]   # 그 나라 규칙 블록 앞부분(id·src·run 구조를 AI가 보고 같은 모양으로 쓴다)
     txt = llm(f'아래는 {country} 규칙 파일 현재 내용이고, 그 다음은 개정 고시 요약이다. 바뀐 조항만 반영한 수정안을 (1) 바뀐 점 요약 3줄, (2) effective 필드 값, '
               f'(3) checks 에 추가·수정할 항목의 JS 코드 로 써라. 법 해석이 애매한 곳은 코드 대신 "// 확인:" 주석으로 남겨라.\n--- 현재 규칙 ---\n{cur}\n--- 고시 ---\n'
               + json.dumps(e, ensure_ascii=False), want='text')

@@ -34,6 +34,14 @@ def static_checks():
     try: ok, msg = json.loads(r.stdout)
     except Exception as e: ok, msg = False, (r.stderr or str(e))[-200:]
     check('A 바이어 양식 mapping 저장(applyDoc 규격서양식)', ok and '짝 2칸' in str(msg), msg)
+    r = run(['node', '-e', "global.window={};var fs=require('fs');eval(fs.readFileSync('data.js','utf8'));eval(fs.readFileSync('apply.js','utf8'));"
+             "var s={ledger:[],raw:[],registry:[],shipments:[],nutritionSources:[],docs:[],specForms:{},labels:[]};"
+             "var o={country:'cn',title:'GB 7718-2025',effective:'2027-03-16',changed_articles:[{article:'4.1.7',before:'保质期',after:'保质期到期日'}],affects:['保质期到期日']};"
+             "var rows=LC.reconcileDoc?LC.reconcileDoc('고시문',o,s):[]; var msg=LC.applyDoc('고시문',o,s);"
+             "process.stdout.write(JSON.stringify([s.revisions.length===1&&s.revisions[0].country==='CN', rows.length, msg]))"])
+    try: ok, nrows, msg = json.loads(r.stdout)
+    except Exception as e: ok, nrows, msg = False, 0, (r.stderr or str(e))[-200:]
+    check('A 고시문 승인 → revisions 추가 + 검증부 행', ok and nrows >= 1, msg)
     banned = [x[::-1] for x in ['웅세', '호성삼', '노에우', '다모토', '이레산', 'IHSOYENAK', 'NEROYG', 'yraicifeneB', '0-851']]  # 뒤집어 보관(소스 자체가 검사에 걸리지 않게)
     for f in ['app.js', 'data.js', 'fixtures.js', 'apply.js', 'import.js', 'index.html', 'style.css']:
         p = ROOT / f

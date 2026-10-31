@@ -106,6 +106,13 @@ def extract(body):
             fields = [{'k': k, 'label': k, 'v': v, 'src': src.get(k, '')} for k, v in r.items()]
             if t == '규격서양식' and r.get('fields'):   # 새 바이어 양식: 칸 ↔ 우리 데이터 짝짓기(AI 제안). 승인 뒤 규격서 화면이 이 짝으로 채운다
                 fields.append({'k': 'mapping', 'label': '칸 ↔ 우리 데이터 (AI 제안, 승인 전 확인)', 'v': graph.map_fields(r['fields']), 'src': 'AI'})
+            if t == '고시문' and r.get('country'):   # 개정 고시문: 규칙 파일 수정안(AI 초안). 파일로만 남기고 코드에 자동 적용하지 않는다
+                pr = graph.rule_patch({'extracted': r}).get('proposals') or []
+                if pr:
+                    graph.PROPOSALS.mkdir(exist_ok=True)
+                    out = graph.PROPOSALS / ('rule_patch_%s_%s.md' % (pr[0]['country'], datetime.date.today().isoformat()))
+                    out.write_text(pr[0]['text'], 'utf-8')
+                    fields.append({'k': 'rule_patch', 'label': '규칙 파일 수정안 (AI 초안 · 자동 적용 안 함 · 개발자가 data.js 반영)', 'v': pr[0]['text'], 'src': str(out.relative_to(ROOT))})
             return dict({'doc_type': t, 'mode': 'llm', 'blocked': False, 'fields': fields}, **extra)
         if work and OCR:                                  # 키 없음 → 로컬 OCR(인쇄 서류). 손글씨는 fields 가 비어 fixture 로 넘어간다
             try:

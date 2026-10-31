@@ -13,12 +13,12 @@
   function seeds() {
     return {
       ledger: LC.seedLedger.slice(), raw: LC.rawLots.slice(), registry: LC.registry.slice(),
-      shipments: (LC.shipmentsSeed || []).slice(), nutritionSources: (LC.nutritionSources || []).slice(), docs: [], specForms: {},
+      shipments: (LC.shipmentsSeed || []).slice(), nutritionSources: (LC.nutritionSources || []).slice(), docs: [], specForms: {}, revisions: [],
       labels: Object.values(LC.sampleLabels).map(function (l) { return { file: l.file, country: l.country, made: l.made }; }),
       importShipments: [], processLog: {}, importWaybills: [], publicData: {}, extraProducts: []
     };
   }
-  var SAVED = ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'docs', 'specForms', 'labels', 'importShipments', 'processLog', 'importWaybills', 'publicData', 'extraProducts'];
+  var SAVED = ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'docs', 'specForms', 'revisions', 'labels', 'importShipments', 'processLog', 'importWaybills', 'publicData', 'extraProducts'];
   var state = { lastLabel: null };
   (function load() { var s = seeds(); SAVED.forEach(function (k) { state[k] = JSON.parse(localStorage.getItem('lc.' + k) || 'null') || s[k]; }); })();
   // 서버(server/app.py)가 있으면 서버 상태가 원본, 없으면(file://) 브라우저 저장. 동작은 같다
@@ -137,7 +137,7 @@
     if (pend) out.push({ cls: 'warn', text: '승인 기다리는 서류 ' + pend + '건', href: '#intake', go: '서류 넣기' });
     var soon = state.registry.filter(function (r) { return r.expiry && daysTo(r.expiry) <= 90; }).sort(function (a, b) { return daysTo(a.expiry) - daysTo(b.expiry); });
     if (soon.length) out.push({ cls: daysTo(soon[0].expiry) <= 30 ? 'bad' : 'warn', text: '만료 임박 ' + soon.length + '건 · ' + soon[0].name + ' D-' + daysTo(soon[0].expiry), href: '#dash', go: '대시보드' });
-    LC.revisions.forEach(function (v) {
+    allRevisions().forEach(function (v) {
       var d = daysTo(v.effective); if (d < 0 || d > 180 || !LC.rules[v.country]) return;
       var hits = affectedLabels(v), fix = hits.reduce(function (t, h) { return t + (h.s ? h.s.fix : 0); }, 0);
       out.push({ cls: fix ? 'bad' : 'warn', text: '규정 개정 D-' + d + ' · ' + v.title + ' · 영향 라벨 ' + hits.length + '건' + (fix ? ' (수정 ' + fix + ')' : ''), href: hits.length ? '#label/' + hits[0].key + '/' + v.country : '#label/' + (LC.sampleLabels.HK ? 'HK' : Object.keys(LC.sampleLabels)[0]) + '/' + v.country, go: '라벨 판정' });
@@ -209,7 +209,7 @@
   }
   function renderJudge(country, fields, meta) {
     var res = judge(country, fields); var s = summarize(res); var r = LC.rules[country];
-    var rev = LC.revisions.filter(function (v) { return v.country === country && meta.made && meta.made < v.effective; });
+    var rev = allRevisions().filter(function (v) { return v.country === country && meta.made && meta.made < v.effective; });
     var ref = function (x) { return x.src || r.short || r.law; };
     var v = s.fix ? ['bad', '수출 전 수정 필요 · ' + s.fix + '항목'] : s.check ? ['warn', '확인 필요 · ' + s.check + '항목'] : ['ok', '통과 · ' + r.name + ' 규정 ' + s.pass + '항목 충족'];
     var stat = function (cls, k, n) { return '<div class="stat ' + cls + '"><span class="k">' + k + '</span><span class="v">' + n + '<small>항목</small></span></div>'; };
@@ -474,6 +474,8 @@
     if (arg) go();
   };
 
+  // 고시 개정 목록 = 규칙 파일에 적힌 것 + 서류 넣기에서 고시문을 승인해 추가한 것(state.revisions)
+  function allRevisions() { return LC.revisions.concat(state.revisions || []); }
   // 고시 개정 한 줄에 영향받는 라벨: 같은 나라 샘플 중 기준일이 시행일보다 이른 것. 각각 그 나라 규칙으로 판정해 수정 N 배지
   function affectedLabels(v) {
     return Object.keys(LC.sampleLabels).filter(function (k) { var l = LC.sampleLabels[k]; return l.country === v.country && (!l.made || l.made < v.effective); })
@@ -493,7 +495,7 @@
   // 상단 숫자 3개: 만료 임박(90일 이내) / 개정 대응(시행 전 개정 중 영향 라벨 있는 건) / 확인 필요(번호·만료일 확인이 남은 등록)
   function dashStats() {
     var soon = state.registry.filter(function (r) { return r.expiry && daysTo(r.expiry) <= 90; }).length;
-    var rev = LC.revisions.filter(function (v) { return daysTo(v.effective) >= 0 && LC.rules[v.country] && affectedLabels(v).length; }).length;
+    var rev = allRevisions().filter(function (v) { return daysTo(v.effective) >= 0 && LC.rules[v.country] && affectedLabels(v).length; }).length;
     var need = state.registry.filter(function (r) { return /확인/.test(String(r.no) + ' ' + String(r.note)) && r.kind !== '참고'; }).length;
     var stat = function (n, label, cls, href) { return '<a class="stat ' + cls + '" href="' + href + '"><span class="k">' + label + '</span><span class="v">' + n + '</span></a>'; };
     return '<div class="stats">' + stat(soon, '만료 임박', soon ? 'warn' : 'ok', '#dash') + stat(rev, '개정 대응', rev ? 'warn' : 'ok', '#dash') + stat(need, '확인 필요', need ? 'warn' : 'ok', '#dash') + '</div>';
@@ -504,9 +506,9 @@
       var d = r.expiry ? daysTo(r.expiry) : null; var cls = d == null ? '' : d <= r.lead || d <= 30 ? 'bad' : d <= 90 ? 'warn' : 'ok';
       return '<tr><td>' + r.kind + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.no) + '</td><td>' + esc(r.issuer) + '</td><td>' + fmtDate(r.expiry) + '</td><td>' + (d == null ? '-' : '<span class="b ' + cls + '">D-' + d + '</span>') + '</td><td>' + r.countries + '</td><td class="muted">' + fold(r.note) + '</td></tr>';
     }).join('');
-    var rev = LC.revisions.map(function (v) {
+    var rev = allRevisions().map(function (v) {
       var d = daysTo(v.effective);
-      return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + revisionLabels(v) + '</td><td class="muted">' + fold(v.note) + '</td></tr>';
+      return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + (v.added ? ' <span class="b ok">고시문에서 추가</span>' : '') + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + revisionLabels(v) + '</td><td class="muted">' + fold(v.note) + '</td></tr>';
     }).join('');
     return '<h2>대시보드</h2>' + dashStats() +
       '<div class="card"><h3>등록·인증 레지스트리 (오늘 ' + LC.TODAY + ')</h3><table><tr><th>층</th><th>종류</th><th>번호</th><th>발급</th><th>만료</th><th>D-day</th><th>국가</th><th>비고</th></tr>' + rows + '</table></div>' +
@@ -551,6 +553,7 @@
       return '<details><summary>' + v.length + '행</summary><table><tr>' + ks.map(function (k) { return '<th>' + esc(k) + '</th>'; }).join('') + '</tr>' +
         v.map(function (r) { return '<tr>' + ks.map(function (k) { return '<td>' + esc(r[k]) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table></details>';
     }
+    if (typeof v === 'string' && v.length > 300) return '<details><summary>' + esc(v.slice(0, 80)) + '… (' + v.length + '자)</summary><pre style="white-space:pre-wrap">' + esc(v) + '</pre></details>';
     if (v && typeof v === 'object') return Object.keys(v).map(function (k) { return esc(k) + ' → ' + (v[k] ? '<b>' + esc(v[k]) + '</b>' : '<span class="muted">(우리 데이터 없음 → 빈칸)</span>'); }).join('<br>');
     return esc(v);
   }
@@ -693,7 +696,7 @@
   function bindDocBox(rerenderFn) { document.querySelectorAll('[data-fxopen]').forEach(function (el) { el.onclick = function () { queueFixture(fixtures()[+el.dataset.fxopen]); rerenderFn(); }; }); }
   screens.intake = function () {
     return '<h2>서류 넣기</h2><p class="sub">파일을 올리고 승인하세요.</p>' +
-      '<div class="card">' + dropZone('in') + '<p class="summary-bar" id="in-sum">' + intakeSummary() + '</p></div>' +
+      '<div class="card"><div id="in-guide">' + docGuide() + '</div>' + dropZone('in') + '<p class="summary-bar" id="in-sum">' + intakeSummary() + '</p></div>' +
       '<div class="card"><h3>서류함</h3><div id="in-docbox">' + docBox() + '</div></div>' +
       '<div id="in-cards"></div><h3>처리 기록</h3><div id="in-docs"></div>' +
       '<div class="row"><button class="ghost small" id="in-empty" aria-label="원장을 비움">빈 원장</button><button class="ghost small" id="in-seed" aria-label="시드 데이터로 복원">시드로 복원</button></div>';
@@ -701,6 +704,7 @@
   function renderIntake() {
     $('#in-cards').innerHTML = intakeCards.map(intakeCard).join('');
     $('#in-sum').textContent = intakeSummary();
+    if ($('#in-guide')) $('#in-guide').innerHTML = docGuide();
     if ($('#in-docbox')) { $('#in-docbox').innerHTML = docBox(); bindDocBox(renderIntake); }
     var docs = state.docs.slice().reverse();
     $('#in-docs').innerHTML = docs.length ? '<table><tr><th>일자</th><th>파일</th><th>종류</th><th>결과</th></tr>' + docs.map(function (d) { return '<tr><td>' + esc(d.at) + '</td><td>' + esc(d.file) + '</td><td>' + esc(d.doc_type) + '</td><td>' + esc(d.result) + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">없음</p>';
@@ -709,6 +713,25 @@
     document.querySelectorAll('[data-no]').forEach(function (el) { el.onclick = function () { decide(+el.dataset.no, false); }; });
     document.querySelectorAll('[data-toggle]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.toggle]; c.open = !c.open; renderIntake(); }; });
     bindManual(renderIntake);
+  }
+  // 어떤 서류를 올리면 무엇이 나오는지. 올린 것은 ✓ (승인된 처리 기록 + 지금 올린 카드 기준)
+  var DOC_GUIDE = [
+    ['라벨 (기본)', ['라벨'], '라벨 사진 또는 문안', '나라별 규정 판정서 · 개정 영향'],
+    ['생산 기록', ['입고검사서', '가공일지', '포장일지'], '원료입고검사서 · 가공일지 · 포장일지', '로트 원장 · 원료 역추적 · 클레임 보고서'],
+    ['수출 서류', ['패킹리스트', '위생증명서'], '패킹리스트(계좌·단가는 자동으로 가림) · 위생증명서', '선적 ↔ 로트 연결 · 선적 서류 초안 5종'],
+    ['인증·성적', ['HACCP인증서', '영양성적서'], 'HACCP 인증서 · 영양성분 성적서', '만료 알림 · 영양표시 값과 출처'],
+    ['바이어·정부가 보낸 것', ['규격서양식', '고시문'], '바이어 규격서 양식(아무 양식) · 개정 고시문', '그 양식대로 채운 규격서 · 바뀐 조항과 영향 라벨'],
+    ['수입 (선택)', ['수입인보이스', 'BL', '수입신고서', '운송장'], '인보이스 · 선하증권 · 수입신고서 · 운송장', '수입 서류 체크리스트']
+  ];
+  function docGuide() {
+    var have = {};
+    state.docs.forEach(function (d) { if (!/^반려/.test(String(d.result))) have[d.doc_type] = (have[d.doc_type] || 0) + 1; });
+    intakeCards.forEach(function (c) { if (c.doc_type && !c.done) have[c.doc_type] = (have[c.doc_type] || 0) + 1; });
+    var rows = DOC_GUIDE.map(function (g) {
+      var got = g[1].filter(function (t) { return have[t]; }), all = got.length === g[1].length, cls = all ? 'ok' : got.length ? 'warn' : '';
+      return '<tr><td>' + (all ? '<span class="b ok">✓</span>' : got.length ? '<span class="b warn">' + got.length + '/' + g[1].length + '</span>' : '<span class="muted">—</span>') + '</td><th>' + g[0] + '</th><td>' + g[2] + '</td><td class="muted">' + g[3] + '</td></tr>';
+    }).join('');
+    return '<details class="guide" open><summary>어떤 서류를 올리나 <span class="muted">(올린 것은 ✓ · 사진·PDF·엑셀 그대로, 이름은 아무거나)</span></summary><table><tr><th></th><th>묶음</th><th>올릴 것</th><th>나오는 것</th></tr>' + rows + '</table></details>';
   }
   // 드롭 영역 + 파일 선택. prefix 로 id 를 나눈다(서류 넣기: in, 한 번에: qk)
   function dropZone(prefix) { return '<div class="drop" id="' + prefix + '-drop"><b>여기에 사진·PDF 놓기</b><span class="muted">또는 파일 선택 · 여러 개 가능</span><label>사진·PDF 올리기 <input type="file" id="' + prefix + '-file" multiple aria-label="서류 파일 선택"></label></div>'; }
@@ -800,7 +823,7 @@
     var fx = fixtures();
     var g = function (i) { return fx.filter(FX_GROUPS[i][1]).length; };
     return '<h2>한 번에 처리</h2><p class="sub">서류를 넣고, 확인하고, 승인하세요.</p>' +
-      '<h3 class="step">1. 서류 넣기</h3><div class="card">' + dropZone('qk') +
+      '<h3 class="step">1. 서류 넣기</h3><div class="card"><div id="qk-guide">' + docGuide() + '</div>' + dropZone('qk') +
       (fx.length ? '<div class="row"><button id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기 (4월 ' + g(0) + '건)</button><a href="#" id="qk-jun" class="muted">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="원장 비우기">빈 원장으로 시작</button></div>' +
       '<details class="docbox-wrap"><summary>서류함 (' + fx.length + ')</summary><div id="qk-docbox">' + docBox() + '</div></details>' : '') + '</div>' +
       '<h3 class="step">2. 확인</h3><div class="card" id="qk-table"></div>' +
@@ -819,6 +842,7 @@
       bindManual(renderQuick);
     }
     if ($('#qk-docbox')) { $('#qk-docbox').innerHTML = docBox(); bindDocBox(renderQuick); }
+    if ($('#qk-guide')) $('#qk-guide').innerHTML = docGuide();
     $('#qk-results').innerHTML = resultCards(); bindResults();
   }
   function bindResults() {

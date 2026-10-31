@@ -27,7 +27,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   }
   function ensure(s) { // app.js 가 안 만든 키 방어
     ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'labels', 'importShipments'].forEach(function (k) { s[k] = s[k] || []; });
-    s.specForms = s.specForms || {}; s.processLog = s.processLog || {};
+    s.specForms = s.specForms || {}; s.processLog = s.processLog || {}; s.revisions = s.revisions || [];
   }
   // 로트의 원료 연결. 그날 가공일지 약어가 있으면 그 입고분들, 없으면 제조일 이전 가장 가까운 입고분 1건
   function linkRaw(s, lot) {
@@ -60,7 +60,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
     return ingredientsOf(label.ingredients).filter(function (a) { return txt.indexOf(a) < 0; });
   }
 
-  LC.docTypes = ['입고검사서', '가공일지', '포장일지', '패킹리스트', '위생증명서', 'HACCP인증서', '영양성적서', '규격서양식', '라벨', '수입인보이스', 'BL', '수입신고서', '운송장'];
+  LC.docTypes = ['입고검사서', '가공일지', '포장일지', '패킹리스트', '위생증명서', 'HACCP인증서', '영양성적서', '규격서양식', '라벨', '고시문', '수입인보이스', 'BL', '수입신고서', '운송장'];
 
   LC.fieldsToObj = function (fields) {
     if (!fields || !Array.isArray(fields)) return fields || {};
@@ -221,6 +221,23 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   A['영양성적서'] = function (o, s) {
     upsert(s.nutritionSources, 'buyer', reportKey(o), { buyer: reportKey(o), product: o.product, kcal: num(o.kcal), protein: num(o.protein), fat: num(o.fat), carb: num(o.carb), salt_g: saltOf(o), basis: '실측', src: (o.issuer || '성적서') + ' ' + (o.report_no || '') + ' ' + (o.date || '') });
     return '영양값 출처 1건 기록 (' + reportKey(o) + ', 식염 ' + saltOf(o) + 'g 환산)';
+  };
+
+  // ---------- 개정 고시문 ----------
+  // 검증부: 같은 나라 라벨 중 기준일이 시행일보다 이른 것 = 재검토 대상. 판정은 라벨 화면의 규칙 파일이 한다
+  R['고시문'] = function (o, s) {
+    var c = String(o.country || '').toUpperCase(), out = [];
+    if (!c || !o.effective) return [{ item: '고시 ' + (o.title || ''), status: 'check', note: '나라·시행일을 못 읽음 → 직접 입력' }];
+    Object.keys(LC.sampleLabels || {}).forEach(function (k) { var l = LC.sampleLabels[k]; if (l.country === c && (!l.made || l.made < o.effective)) out.push({ item: '라벨 ' + l.file, status: 'check', note: '기준일 ' + (l.made || '없음') + ' < 시행일 ' + o.effective + ' → 재검토' + (o.affects && o.affects.length ? ' (' + o.affects.join(', ') + ')' : '') }); });
+    if (!out.length) out.push({ item: c + ' 라벨', status: 'ok', note: '이 나라로 만든 라벨 없음' });
+    out.push({ item: '규칙 파일 ' + c, status: LC.rules && LC.rules[c] ? 'add' : 'check', note: o.rule_patch ? 'AI 수정안 작성됨 → 개발자가 data.js 에 반영 뒤 라벨 재판정' : (LC.rules && LC.rules[c] ? '수정안 없음(키 없음)' : '이 나라 규칙 파일 없음') });
+    return out;
+  };
+  A['고시문'] = function (o, s) {
+    var c = String(o.country || '').toUpperCase();
+    s.revisions = (s.revisions || []).filter(function (v) { return v.title !== o.title; });
+    s.revisions.push({ country: c, title: o.title || '(제목 없음)', effective: o.effective || '', note: (o.affects && o.affects.length ? '영향 항목: ' + o.affects.join(', ') + '. ' : '') + ((o.changed_articles || []).length + '개 조항 변경') + (o.note ? '. ' + o.note : ''), articles: o.changed_articles || [], added: true });
+    return c + ' 고시 "' + (o.title || '') + '" 등록 (시행 ' + (o.effective || '?') + ', 조항 ' + (o.changed_articles || []).length + '개) → 대시보드·홈에 영향 라벨 표시';
   };
 
   // ---------- 바이어 규격서 양식 ----------
