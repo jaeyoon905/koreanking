@@ -347,6 +347,93 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
     return 'B/L 원본 운송장 ' + o.waybill + ' → ' + sh.no + ' (' + (o.eta || '') + ' 도착)';
   };
 
-  LC.reconcileDoc = function (doc_type, obj, state) { ensure(state); var f = R[doc_type]; return f ? f(obj || {}, state) : [{ item: doc_type, status: 'check', note: '대조 규칙 없는 서류 종류. 사람이 확인' }]; };
+  // ---------- 추가 대조: 사람이 놓치는 불일치. 'bad' 여도 apply 는 막지 않는다(사람이 보고 결정) ----------
+  function addMonths(iso, m) { var d = new Date(iso); d.setMonth(d.getMonth() + m); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); } // 제조일 포함 m개월 → 전날이 기한
+  function isoOf(v) { var m = String(v || '').match(/\d{4}-\d{2}-\d{2}/); return m ? m[0] : ''; } // '2026-10-08 홋카이도…' 같은 값에서 날짜만
+  function periodEnd(fp) { // '2026-04-03 ~ 04-08' → '2026-04-08'
+    var t = String(fp || ''), parts = t.split(/~|～/), last = parts[parts.length - 1].trim(), y = (t.match(/\d{4}/) || [''])[0];
+    return /^\d{4}-\d{2}-\d{2}$/.test(last) ? last : (/^\d{2}-\d{2}$/.test(last) && y ? y + '-' + last : '');
+  }
+  var REQUIRED = { '입고검사서': ['vessel', 'received', 'total_kg'], '가공일지': ['date', 'raw_sources'], '포장일지': ['date', 'rows'], '패킹리스트': ['invoice_no', 'departure', 'items'],
+    '위생증명서': ['date', 'quantity_ct'], 'HACCP인증서': ['cert_no', 'valid_to'], '영양성적서': ['sodium_mg', 'kcal'], '규격서양식': ['buyer', 'fields'], '라벨': ['name', 'ingredients', 'importer'],
+    '수입인보이스': ['invoice_no', 'items'], 'BL': ['bl_no', 'cartons'], '수입신고서': ['declaration_no', 'consignment_code', 'product'], '운송장': ['waybill'] };
+  var X = {};
+  X['포장일지'] = function (o, s) {
+    var out = [], byCode = {};
+    (o.rows || []).forEach(function (r) {
+      var m = (LC.products && LC.products[r.product] && LC.products[r.product].shelf_months) || 24, exp = r.mfg ? addMonths(r.mfg, m) : '';
+      if (r.expiry && exp && r.expiry !== exp) out.push({ item: '소비기한 ' + r.lot_code + ' (' + r.product + ')', status: 'check', note: '소비기한 ' + r.expiry + ' ≠ 제조일+' + m + '개월(' + exp + '). 월초로 맞추는 관행이면 규격서 賞味期限 표기와 맞는지 확인' });
+      if (r.lot_code) { byCode[r.lot_code] = byCode[r.lot_code] || {}; byCode[r.lot_code][r.mfg] = 1; }
+    });
+    Object.keys(byCode).forEach(function (c) { var ds = Object.keys(byCode[c]); if (ds.length > 1) out.push({ item: '회사 LOT ' + c, status: 'bad', note: '같은 코드가 다른 제조일에 쓰임: ' + ds.join(', ') }); });
+    return out;
+  };
+  X['패킹리스트'] = function (o, s) {
+    var out = [], dep = isoOf(o.departure), lb = lbCt(o.items), unshipped = 0;
+    s.ledger.forEach(function (l) { if (l.product === 'LB' && !l.ship) unshipped += l.qty_ct || 0; });
+    (o.linked_lot_codes || []).forEach(function (c) { s.ledger.forEach(function (l) { if (l.company_code === c && dep && l.expiry && dep > l.expiry) out.push({ item: '출항일 ↔ 로트 ' + c + ' 소비기한', status: 'bad', note: '출항 ' + dep + ' 이 소비기한 ' + l.expiry + ' 뒤' }); }); });
+    if (lb && lb > unshipped) out.push({ item: 'LB ' + lb + ' C/T ↔ 미선적 LB ' + unshipped + ' C/T', status: 'check', note: '생산분보다 많이 실림. 다른 달 생산분 포함 여부 확인' });
+    if (o.hs && !/^1605\.?10/.test(String(o.hs))) out.push({ item: 'HS ' + o.hs, status: 'check', note: '게살 조제품은 1605.10 계열. 품목분류 확인' });
+    return out;
+  };
+  X['위생증명서'] = function (o, s) {
+    var out = [], sh = targetShip(s, o), dep = sh ? isoOf(sh.departure) : '';
+    if (o.commodity && !/CRAB/i.test(o.commodity)) out.push({ item: '품명 ' + o.commodity, status: 'check', note: '게(CRAB) 품명이 아님. 선적 품목과 대조' });
+    if (dep && o.date && isoOf(o.date) > dep) out.push({ item: '발급일 ' + o.date + ' ↔ 출항 ' + dep, status: 'check', note: '출항 뒤 발급. 출항 전 발급 여부 확인' });
+    return out;
+  };
+  X['HACCP인증서'] = function (o, s) {
+    var bad = s.ledger.filter(function (l) { return l.mfg && ((o.valid_from && l.mfg < o.valid_from) || (o.valid_to && l.mfg > o.valid_to)); });
+    return bad.length ? [{ item: '인증 유효기간 밖 제조 로트 ' + bad.length + '건', status: 'bad', note: bad.map(function (l) { return l.lot + '(' + l.mfg + ')'; }).join(', ') + ' — 유효 ' + o.valid_from + '~' + o.valid_to }] : [];
+  };
+  X['입고검사서'] = function (o, s) {
+    var out = [], end = periodEnd(o.fishing_period), bi = num(o.boxes_in), de = num(o.deduct);
+    if (end && o.received && end > o.received) out.push({ item: '조업 종료 ' + end + ' ↔ 입고 ' + o.received, status: 'bad', note: '조업이 입고보다 늦음. 날짜 오기 확인' });
+    if (o.core_temp && /초과|부적|이탈/.test(String(o.core_temp))) out.push({ item: '중심온도', status: 'bad', note: String(o.core_temp) });
+    if (bi && de != null && de / bi > 0.15) out.push({ item: '공제 ' + de + '/' + bi + '상자 (' + Math.round(de / bi * 100) + '%)', status: 'check', note: '공제 비율 높음(15% 초과). 흑변·사이즈 미달 원인 확인' });
+    return out;
+  };
+  X['라벨'] = function (o, s) {
+    var out = [], who = o.buyer || o.importer, nu = parseNutrition(o.nutrition), prev = who ? find(s.nutritionSources, 'buyer', who) : null;
+    if (prev && nu.kcal != null) {
+      var diff = ['kcal', 'protein', 'fat', 'carb', 'salt_g'].filter(function (k) { return prev[k] != null && nu[k] != null && Math.abs(prev[k] - nu[k]) > 0.05; });
+      if (diff.length) out.push({ item: who + ' 영양값 변경 감지', status: 'check', note: diff.map(function (k) { return k + ' ' + prev[k] + '→' + nu[k]; }).join(', ') + '. 라벨 개정인지 오독인지 확인' });
+    }
+    // 容器包装 識別表示 ↔ 바이어 규격서 包装資材 대조. 규격서가 PPトレー·진공봉투를 지시하면 라벨 일괄표시(トレー:PP／袋)도 맞아야 한다
+    var form = who && s.specForms ? s.specForms[String(who).replace(/\s*\(.*$/, '')] : null;
+    var pk = String(o.pack || '');
+    if (form && form.packaging && form.packaging.length) {
+      var mats = form.packaging.map(function (x) { return (x.name || x.item || x.desc || JSON.stringify(x)); }).join(' ');
+      var needTray = /トレー|トレイ/.test(mats), needBag = /袋/.test(mats);
+      var miss = [];
+      if (needTray && !/トレー|トレイ/.test(pk)) miss.push('トレー');
+      if (needBag && !/袋/.test(pk)) miss.push('袋');
+      if (/PP/.test(mats) && /トレー/.test(pk) && !/トレー[:：]?\s*PP/.test(pk)) miss.push('トレー 재질 PP 불일치');
+      out.push({ item: '포장 식별표시 ↔ 규격서 包装資材', status: miss.length ? 'check' : 'ok', note: miss.length ? '라벨 일괄표시에 없음: ' + miss.join(', ') + ' (규격서: ' + mats.slice(0, 60) + ')' : '규격서 포장자재와 라벨 역할명·재질 일치' });
+    } else if (!pk) {
+      out.push({ item: '포장 식별표시', status: 'check', note: 'pack 칸 없음. プラ 마크·역할명·재질 일괄표시 확인(資源有効利用促進法, 수입품도 대상)' });
+    }
+    if (o.expiry) {
+      var e = String(o.expiry).trim(), fmt = /^\d{4}\.\d{2}$/.test(e) ? '연월(YYYY.MM) 형식' : /^\d{4}\.\d{2}\.\d{2}$/.test(e) ? '연월일(YYYY.MM.DD) 형식' : /YYYY|ＹＹＹＹ/.test(e) ? '서식 자리표시(YYYY.MM/로트/공장기호)' : '형식 ' + e;
+      out.push({ item: '賞味期限 표기', status: 'ok', note: fmt });
+    }
+    return out;
+  };
+  X['수입신고서'] = function (o, s) {
+    var out = [], emb = isoOf(o.date_embark), an = isoOf(o.analyzed), iss = isoOf(o.issued);
+    if (emb && an && an > emb) out.push({ item: '분석일 ' + an + ' ↔ 선적 ' + emb, status: 'bad', note: '선적 뒤 분석. 신고서와 선적 짝이 맞는지 확인' });
+    if (emb && iss && iss > emb) out.push({ item: '발급일 ' + iss + ' ↔ 선적 ' + emb, status: 'check', note: '선적 뒤 발급. 통관 시점에 원본이 있었는지 확인' });
+    return out;
+  };
+  function requiredCheck(doc_type, o) {
+    var miss = (REQUIRED[doc_type] || []).filter(function (k) { var v = o[k]; return v == null || v === '' || (Array.isArray(v) && !v.length); });
+    return miss.length ? [{ item: '필수 칸', status: 'check', note: '칸 비어 있음: ' + miss.join(', ') }] : [];
+  }
+
+  LC.reconcileDoc = function (doc_type, obj, state) {
+    ensure(state); var o = obj || {}, f = R[doc_type];
+    if (!f) return [{ item: doc_type, status: 'check', note: '대조 규칙 없는 서류 종류. 사람이 확인' }];
+    return requiredCheck(doc_type, o).concat(f(o, state), X[doc_type] ? X[doc_type](o, state) : []);
+  };
   LC.applyDoc = function (doc_type, obj, state) { ensure(state); var f = A[doc_type]; return f ? f(obj || {}, state) : '반영 규칙 없음 (' + doc_type + '). 기록만 남김'; };
 })();

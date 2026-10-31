@@ -99,7 +99,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       fields: [
         { k: 'date', label: '날짜', v: '2026-04-15', src: 'p1 상단' },
         { k: 'rows', label: '포장 행 (U사 LB만)', v: [
-          { buyer: 'U사', product: 'LB', ct: 174, mfg: '2026-04-10', expiry: '2028-04-01', lot_code: 'AJ' },
+          { buyer: 'U사', product: 'WF', ct: 174, mfg: '2026-04-10', expiry: '2028-04-01', lot_code: 'AJ' },
           { buyer: 'U사', product: 'LB', ct: 27, mfg: '2026-04-09', expiry: '2028-04-01', lot_code: 'I' },
           { buyer: 'U사', product: 'LB', ct: 31, mfg: '2026-04-10', expiry: '2028-04-01', lot_code: 'AJ' },
           { buyer: 'U사', product: 'LB', ct: 29, mfg: '2026-04-13', expiry: '2028-04-01', lot_code: 'AC' },

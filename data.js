@@ -27,6 +27,10 @@ LC.product.name_ja = '紅ずわいがに棒くずれ（LB）';
 // ---------- 품목 여러 개. LB 는 위 객체 그대로, SR 은 T사 신규 규격서(2026-09-14) 기준 ----------
 LC.products = {
   LB: LC.product,
+  WF: { code: 'WF', name_ko: '냉동 자숙 홍게 플레이크 (WF, 화이트 플레이크)', name_en: 'FROZEN COOKED RED SNOW CRAB WHITE FLAKE', name_ja: '紅ずわいがにフレーク',
+    net: '1 kg', pack: '1 kg × 12 (12 kg/C/T)', storage: '-18℃ 이하 냉동', shelf_months: 24,
+    ingredients: [{ name_ko: '홍게 살 플레이크', pct: null, type: 'raw' }], allergens: ['crustacea'], nutrition100: null, nutrition_source: '성적서 없음',
+    process: LC.product.process, factory: LC.product.factory, note: '포장일지 2026-04-15 U사 WF 174 C/T(LOT AJ). 배합·영양은 미확인' },
   SR: { code: 'SR', name_ko: '냉동 자숙 홍게 믹스살 (파살 4 : 플레이크 6)', name_en: 'FROZEN COOKED RED SNOW CRAB MEAT (SR)', name_ja: '紅ズワイミート（SR）韓国',
     net: '250 g (NET 200 g)', pack: '250 g × 40팩 (T사 박스, HIGH BARRIER 봉투)', storage: '-18℃ 이하 냉동', shelf_months: 24,
     ingredients: [
@@ -90,7 +94,7 @@ LC.sampleLabels = {
       name: '冷凍紅ズワイガニムキ身', ingredients: '紅ズワイガニ(韓国)､食塩／甘味料(ソルビトール)､酸味料､調味料(アミノ酸)､酸化防止剤(ビタミンＣ)',
       net: '７００ｇ（総重量：１ｋｇ）', mfg: '', expiry: '賞味期限', storage: '要冷凍（－18℃以下で保存）',
       origin: '原産国名 韓国', importer: '友田セーリング株式会社 / 鳥取県境港市', manufacturer: '',
-      allergen: '(원재료명에 かに 포함)', nutrition: 'エネルギー76kcal たんぱく質16.7g 脂質0.7g 炭水化物0.7g 食塩相当量2.1g 推定値'
+      allergen: '(원재료명에 かに 포함)', nutrition: 'エネルギー76kcal たんぱく質16.7g 脂質0.7g 炭水化物0.7g 食塩相当量2.1g 推定値', pack: 'トレー：PP 袋：PE，PA (마크 유무는 엑셀 원고로 확인 불가)'
     }
   },
   JP_U: {
@@ -99,7 +103,7 @@ LC.sampleLabels = {
       name: '紅ずわいがにむき身', ingredients: '紅ずわいがに（韓国）、食塩、デキストリン／トレハロース、調味料（アミノ酸等）',
       net: '1キログラム', mfg: '', expiry: '賞味期限 2028.10.01', storage: '要冷凍（－18℃以下）',
       origin: '原産国名 韓国', importer: 'U사 (境港)', manufacturer: '',
-      allergen: '', nutrition: 'エネルギー40kcal たんぱく質8.3g 脂質0.4g 炭水化物0.9g 食塩相当量0.6g (推定値)'
+      allergen: '', nutrition: 'エネルギー40kcal たんぱく質8.3g 脂質0.4g 炭水化物0.9g 食塩相当量0.6g (推定値)', pack: 'プラ トレー:PP 内装袋:PE,PA (실물 사진에 マーク 있음)'
     }
   },
   JP_S: {
@@ -108,7 +112,7 @@ LC.sampleLabels = {
       name: '紅ずわいがに加工品', ingredients: '紅ずわいがに（韓国産）、食塩／調味料（アミノ酸等）、（一部にかにを含む）',
       net: '1キログラム', mfg: '', expiry: 'YYYY.MM/製造ロット/工場記号', storage: '－18℃以下で保存してください',
       origin: '原産国名 韓国', importer: 'S사 (米子)', manufacturer: '',
-      allergen: '（一部にかにを含む）', nutrition: 'エネルギー42kcal たんぱく質9.2g 脂質0.2g 炭水化物0.4g 食塩相当量1.6g (目安)'
+      allergen: '（一部にかにを含む）', nutrition: 'エネルギー42kcal たんぱく質9.2g 脂質0.2g 炭水化物0.4g 食塩相当量1.6g (目安)', pack: '袋 トレー (표시안에 역할명만, 마크 그림 여부 미확인)'
     }
   }
 };
@@ -184,7 +188,15 @@ LC.rules = {
       { id: 'additive', item: '첨가물 ／구분', run: function (f) { return /[／/]/.test(f.ingredients) ? { status: 'pass', msg: '／로 첨가물 구분' } : { status: 'fix', msg: '원재료와 첨가물 사이 ／ 필요' }; } },
       { id: 'allergen', item: '특정원재료', run: function (f) { return /かに|がに|カニ|蟹/.test(f.ingredients + f.allergen) ? { status: 'pass', msg: 'かに 표기' } : { status: 'fix', msg: 'かに 특정원재료 표기 필요' }; } },
       { id: 'importer', item: '輸入者', run: function (f) { return f.importer ? { status: 'pass', msg: '기재됨' } : { status: 'fix', msg: '輸入者 누락' }; } },
-      { id: 'basic', item: '名称·内容量·保存·原産国', run: function (f) { var miss = ['name', 'net', 'storage', 'origin'].filter(function (k) { return !f[k]; }); return miss.length ? { status: 'fix', msg: '누락: ' + miss.join(', ') } : { status: 'pass', msg: '기재됨' }; } }
+      { id: 'basic', item: '名称·内容量·保存·原産国', run: function (f) { var miss = ['name', 'net', 'storage', 'origin'].filter(function (k) { return !f[k]; }); return miss.length ? { status: 'fix', msg: '누락: ' + miss.join(', ') } : { status: 'pass', msg: '기재됨' }; } },
+      // 容器包装 識別表示: 플라스틱·종이 용기포장은 식별마크(プラ·紙)가 법정 의무. 수입품도 수입자가 소재·구조·상표를 지시했거나 일본어 표시가 있으면 대상(Q22). 의무자는 용기 제조자와 제조를 발주한 사업자(Q30)
+      { id: 'pack_mark', item: '容器包装 識別表示(プラ)', src: '資源有効利用促進法 識別表示 · 経産省 Q&A 1.1.1(대상), Q22(수입품), Q30(의무자), 2.3.1(一括表示)',
+        run: function (f) {
+          var t = String(f.pack || '');
+          if (/プラ|紙マーク|識別/.test(t)) return { status: 'pass', msg: '식별마크 + 역할명·재질 일괄표시: ' + t };
+          if (/PP|PE|PA|PET|トレー|袋/.test(t)) return { status: 'check', msg: '재질·역할명은 있으나 プラ 식별마크 확인 필요(마크는 그림이라 사진에서 눈으로 확인)', fix: 'プラ 마크 + 役割名(トレー·袋)·재질을 한곳에 一括表示' };
+          return { status: 'check', msg: '포장 식별표시 정보 없음. 플라스틱 트레이·봉투면 プラ 마크 의무(수입품도 대상)', fix: 'プラ 마크와 トレー:PP／袋:PE,PA 같은 일괄표시 추가' };
+        } }
     ]
   },
   CN: {
@@ -302,7 +314,8 @@ LC.rawLots = [
 // 선적(원장) 시드 — 실제 TD-06 선적을 제조일 단위로 쪼갠 가정
 LC.seedLedger = [
   { lot: '20260409-LB', company_code: 'I',  product: 'LB', mfg: '2026-04-09', expiry: '2028-04-01', qty_ct: 27,  kg: 324,  raw: ['R-20260409-01'], country: 'JP', buyer: '일본 바이어 U사', ship: 'UE-2606 / 2026-05-20 부산→사카이미나토', cert: '수품원 위생증명서 2026-05-20 (바이어 요청, 비협약국 양식)', spec_sent: '2026-05-19' },
-  { lot: '20260410-LB', company_code: 'AJ', product: 'LB', mfg: '2026-04-10', expiry: '2028-04-01', qty_ct: 205, kg: 2460, raw: ['R-20260408-01'], country: 'JP', buyer: '일본 바이어 U사', ship: 'UE-2606 / 2026-05-20 부산→사카이미나토', cert: '수품원 위생증명서 2026-05-20 (바이어 요청, 비협약국 양식)', spec_sent: '2026-05-19' },
+  { lot: '20260410-LB', company_code: 'AJ', product: 'LB', mfg: '2026-04-10', expiry: '2028-04-01', qty_ct: 31, kg: 372, raw: ['R-20260408-01'], country: 'JP', buyer: '일본 바이어 U사', ship: 'UE-2606 / 2026-05-20 부산→사카이미나토', cert: '수품원 위생증명서 2026-05-20 (바이어 요청, 비협약국 양식)', spec_sent: '2026-05-19' },
+  { lot: '20260410-WF', company_code: 'AJ', product: 'WF', mfg: '2026-04-10', expiry: '2028-04-01', qty_ct: 174, kg: 2088, raw: ['R-20260408-01'], country: 'JP', buyer: '일본 바이어 U사', ship: '', cert: '', spec_sent: '' },
   { lot: '20260413-LB', company_code: 'AC', product: 'LB', mfg: '2026-04-13', expiry: '2028-04-01', qty_ct: 29,  kg: 348,  raw: ['R-20260409-02'], country: 'JP', buyer: '일본 바이어 U사', ship: '미선적 (재고)', cert: '', spec_sent: '' },
   { lot: '20260414-LB', company_code: 'AD', product: 'LB', mfg: '2026-04-14', expiry: '2028-04-01', qty_ct: 19,  kg: 228,  raw: ['R-20260409-02'], country: 'JP', buyer: '일본 바이어 U사', ship: '미선적 (재고)', cert: '', spec_sent: '' }
 ];

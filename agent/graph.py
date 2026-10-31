@@ -16,7 +16,7 @@ MODEL = 'claude-sonnet-4-5'  # 대회용. 품질 아쉬우면 opus
 
 # ---------- 서류 종류와 뽑을 칸 (= 추출 스키마). 종류 추가 = 줄 하나 ----------
 SCHEMAS = {
-    '라벨':        ['name', 'ingredients', 'net', 'expiry', 'storage', 'origin', 'importer', 'allergen', 'nutrition', 'lot_format', 'country'],
+    '라벨':        ['name', 'ingredients', 'net', 'expiry', 'storage', 'origin', 'importer', 'allergen', 'nutrition', 'pack', 'lot_format', 'country'],   # pack: 容器包装 識別表示(プラ 마크, トレー:PP 등)
     '영양성적서':  ['issuer', 'report_no', 'date', 'product', 'kcal', 'protein', 'fat', 'satfat', 'transfat', 'carb', 'sugar', 'sodium_mg', 'cholesterol_mg', 'note'],
     '규격서양식':  ['buyer', 'form_title', 'fields'],          # fields: [{label, example, section}]
     '바이어지시':  ['buyer', 'product', 'spec_changes', 'label_text', 'date'],
@@ -220,7 +220,7 @@ def template_gen(s: S) -> S:  # 승인될 매핑 → 규격서 HTML 템플릿 �
 def selftest(s: S) -> S:  # 회귀 테스트. 규칙·시드가 깨졌으면 여기서 막는다
     hk = judge('HK', {'name': 'x', 'ingredients': '雪蟹、食鹽／山梨醇、調味料（胺基酸）、增稠劑 (GUAR GUM)', 'net': '250克', 'mfg': 'x', 'expiry': '有効日期',
                       'storage': 'x', 'origin': '韓國', 'importer': 'x', 'manufacturer': '', 'allergen': '本產品部分含有小麥，大豆，雞肉', 'nutrition': ''})
-    jp = judge('JP', {'name': 'a', 'ingredients': '紅ずわいがに（韓国）、食塩、ﾃﾞｷｽﾄﾘﾝ/ﾄﾚﾊﾛｰｽ、調味料（ｱﾐﾉ酸等）', 'net': '1kg', 'storage': 's', 'origin': '韓国', 'importer': 'u', 'nutrition': '食塩相当量0.6g'})
+    jp = judge('JP', {'name': 'a', 'ingredients': '紅ずわいがに（韓国）、食塩、ﾃﾞｷｽﾄﾘﾝ/ﾄﾚﾊﾛｰｽ、調味料（ｱﾐﾉ酸等）', 'net': '1kg', 'storage': 's', 'origin': '韓国', 'importer': 'u', 'nutrition': '食塩相当量0.6g', 'pack': 'プラ トレー:PP 内装袋:PE,PA'})
     res = {'HK 샘플 fix 4·check 2': (sum(r['status'] == 'fix' for r in hk), sum(r['status'] == 'check' for r in hk)) == (4, 2),
            'JP U사 라벨 전부 pass': bool(jp) and all(r['status'] == 'pass' for r in jp),
            'data.js 문법': subprocess.run(['node', '-e', "new Function(require('fs').readFileSync(process.argv[1],'utf8'))", str(DATA_JS)], capture_output=True).returncode == 0,
@@ -272,7 +272,7 @@ if __name__ == '__main__':
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     if not args:  # 자가 점검: 키 없이, U사 라벨 값으로 규칙 노드까지 + 개발부 회귀 테스트
         fake = {'path': 'U사_라벨.jpg', 'masked': False, 'extracted': {'name': '紅ずわいがにむき身', 'ingredients': '紅ずわいがに（韓国）、食塩、ﾃﾞｷｽﾄﾘﾝ/ﾄﾚﾊﾛｰｽ、調味料（ｱﾐﾉ酸等）',
-                'net': '1kg', 'storage': '要冷凍', 'origin': '韓国', 'importer': '上野水産', 'nutrition': '40kcal 食塩相当量0.6g', 'country': 'JP'}}
+                'net': '1kg', 'storage': '要冷凍', 'origin': '韓国', 'importer': 'U사', 'nutrition': '40kcal 食塩相当量0.6g', 'pack': 'プラ トレー:PP 内装袋:PE,PA', 'country': 'JP'}}
         r = rules(fake); assert any(x['id'] == 'nutrition' and x['status'] == 'pass' for x in r['rule_results']), r
         assert after_extract({'doc_type': '포장일지'}) == 'reconcile' and after_extract({'doc_type': '라벨'}) == 'rules' and after_extract({'doc_type': '고시문'}) == 'rule_patch'
         assert gate({'path': '7-3.포장 일지.pdf'})['doc_type'] == '포장일지' and gate({'path': '食品表示基準_改正.pdf'})['doc_type'] == '고시문'

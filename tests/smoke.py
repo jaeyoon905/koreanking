@@ -23,7 +23,7 @@ def static_checks():
         check(f'A 문법 {f}', r.returncode == 0, r.stderr.strip().splitlines()[-1:] if r.returncode else '')
     r = run([sys.executable, '-X', 'utf8', 'agent/graph.py'])
     check('A graph.py selftest', 'selftest OK' in r.stdout, (r.stdout + r.stderr).strip()[-200:])
-    r = run(['node', 'agent/judge.js', 'JP', '{"ingredients":"紅ずわいがに（韓国）、食塩、ﾃﾞｷｽﾄﾘﾝ/ﾄﾚﾊﾛｰｽ、調味料（ｱﾐﾉ酸等）","nutrition":"食塩相当量0.6g","importer":"u","name":"a","net":"1","storage":"s","origin":"韓国"}'])
+    r = run(['node', 'agent/judge.js', 'JP', '{"ingredients":"紅ずわいがに（韓国）、食塩、ﾃﾞｷｽﾄﾘﾝ/ﾄﾚﾊﾛｰｽ、調味料（ｱﾐﾉ酸等）","nutrition":"食塩相当量0.6g","pack":"プラ トレー:PP","importer":"u","name":"a","net":"1","storage":"s","origin":"韓国"}'])
     try: ok = all(x['status'] == 'pass' for x in json.loads(r.stdout)); note = [x['item'] for x in json.loads(r.stdout) if x['status'] != 'pass']
     except Exception as e: ok, note = False, str(e)
     check('A judge.js JP U사 라벨 전부 pass', ok, note)
@@ -79,7 +79,7 @@ def offline_checks():
             check(f'B 렌더 {h}', n >= 100, f'{n}자')
         pg.goto(url + '#intake'); pg.wait_for_timeout(400)
         a = click_btn(pg, '빈 원장'); b_ = click_btn(pg, '7-3'); approve_all(pg, 1)
-        check('B 오프라인 7-3 승인 → 로트 4건', a and b_ and '로트 4건' in summary(pg), summary(pg))
+        check('B 오프라인 7-3 승인 → 로트 5건', a and b_ and '로트 5건' in summary(pg), summary(pg))
     errs = browser_session(fn)
     check('B 오프라인 콘솔·페이지 오류 0', not errs, errs[:3])
 
@@ -141,10 +141,10 @@ def server_checks():
             check('C 업로드 카드 4장', len(cards) == 4, len(cards))
             check('C 5-2 접수부 차단 문구', '접수부 차단' in pg.inner_text('#main'))
             approve_all(pg, 4); pg.wait_for_timeout(800)
-            check("C 승인 4번 → 요약 '로트 4건 · 입고 4건 · 선적 1건'", '로트 4건 · 입고 4건 · 선적 1건' in summary(pg), summary(pg))
+            check("C 승인 4번 → 요약 '로트 5건 · 입고 4건 · 선적 1건'", '로트 5건 · 입고 4건 · 선적 1건' in summary(pg), summary(pg))
         errs = browser_session(fn)
         check('C 서버 모드 콘솔·페이지 오류 0', not errs, errs[:3])
-        st = api('/api/state'); check('C 서버 state ledger 4 · shipments 1', len(st.get('ledger', [])) == 4 and len(st.get('shipments', [])) == 1, (len(st.get('ledger', [])), len(st.get('shipments', []))))
+        st = api('/api/state'); check('C 서버 state ledger 5 · shipments 1', len(st.get('ledger', [])) == 5 and len(st.get('shipments', [])) == 1, (len(st.get('ledger', [])), len(st.get('shipments', []))))
     finally:
         if proc:
             proc.terminate()
