@@ -155,6 +155,51 @@ def get_state():
     return json.loads(r['json']) if r else {}
 
 
+def state_rev():
+    with db() as c:
+        r = c.execute("select updated from state where id='main'").fetchone()
+    return r['updated'] if r else ''
+
+
+# 두 기기(노트북·데스크톱)가 같은 원장을 쓸 때 낡은 화면의 저장이 새 기록을 지우지 않게 기록 단위로 합친다.
+# dict 는 키 단위 합침(새 값 우선), 기록 목록은 식별자(lot·id·no·file·buyer…) 단위 합침(새 값 우선, 옛 기록은 뒤에 유지).
+# 새 값이 빈 {}/[] 이면 "모두 비우기" 같은 의도적 삭제로 보고 그대로 비운다.
+ID_KEYS = ('lot', 'id', 'no', 'code', 'waybill', 'file', 'buyer', 'subject', 'at', 'date')
+def _ident(rec):
+    if not isinstance(rec, dict):
+        return json.dumps(rec, ensure_ascii=False, sort_keys=True)
+    ks = [k for k in ID_KEYS if k in rec]
+    return json.dumps([(k, rec[k]) for k in ks], ensure_ascii=False) if ks else json.dumps(rec, ensure_ascii=False, sort_keys=True)
+
+
+def merge_state(old, new):
+    out = dict(old)
+    for k, v in new.items():
+        o = old.get(k)
+        if v in ({}, []) or o is None or type(o) is not type(v):
+            out[k] = v
+        elif isinstance(v, dict):
+            m = dict(o); m.update(v); out[k] = m
+        elif isinstance(v, list):
+            seen = {_ident(x) for x in v}
+            out[k] = list(v) + [x for x in o if _ident(x) not in seen]
+        else:
+            out[k] = v
+    return out
+
+
+def xl_target(ws, c):
+    # 라벨 칸의 오른쪽 값 칸. 라벨이 병합돼 있으면 그 범위 다음 칸, 값 칸이 병합돼 있으면 그 범위의 왼쪽 위 칸(MergedCell 은 쓰기 불가)
+    col = c.column + 1
+    for rg in ws.merged_cells.ranges:
+        if rg.min_row <= c.row <= rg.max_row and rg.min_col <= c.column <= rg.max_col:
+            col = rg.max_col + 1; break
+    for rg in ws.merged_cells.ranges:
+        if rg.min_row <= c.row <= rg.max_row and rg.min_col <= col <= rg.max_col:
+            return ws.cell(row=rg.min_row, column=rg.min_col)
+    return ws.cell(row=c.row, column=col)
+
+
 def put_state(s):
     with LOCK, db() as c:
         c.execute("insert into state(id,json,updated) values('main',?,?) on conflict(id) do update set json=excluded.json, updated=excluded.updated",
@@ -353,7 +398,7 @@ class H(BaseHTTPRequestHandler):
             self.send_header('Content-Disposition', f'attachment; filename="labelcoast-backup-{datetime.date.today():%Y%m%d}.json"')
             self.send_header('Content-Length', str(len(b))); self.end_headers(); return self.wfile.write(b)
         if p == '/api/state':
-            return self.send_json(200, get_state())
+            st = get_state(); st['_updated'] = state_rev(); return self.send_json(200, st)
         if p == '/api/docs':
             with db() as c:
                 rows = c.execute('select id,at,file,doc_type,mode,decision,result from docs order by id desc limit 50').fetchall()
@@ -423,11 +468,16 @@ class H(BaseHTTPRequestHandler):
     def do_PUT(self):
         if not self.authed(): return self.deny()
         if self.path == '/api/state':
-            new = self.body(); old = get_state()   # 병합 저장: 옛 화면(캐시)이 모르는 키(replies·tx 등)를 지우지 못하게 없는 키는 유지
+            new = self.body(); old = get_state(); rev = state_rev(); merged = False
             if isinstance(new, dict) and isinstance(old, dict):
-                for k, v in old.items():
-                    if k not in new: new[k] = v
-            return self.send_json(200, {'ok': True, 'updated': put_state(new)})
+                base = new.pop('_base', None)
+                if base is not None and base != rev and old:   # 낡은 판 위에 저장 → 기록 단위 병합 (ponytail: 단건 삭제는 다른 기기 저장 때 되살아날 수 있음)
+                    new = merge_state(old, new); merged = True
+                else:                                            # 같은 판 → 통째 교체. 옛 화면이 모르는 키만 유지
+                    for k, v in old.items():
+                        if k not in new: new[k] = v
+            upd = put_state(new)
+            return self.send_json(200, {'ok': True, 'updated': upd, 'merged': merged, 'state': new if merged else None})
         self.send_json(404, {'error': 'no route'})
 
     def do_POST(self):
@@ -466,7 +516,7 @@ class H(BaseHTTPRequestHandler):
                                         for c in row:
                                             k = norm(c.value)
                                             if k and k in keys:
-                                                tgt = ws.cell(row=c.row, column=c.column + 1)
+                                                tgt = xl_target(ws, c)
                                                 if tgt.value in (None, ''): tgt.value = str(keys[k])
                                 bio = io.BytesIO(); wb.save(bio); z.writestr(nm + '.xlsx', bio.getvalue()); made.append(nm + '.xlsx')
                             elif t == 'lot' and SD and it.get('lot'):
@@ -507,7 +557,7 @@ class H(BaseHTTPRequestHandler):
                         for c in row:
                             k = norm(c.value)
                             if k and k in keys:
-                                tgt = ws.cell(row=c.row, column=c.column + 1)
+                                tgt = xl_target(ws, c)
                                 if tgt.value in (None, ''): tgt.value = str(keys[k]); filled += 1
                 out = ROOT / 'agent' / 'out'; out.mkdir(exist_ok=True); fp = out / ('채움_' + (name if name.lower().endswith('.xlsx') else name + '.xlsx')); wb.save(fp)
             except Exception as e: return self.send_json(500, {'error': '엑셀 채우기 실패: %s' % type(e).__name__})

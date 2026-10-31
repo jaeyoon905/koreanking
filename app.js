@@ -29,11 +29,12 @@
   function api(path, method, body) {
     return fetch(API + path, { method: method || 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json(); });
   }
+  var serverRev = null;   // 마지막으로 본 서버 판. 저장 때 같이 보내 낡은 판 위 덮어쓰기를 막는다
   function save() {
     SAVED.forEach(function (k) { localStorage.setItem('lc.' + k, JSON.stringify(state[k])); });
     if (!API) return;
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () { var s = {}; SAVED.forEach(function (k) { s[k] = state[k]; }); api('/state', 'PUT', s).catch(function () {}); }, 300);
+    saveTimer = setTimeout(function () { var s = { _base: serverRev }; SAVED.forEach(function (k) { s[k] = state[k]; }); api('/state', 'PUT', s).then(function (r) { if (!r) return; serverRev = r.updated || serverRev; if (r.merged && r.state) { SAVED.forEach(function (k) { if (r.state[k] != null) state[k] = r.state[k]; }); SAVED.forEach(function (k) { localStorage.setItem('lc.' + k, JSON.stringify(state[k])); }); toast('다른 기기에서 저장한 기록과 합쳤습니다'); } }).catch(function () {}); }, 300);
   }
   function resetAll() { var s = seeds(); SAVED.forEach(function (k) { state[k] = s[k]; }); save(); }
   // 식약처 품목제조보고에서 추가한 품목: 기본 품목(LB)을 틀로 쓰고 이름·코드만 덮는다. 영양값은 없음(성적서 필요)
@@ -83,7 +84,7 @@
   }
   function bootServer() {
     api('/health').then(function (h) { health = h; if (h && h.today) LC.TODAY = h.today; api('/regwatch/status').then(function (r) { state.regwatch = (r && r.sources) || []; if ($('#rw-card') || location.hash === '#home' || !location.hash) route(); }).catch(function () {}); return api('/state'); })
-      .then(function (s) { var seeded = seeds(); SAVED.forEach(function (k) { if (s && s[k] != null) state[k] = s[k]; else if (!localStorage.getItem('lc.' + k)) state[k] = seeded[k]; }); mergeExtraProducts(); setProduct(state.productCode); route(); })
+      .then(function (s) { if (s && s._updated) serverRev = s._updated; var seeded = seeds(); SAVED.forEach(function (k) { if (s && s[k] != null) state[k] = s[k]; else if (!localStorage.getItem('lc.' + k)) state[k] = seeded[k]; }); mergeExtraProducts(); setProduct(state.productCode); route(); })
       .catch(function () { health = { ok: false }; route(); });
   }
   if (API) bootServer();
@@ -474,7 +475,7 @@
   function tagHK(p) {
     return '<div class="pkg hk"><table>' + pkgRow('食品名稱 Name', '冷凍熟紅雪蟹腿碎肉<br>' + esc(p.name_en || '')) + pkgRow('配料 Ingredients', '紅雪蟹 Red snow crab、水 Water、鹽 Salt、' + esc(additiveBy.HK), 1) +
       pkgRow('致敏物質 Allergen', esc(allergenBy.HK), 2) + pkgRow('淨重 Net weight', esc(p.net || '')) + pkgRow('此日期前最佳<br>Best before', 'DD/MM/YYYY', 3) + pkgRow('貯存方法 Storage', '-18°C或以下冷藏 Keep frozen at -18°C or below') +
-      pkgRow('製造商 Manufacturer', esc(p.factory ? p.factory.name : '') + ', Korea', 4) + pkgRow('原產地 Origin', '韓國 Korea') + '</table>' +
+      pkgRow('製造商 Manufacturer', esc(p.factory ? (p.factory.name_en || p.factory.name) : ''), 4) + pkgRow('原產地 Origin', '韓國 Korea') + '</table>' +
       (p.nutrition100 ? nutBox('營養標籤 Nutrition Information <small>每100克 Per 100g</small>', nutritionBy.HK()) : '') + '</div>';
   }
   function tagTW(p) {
@@ -536,20 +537,23 @@
   };
   var TAG_CTRY = [['JP', '일본', '食品表示基準', tagJP], ['CN', '중국', 'GB 7718-2025 · GB 28050-2025', tagCN], ['HK', '홍콩', 'Cap.132W', tagHK], ['TW', '대만', '식품안전위생관리법', tagTW], ['TH', '태국', '보건부 고시 450호', tagTH]];
   screens.tags = function () {
-    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 겹쳐 놓은 라벨을 누르면 그 라벨과 바꾼 이유가 나와요.</p>' +
+    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 나라 칩이나 아래 겹쳐 놓은 라벨을 누르면 그 라벨과 바꾼 이유가 나와요.</p>' +
       '<div class="row">' + productSelect('tg-prod') + '</div>' +
       '<div class="tagview"><section><h3 class="tv-h">한국 원본 <span class="muted">식품등의 표시기준</span></h3><div id="tg-kr"></div></section>' +
-      '<section><h3 class="tv-h">나라별 라벨</h3><div id="tg-main"></div><div class="tag-pile" id="tg-pile"></div></section>' +
+      '<section><h3 class="tv-h">나라별 라벨 <span class="muted" id="tg-now"></span></h3><div class="chips" id="tg-ctry"></div><div id="tg-main"></div><div class="tag-pile" id="tg-pile"></div></section>' +
       '<section><h3 class="tv-h" id="tg-why-h">바꾼 이유</h3><div id="tg-why"><p class="muted">왼쪽 라벨을 누르면 그 나라에서 바꾼 이유가 나와요.</p></div></section></div>';
   };
   screens.tags.bind = function (arg) {
     bindProductSelect('tg-prod');
-    var p = P(), sel = arg === 'go' ? TAG_CTRY[0][0] : TAG_WHY[arg] ? arg : null;   // #tags/JP·#tags/go: 바로 펼친 화면
+    var p = P(), sel = TAG_WHY[arg] ? arg : TAG_CTRY[0][0];   // #tags/JP: 그 나라, 아니면 첫 나라(일본)를 펼침
     $('#tg-kr').innerHTML = tagKR(p);
     var cardHtml = function (c) { return '<div class="tag-card" data-c="' + c[0] + '" tabindex="0" role="button" aria-label="' + c[1] + ' 라벨 보기"><span class="tc-tab">' + c[1] + '</span>' + c[3](p) + '</div>'; };
     function hl(n) { Array.prototype.forEach.call(document.querySelectorAll('#tg-main [data-mk]'), function (r) { r.classList.toggle('hl', !!n && r.dataset.mk === n); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-why .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
     function render() {
       var c = TAG_CTRY.filter(function (x) { return x[0] === sel; })[0];
+      $('#tg-ctry').innerHTML = TAG_CTRY.map(function (x) { return '<button class="chip' + (x[0] === sel ? ' on' : '') + '" data-tgc="' + x[0] + '" aria-pressed="' + (x[0] === sel) + '">' + esc(x[1]) + '</button>'; }).join('');
+      Array.prototype.forEach.call($('#tg-ctry').children, function (b) { b.onclick = function () { sel = b.dataset.tgc; render(); }; });
+      $('#tg-now').textContent = c ? '지금 보는 것: ' + c[1] + ' 라벨' : '';
       $('#tg-main').innerHTML = c ? cardHtml(c).replace('class="tag-card"', 'class="tag-card main"') : '';
       $('#tg-why-h').innerHTML = c ? c[1] + '에서 바꾼 이유 <span class="muted">' + esc(c[2]) + '</span>' : '바꾼 이유';
       if (c) $('#tg-why').innerHTML = bubbles(TAG_WHY[c[0]](), c[0]);
@@ -652,7 +656,7 @@
       ['添加物 / 첨가물', p.ingredients.filter(function (i) { return i.type === 'additive'; }).map(function (i) { return i.func + ' ' + i.name_ko + ' INS ' + i.ins; }).join(', ')],
       ['アレルゲン / 알레르겐', '甲殻類(かに) / 갑각류(게)'], ['栄養成分 100g / 영양', p.nutrition100 ? nutritionBy.JP().slice(0, 5).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') + ' (' + p.nutrition_source + ')' : '성적서 필요 (' + p.nutrition_source + ')'],
       ['製造工程 / 공정', p.process], ['内容量・荷姿 / 내용량·포장', p.net + ' / ' + p.pack], ['保存 / 보존', p.storage + ', 소비기한 제조일로부터 ' + p.shelf_months + '개월'],
-      ['製造者 / 제조자', p.factory.name + ' · 영업등록 ' + p.factory.lic], ['認証・登録 / 인증·등록', certList().join(' · ')]];
+      ['製造者 / Manufacturer', (p.factory.name_en || p.factory.name) + ' · Reg. ' + p.factory.lic], ['認証・登録 / 인증·등록', certList().join(' · ')]];
     if (lot) rows = rows.concat([['LOT', lot.lot + (lot.company_code ? ' (회사 코드 ' + lot.company_code + ')' : '')], ['製造日 / 제조일', lot.mfg], ['賞味期限 / 소비기한', lot.expiry], ['数量 / 수량', lot.qty_ct + ' C/T, ' + lot.kg + ' kg'], ['衛生証明書 / 위생증명서', lot.cert], ['出荷 / 선적', lot.ship], ['LOT 조회', location.origin + location.pathname + '#lot/' + lot.lot]]);
     return '<div class="sheet"><h3>' + (lot ? '로트 규격서 (出荷ロット規格書)' : '품목 규격서 (原材料規格書・製造工程表)') + '</h3><p class="muted">바이어 양식 템플릿 기준 · 발행일 ' + LC.TODAY + '</p><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>';
   }
@@ -1294,7 +1298,7 @@
     var map = {};
     Object.keys(state.specForms || {}).forEach(function (k) { var f = state.specForms[k], m = /[_\-\s](LB|WF|SR|LEG|CL)(?=[_\-\s.]|$)/i.exec(String(f.form_name || '')); map[k] = map[k] || { buyer: k, product: null }; map[k].form = f; if (m) map[k].product = m[1].toUpperCase(); });
     // 문의 메일을 양식의 바이어와 합친다: 회사명 첫 토큰이 같으면(U社=U사, H Foods=H社) 그 줄, 아니면 같은 품목 양식이 하나뿐일 때 그 줄, 아니면 새 줄
-    var norm = function (x) { return String(x || '').replace(/社|사$/g, '사').replace(/[\s·,.()（）]+/g, ' ').trim().toLowerCase(); };
+    var norm = function (x) { return String(x || '').normalize('NFKC').replace(/社|사$/g, '사').replace(/[\s·,.()（）]+/g, ' ').trim().toLowerCase(); };
     var head = function (x) { var t = norm(x).split(' ')[0] || ''; return t.replace(/사$/, ''); };
     (state.replies || []).forEach(function (r) {
       var ks = Object.keys(map), hit = ks.filter(function (b) { var h = head(b), hr = head(r.buyer); return h && hr && h.length >= 1 && (h === hr || (h.length >= 2 && hr.indexOf(h) === 0) || (hr.length >= 2 && h.indexOf(hr) === 0)); })[0];
@@ -1327,7 +1331,7 @@
     if (topic === '영양') { if (!n) return null; rows = [[K.energy, n.kcal + ' kcal / ' + Math.round(n.kcal * 4.184) + ' kJ'], [K.protein, n.protein + ' g'], [K.fat, n.fat + ' g'], [K.satfat, (n.satfat == null ? '-' : n.satfat + ' g')], [K.transfat, (n.transfat == null ? '-' : n.transfat + ' g')], [K.carb, n.carb + ' g'], [K.sugar, (n.sugar == null ? '-' : n.sugar + ' g')], [K.sodium, n.sodium_mg + ' mg'], [K.source, p.nutrition_source || '']]; }
     else if (topic === '알레르겐') rows = [[K.allergen, (p.allergens || []).map(function (a) { return a === 'crustacea' ? 'Crustacea (crab) / 甲殻類（かに）/ 甲殼類（蟹）' : a; }).join(', ') || K.none], [K.others, K.none], [K.ingredients, p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')]];
     else if (topic === '소비기한' || topic === '보존') rows = [[K.shelf, p.shelf_months + ' months / 개월'], [K.storage, p.storage], [K.basis, '제조일 기준 ' + p.shelf_months + '개월, 품목 규격서 기준']];
-    else if (topic === '인증') rows = state.registry.filter(function (r) { return r.kind !== '선적별'; }).map(function (r) { return [r.name, (r.no || '') + (r.issuer ? ' · ' + r.issuer : '') + (r.expiry ? ' · ' + K.expiry + ' ' + r.expiry : '')]; });
+    else if (topic === '인증') rows = state.registry.filter(function (r) { return r.kind !== '선적별' && r.kind !== '참고' && !/^KR/.test(String(r.countries || '')); }).map(function (r) { return [r.name, (r.no || '') + (r.issuer ? ' · ' + r.issuer : '') + (r.expiry ? ' · ' + K.expiry + ' ' + r.expiry : '')]; });
     else if (topic === '로트') { if (!lot) return null; var rl = state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }); rows = [[K.lot, lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : '')], [K.mfg, lot.mfg], [K.exp, lot.expiry], [K.qty, lot.qty_ct + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')]].concat(rl.length ? rl.map(function (r) { return [K.raw + ' ' + r.id, (r.vessel || '') + ' · ' + K.received + ' ' + (r.received || '') + (r.caught ? ' · ' + K.caught + ' ' + r.caught : '') + (r.landing ? ' · ' + r.landing : '')]; }) : [[K.raw, '입고 기록 연결 전']]); }
     else if (topic === '원산지') { var r0 = state.raw[0] || {}; rows = [[K.origin, 'Republic of Korea / 韓国 / 한국'], [K.species, p.species || r0.species || ''], [K.landing, r0.landing || '동해 연근해'], [K.vessel, lot && state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }).map(function (r) { return r.vessel; }).join(', ') || (r0.vessel || '')]]; }
     else if (topic === '원재료' || topic === '공정' || topic === '포장' || topic === '기타') rows = [[K.ingredients, p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')], [K.additives, p.ingredients.filter(function (i) { return i.type === 'additive'; }).map(function (i) { return i.func + ' ' + i.name_ko + ' (INS ' + i.ins + ')'; }).join(', ') || K.none], [K.process, p.process], [K.net, p.net], [K.pack, p.pack]];
@@ -1335,8 +1339,8 @@
   }
   function reqDocHtml(topic, lang, p, lot, buyer, rows) {
     var T = DOC_T[lang] || DOC_T.en;
-    return '<div class="sheet"><h3>' + esc(T[topic] || T['기타']) + '</h3><p class="muted">' + esc(T.company) + ': A사 · ' + esc(T.date) + ': ' + LC.TODAY + ' · ' + esc(T.product) + ': ' + esc(p.name_en) + ' (' + esc(p.code) + ')' + (lot ? ' · ' + esc(T.lot) + ': ' + esc(lot.lot) : '') + ' · To: ' + esc(buyer) + '</p><table>' +
-      rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(txOf(lang, String(r[1]))) + '</td></tr>'; }).join('') + '</table><p class="muted">' + esc(T.note) + '</p></div>';
+    return '<div class="sheet"><h3>' + esc(T[topic] || T['기타']) + '</h3><p class="muted">' + esc(T.company) + ': ' + (lang === 'ko' ? 'A사' : 'A Co.') + ' · ' + esc(T.date) + ': ' + LC.TODAY + ' · ' + esc(T.product) + ': ' + esc(p.name_en) + ' (' + esc(p.code) + ')' + (lot ? ' · ' + esc(T.lot) + ': ' + esc(lot.lot) : '') + ' · To: ' + esc(lang === 'ko' ? buyer : String(buyer).replace(/사$/, lang === 'en' ? ' Co.' : '社')) + '</p><table>' +
+      rows.map(function (r) { return '<tr><th>' + esc(txOf(lang, String(r[0]))) + '</th><td>' + esc(txOf(lang, String(r[1]))) + '</td></tr>'; }).join('') + '</table><p class="muted">' + esc(T.note) + '</p></div>';
   }
   // 바이어 묶음 b 에 대해 만들 수 있는 요청 서류 목록 [{topic, title, rows, lang}]
   function requestedDocs(b) {
@@ -1346,7 +1350,7 @@
     return out;
   }
   function reqDocTranslate(b, docs) {   // 한국어 값 번역(바이어 언어). 저장돼 재사용
-    var vals = {}; docs.forEach(function (d) { (d.rows || []).forEach(function (r, i) { vals[d.topic + i] = String(r[1]); }); });
+    var vals = {}; docs.forEach(function (d) { (d.rows || []).forEach(function (r, i) { vals[d.topic + i] = String(r[1]); vals[d.topic + 'k' + i] = String(r[0]); }); });
     return translateMissing(docs.length ? docs[0].lang : 'en', vals);
   }
   function bundleCards(only) {

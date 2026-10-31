@@ -615,3 +615,5 @@ details.lbl-setup[open] > summary { margin-bottom: 16px; }
   .bd-groups { padding: 4px 16px 8px; }
 }
 @media (max-width: 700px) { .bd-head { grid-template-columns: 1fr; } .bd-who b { font-size: 17px; } }
+/* 나라별 라벨: 나라 칩 줄 아래에 라벨 탭(46px)이 들어갈 자리 */
+#tg-ctry { margin-bottom: 56px; }
