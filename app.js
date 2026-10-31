@@ -228,8 +228,9 @@
       };
       var KEY_KO = KEY_BY[country] || KEY_BY.JP;
       var labelRows = Object.keys(fixed).filter(function (k) { return fixed[k] && k !== 'country'; });
-      var labelHtml = '<div class="sheet"><h3>Label text (corrected draft) · ' + esc(LC.rules[country].name) + ' · ' + esc(meta.file || '') + '</h3><p class="muted">규칙 판정 뒤 고친 문안 · ' + LC.TODAY + '</p><table>' + labelRows.map(function (k) { return '<tr><th>' + esc(KEY_KO[k] || k) + '</th><td>' + esc(fixed[k]) + '</td></tr>'; }).join('') + '</table></div>';
-      var labelTxt = labelRows.map(function (k) { return (KEY_KO[k] || k) + ': ' + fixed[k]; }).join('\n');
+      var keyOf = function (k) { var kk = KEY_KO[k] || k, v = String(fixed[k] || ''); return v.indexOf(kk.split(' ')[0]) === 0 ? '' : kk; };   // 값에 칸 이름이 이미 있으면(此日期前最佳 …) 중복 표기 안 함
+      var labelHtml = '<div class="sheet"><h3>Label text (corrected draft) · ' + esc(LC.rules[country].name) + ' · ' + esc(meta.file || '') + '</h3><p class="muted">규칙 판정 뒤 고친 문안 · ' + LC.TODAY + '</p><table>' + labelRows.map(function (k) { return '<tr><th>' + esc(keyOf(k)) + '</th><td>' + esc(fixed[k]) + '</td></tr>'; }).join('') + '</table></div>';
+      var labelTxt = labelRows.map(function (k) { var kk = keyOf(k); return (kk ? kk + ': ' : '') + fixed[k]; }).join('\n');
       $('#lbl-fixpdf').onclick = function () { downloadPdf('라벨수정안_' + (meta.file || country) + '_' + country, $('#lbl-fixcard').outerHTML); };
       $('#lbl-fixlabel').onclick = function () { downloadPdf('라벨문안_' + (meta.file || country) + '_' + country, labelHtml); };
       $('#lbl-fixtxt').onclick = function () { download('라벨문안_' + (meta.file || country) + '_' + country + '.txt', labelTxt, 'text/plain;charset=utf-8'); };
