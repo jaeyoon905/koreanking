@@ -1,0 +1,30 @@
+# GitHub Pages 배포. main 에 push 될 때마다 저장소 루트를 그대로 올린다(정적 앱, localStorage 모드).
+# enablement: true → Pages 가 꺼져 있으면 첫 실행에서 자동으로 켠다. TJ 가 .github/ 담당이므로 바꿔도 됨.
+name: pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deploy
+        uses: actions/deploy-pages@v4
