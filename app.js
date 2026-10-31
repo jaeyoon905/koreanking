@@ -973,6 +973,52 @@
     });
     return Object.keys(map).map(function (k) { var b = map[k]; b.product = b.product && LC.products[b.product] ? b.product : P().code; var lots = state.ledger.filter(function (l) { return l.product === b.product; }).sort(function (x, y) { return String(y.mfg).localeCompare(String(x.mfg)); }); b.lot = lots[0] || null; return b; });
   }
+  // ---------- 바이어가 요청한 서류를 우리 데이터로 바로 만든다 (문의 주제 → 서류 종류, 바이어 언어) ----------
+  var DOC_T = {
+    en: { company: 'Issued by', date: 'Date', product: 'Product', code: 'Item code', lot: 'Lot', note: 'Values from the company ledger and product master. AI is used only for translation; a person reviews before sending.',
+      영양: 'Nutrition Information Statement (per 100 g)', 알레르겐: 'Allergen Statement', 소비기한: 'Shelf Life and Storage Statement', 보존: 'Storage Condition Statement', 인증: 'Certification and Registration Status', 로트: 'Lot Traceability Report', 원산지: 'Country of Origin Statement', 원재료: 'Ingredient and Process Summary', 공정: 'Manufacturing Process Summary', 포장: 'Packing Specification', 기타: 'Product Information',
+      k: { energy: 'Energy', protein: 'Protein', fat: 'Total fat', satfat: 'Saturated fat', transfat: 'Trans fat', carb: 'Carbohydrate', sugar: 'Sugars', sodium: 'Sodium', source: 'Source', allergen: 'Allergens present', others: 'Other allergens', shelf: 'Shelf life', storage: 'Storage', basis: 'Basis', cert: 'Certificate / Registration', no: 'Number', issuer: 'Issuer', expiry: 'Valid until', mfg: 'Production date', exp: 'Best before', qty: 'Quantity', raw: 'Raw material lots', vessel: 'Vessel', received: 'Received', caught: 'Fishing period', landing: 'Landing / area', species: 'Species', origin: 'Country of origin', ingredients: 'Ingredients', additives: 'Food additives', process: 'Process', net: 'Net weight', pack: 'Packing', none: 'None' } },
+    ja: { company: '発行者', date: '発行日', product: '商品', code: '商品コード', lot: 'ロット', note: '値は当社の台帳・品目マスターの値です。AIは翻訳のみに使用し、送付前に担当者が確認します。',
+      영양: '栄養成分確認書（100gあたり）', 알레르겐: 'アレルゲン申告書', 소비기한: '賞味期限・保存方法確認書', 보존: '保存条件確認書', 인증: '認証・登録状況', 로트: 'ロット追跡報告書', 원산지: '原産地証明（自社申告）', 원재료: '原材料・工程概要', 공정: '製造工程概要', 포장: '荷姿仕様', 기타: '商品情報',
+      k: { energy: 'エネルギー', protein: 'たんぱく質', fat: '脂質', satfat: '飽和脂肪酸', transfat: 'トランス脂肪酸', carb: '炭水化物', sugar: '糖類', sodium: 'ナトリウム', source: '根拠', allergen: '該当アレルゲン', others: 'その他', shelf: '賞味期限', storage: '保存方法', basis: '根拠', cert: '認証・登録', no: '番号', issuer: '発行機関', expiry: '有効期限', mfg: '製造日', exp: '賞味期限', qty: '数量', raw: '原料ロット', vessel: '漁船', received: '入荷日', caught: '漁獲期間', landing: '水揚げ・海域', species: '魚種', origin: '原産国', ingredients: '原材料', additives: '食品添加物', process: '製造工程', net: '内容量', pack: '荷姿', none: 'なし' } },
+    'zh-Hant': { company: '發行方', date: '日期', product: '產品', code: '產品編號', lot: '批號', note: '數值來自公司台帳及產品主檔。AI僅用於翻譯，寄出前由專人覆核。',
+      영양: '營養資料確認書（每100克）', 알레르겐: '致敏物聲明', 소비기한: '保質期及貯存確認書', 보존: '貯存條件確認書', 인증: '認證及註冊狀況', 로트: '批次追溯報告', 원산지: '原產地聲明', 원재료: '配料及工序概要', 공정: '生產工序概要', 포장: '包裝規格', 기타: '產品資料',
+      k: { energy: '能量', protein: '蛋白質', fat: '總脂肪', satfat: '飽和脂肪', transfat: '反式脂肪', carb: '碳水化合物', sugar: '糖', sodium: '鈉', source: '來源', allergen: '含有致敏物', others: '其他', shelf: '保質期', storage: '貯存', basis: '依據', cert: '證書／註冊', no: '編號', issuer: '發證機關', expiry: '有效期至', mfg: '生產日期', exp: '此日期前最佳', qty: '數量', raw: '原料批次', vessel: '漁船', received: '到貨日', caught: '捕撈期間', landing: '卸貨／海域', species: '魚種', origin: '原產地', ingredients: '配料', additives: '食物添加劑', process: '工序', net: '淨重', pack: '包裝', none: '無' } },
+    ko: { company: '발행', date: '발행일', product: '품목', code: '품목코드', lot: '로트', note: '값은 회사 원장·품목대장 값입니다. AI는 번역에만 쓰고, 보내기 전 담당자가 확인합니다.',
+      영양: '영양성분 확인서 (100g당)', 알레르겐: '알레르겐 선언서', 소비기한: '소비기한·보관 확인서', 보존: '보관 조건 확인서', 인증: '인증·등록 현황', 로트: '로트 추적 보고서', 원산지: '원산지 확인서(자사 선언)', 원재료: '원재료·공정 요약', 공정: '제조공정 요약', 포장: '포장 규격', 기타: '제품 정보',
+      k: { energy: '열량', protein: '단백질', fat: '지방', satfat: '포화지방', transfat: '트랜스지방', carb: '탄수화물', sugar: '당류', sodium: '나트륨', source: '출처', allergen: '해당 알레르겐', others: '기타', shelf: '소비기한', storage: '보관', basis: '근거', cert: '인증·등록', no: '번호', issuer: '발급', expiry: '유효기한', mfg: '제조일', exp: '소비기한', qty: '수량', raw: '원료 입고분', vessel: '어선', received: '입고일', caught: '조업기간', landing: '위판·해역', species: '어종', origin: '원산지', ingredients: '원재료', additives: '첨가물', process: '공정', net: '내용량', pack: '포장', none: '없음' } }
+  };
+  DOC_T['zh-Hans'] = DOC_T['zh-Hant']; DOC_T.th = DOC_T.en;
+  function docLang(reply) { var l = String((reply && reply.lang) || 'en').toLowerCase(); if (l.indexOf('zh') === 0) return 'zh-Hant'; return DOC_T[l] ? l : 'en'; }
+  var DOC_TOPICS = ['영양', '알레르겐', '소비기한', '보존', '인증', '로트', '원산지', '원재료', '공정', '포장'];
+  // 요청 서류 한 장의 행(라벨, 값). 값은 원문(한국어 포함) → 번역은 txOf 로
+  function reqDocRows(topic, p, lot, T) {
+    var K = T.k, n = p.nutrition100, rows = [];
+    if (topic === '영양') { if (!n) return null; rows = [[K.energy, n.kcal + ' kcal / ' + Math.round(n.kcal * 4.184) + ' kJ'], [K.protein, n.protein + ' g'], [K.fat, n.fat + ' g'], [K.satfat, (n.satfat == null ? '-' : n.satfat + ' g')], [K.transfat, (n.transfat == null ? '-' : n.transfat + ' g')], [K.carb, n.carb + ' g'], [K.sugar, (n.sugar == null ? '-' : n.sugar + ' g')], [K.sodium, n.sodium_mg + ' mg'], [K.source, p.nutrition_source || '']]; }
+    else if (topic === '알레르겐') rows = [[K.allergen, (p.allergens || []).map(function (a) { return a === 'crustacea' ? 'Crustacea (crab) / 甲殻類（かに）/ 甲殼類（蟹）' : a; }).join(', ') || K.none], [K.others, K.none], [K.ingredients, p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')]];
+    else if (topic === '소비기한' || topic === '보존') rows = [[K.shelf, p.shelf_months + ' months / 개월'], [K.storage, p.storage], [K.basis, '제조일 기준 ' + p.shelf_months + '개월, 품목 규격서 기준']];
+    else if (topic === '인증') rows = state.registry.filter(function (r) { return r.kind !== '선적별'; }).map(function (r) { return [r.name, (r.no || '') + (r.issuer ? ' · ' + r.issuer : '') + (r.expiry ? ' · ' + K.expiry + ' ' + r.expiry : '')]; });
+    else if (topic === '로트') { if (!lot) return null; var rl = state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }); rows = [[K.lot, lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : '')], [K.mfg, lot.mfg], [K.exp, lot.expiry], [K.qty, lot.qty_ct + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')]].concat(rl.length ? rl.map(function (r) { return [K.raw + ' ' + r.id, (r.vessel || '') + ' · ' + K.received + ' ' + (r.received || '') + (r.caught ? ' · ' + K.caught + ' ' + r.caught : '') + (r.landing ? ' · ' + r.landing : '')]; }) : [[K.raw, '입고 기록 연결 전']]); }
+    else if (topic === '원산지') { var r0 = state.raw[0] || {}; rows = [[K.origin, 'Republic of Korea / 韓国 / 한국'], [K.species, p.species || r0.species || ''], [K.landing, r0.landing || '동해 연근해'], [K.vessel, lot && state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }).map(function (r) { return r.vessel; }).join(', ') || (r0.vessel || '')]]; }
+    else if (topic === '원재료' || topic === '공정' || topic === '포장' || topic === '기타') rows = [[K.ingredients, p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')], [K.additives, p.ingredients.filter(function (i) { return i.type === 'additive'; }).map(function (i) { return i.func + ' ' + i.name_ko + ' (INS ' + i.ins + ')'; }).join(', ') || K.none], [K.process, p.process], [K.net, p.net], [K.pack, p.pack]];
+    return rows.length ? rows : null;
+  }
+  function reqDocHtml(topic, lang, p, lot, buyer, rows) {
+    var T = DOC_T[lang] || DOC_T.en;
+    return '<div class="sheet"><h3>' + esc(T[topic] || T['기타']) + '</h3><p class="muted">' + esc(T.company) + ': A사 · ' + esc(T.date) + ': ' + LC.TODAY + ' · ' + esc(T.product) + ': ' + esc(p.name_en) + ' (' + esc(p.code) + ')' + (lot ? ' · ' + esc(T.lot) + ': ' + esc(lot.lot) : '') + ' · To: ' + esc(buyer) + '</p><table>' +
+      rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(txOf(lang, String(r[1]))) + '</td></tr>'; }).join('') + '</table><p class="muted">' + esc(T.note) + '</p></div>';
+  }
+  // 바이어 묶음 b 에 대해 만들 수 있는 요청 서류 목록 [{topic, title, rows, lang}]
+  function requestedDocs(b) {
+    if (!b.reply || !b.reply.answers) return [];
+    var lang = docLang(b.reply), T = DOC_T[lang] || DOC_T.en, p = LC.products[b.product] || P(), seen = {}, out = [];
+    b.reply.answers.forEach(function (a) { var t = a['주제'] || a.topic; if (!t || seen[t] || DOC_TOPICS.indexOf(t) < 0) return; seen[t] = 1; var rows = reqDocRows(t, p, b.lot, T); out.push({ topic: t, title: T[t] || t, rows: rows, lang: lang, ok: !!rows }); });
+    return out;
+  }
+  function reqDocTranslate(b, docs) {   // 한국어 값 번역(바이어 언어). 저장돼 재사용
+    var vals = {}; docs.forEach(function (d) { (d.rows || []).forEach(function (r, i) { vals[d.topic + i] = String(r[1]); }); });
+    return translateMissing(docs.length ? docs[0].lang : 'en', vals);
+  }
   function bundleCards() {
     var bs = bundleBuyers(); if (!bs.length) return '';
     var btn = function (attr, text, cls) { return '<button class="' + (cls || 'small') + '" ' + attr + '>' + text + '</button>'; };
@@ -986,7 +1032,8 @@
       if (b.lot && API) items.push(a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(b.lot.lot), '로트 패키지 zip · ' + esc(b.lot.lot), ' download'), a(API + '/lot/' + encodeURIComponent(b.lot.lot) + '/qr.png', 'QR', ' target="_blank"'));
       if (state.shipments.length && API) { var no = state.shipments[state.shipments.length - 1].no; items.push(a(API + '/shipdocs/pl?no=' + encodeURIComponent(no), '패킹리스트 초안 xlsx', ' download'), a(API + '/shipdocs/mdl?no=' + encodeURIComponent(no), '제조일자 리스트 xlsx', ' download')); }
       var asked = b.reply && b.reply.answers ? b.reply.answers.map(function (x) { return x['주제'] || x.topic; }).filter(function (v, j, arr) { return v && arr.indexOf(v) === j; }).join('·') : '';
-      return '<tr><td><b>' + esc(b.buyer) + '</b><br><span class="muted">' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ' · 로트 ' + esc(b.lot.lot) : ' · 로트 없음') + (asked ? ' · 문의: ' + esc(asked) : '') + '</span></td><td class="outs">' + items.join(' ') + '</td></tr>';
+      var rds = requestedDocs(b), rdHtml = rds.length ? '<div class="outs"><b>바이어가 요청한 서류</b> ' + rds.map(function (d, j) { return d.ok ? btn('data-bd-doc="' + i + ':' + j + '"', d.title + ' PDF', 'small') : '<span class="b warn">' + esc(d.title) + ' · 자료 필요</span>'; }).join(' ') + (rds.some(function (d) { return d.ok; }) ? ' ' + btn('data-bd-docs="' + i + '"', '요청 서류 전부 (zip)', 'small ghost') : '') + '</div>' : '';
+      return '<tr><td><b>' + esc(b.buyer) + '</b><br><span class="muted">' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ' · 로트 ' + esc(b.lot.lot) : ' · 로트 없음') + (asked ? ' · 문의: ' + esc(asked) : '') + '</span></td><td class="outs">' + items.join(' ') + rdHtml + '</td></tr>';
     }).join('');
     return '<div class="card" id="bundle-card"><h3>바이어가 요청한 서류 묶음 <span class="muted">(바이어별로 보낼 것 · 버튼 누르면 파일)</span></h3><table><tr><th>바이어 · 품목</th><th>보낼 것</th></tr>' + rows + '</table></div>';
   }
@@ -1007,13 +1054,16 @@
         if (state.lastFix && state.lastFix.fields) { var fx = state.lastFix, rows = Object.keys(fx.fields).filter(function (k) { return fx.fields[k] && k !== 'country'; }); items.push({ type: 'pdf', name: '라벨문안_' + fx.country, html: '<div class="sheet"><h3>Label text (corrected draft) · ' + esc(fx.country) + '</h3><table>' + rows.map(function (k) { return '<tr><th>' + esc(k) + '</th><td>' + esc(fx.fields[k]) + '</td></tr>'; }).join('') + '</table></div>' }); }
         if (b.lot) items.push({ type: 'lot', lot: b.lot.lot, url: serverOrigin() + '/lot/' + encodeURIComponent(b.lot.lot) });
         if (state.shipments.length) items.push({ type: 'ship', no: state.shipments[state.shipments.length - 1].no });
-        toast('서류 ' + items.length + '건 묶는 중…');
+        return reqItems(b).then(function (more) { items = items.concat(more); toast('서류 ' + items.length + '건 묶는 중…');
         return fetch(API + '/package', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: '서류패키지_' + b.buyer + '_' + b.product + '_' + LC.TODAY.replace(/-/g, ''), items: items }) })
           .then(function (r) { if (!r.ok) throw new Error('패키지 실패 ' + r.status); return r.blob(); })
-          .then(function (bl) { download('서류패키지_' + b.buyer + '_' + b.product + '.zip', bl, 'application/zip'); });
+          .then(function (bl) { download('서류패키지_' + b.buyer + '_' + b.product + '.zip', bl, 'application/zip'); }); });
       };
       (b.form ? prep(b) : Promise.resolve()).then(function () { var ctx = { product: LC.products[b.product] || P() }; if (b.form) withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); if (state.lastFix) { ctx.fixCount = (state.lastFix.after || {}).fix || 0; ctx.checkCount = (state.lastFix.after || {}).check || 0; ctx.aiFixed = Object.keys(state.lastFix.fields || {}).length ? undefined : undefined; } return sendGate('거래 서류 패키지', b.buyer + ' · ' + b.product, ctx); }).then(function (ok) { if (ok) return go(); }).catch(function (e) { toast(String(e)); }).then(function () { el.disabled = false; el.textContent = '이 거래 서류 한 번에 받기 (zip)'; });
     }; });
+    var reqItems = function (b) { var docs = requestedDocs(b).filter(function (d) { return d.ok; }), p = LC.products[b.product] || P(); return reqDocTranslate(b, docs).then(function () { return docs.map(function (d) { return { type: 'pdf', name: '요청서류_' + d.topic + '_' + b.buyer, html: reqDocHtml(d.topic, d.lang, p, b.lot, b.buyer, d.rows) }; }); }); };
+    document.querySelectorAll('[data-bd-doc]').forEach(function (el) { el.onclick = function () { var x = el.dataset.bdDoc.split(':'), b = bs[+x[0]], d = requestedDocs(b)[+x[1]], p = LC.products[b.product] || P(); if (!d || !d.ok) return; reqDocTranslate(b, [d]).then(function () { return sendGate('요청 서류 · ' + d.title, b.buyer, { product: p, txCount: d.rows.filter(function (r) { return HANGUL.test(String(r[1])); }).length }); }).then(function (ok) { if (ok) downloadPdf('요청서류_' + d.topic + '_' + b.buyer, reqDocHtml(d.topic, d.lang, p, b.lot, b.buyer, d.rows)); }); }; });
+    document.querySelectorAll('[data-bd-docs]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdDocs]; el.disabled = true; reqItems(b).then(function (items) { return sendGate('요청 서류 전부', b.buyer, { product: LC.products[b.product] || P() }).then(function (ok) { if (!ok) return; toast('요청 서류 ' + items.length + '건 묶는 중…'); return fetch(API + '/package', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: '요청서류_' + b.buyer + '_' + LC.TODAY.replace(/-/g, ''), items: items }) }).then(function (r) { if (!r.ok) throw new Error('실패 ' + r.status); return r.blob(); }).then(function (bl) { download('요청서류_' + b.buyer + '.zip', bl, 'application/zip'); }); }); }).catch(function (e) { toast(String(e)); }).then(function () { el.disabled = false; }); }; });
     document.querySelectorAll('[data-bd-reply]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdReply]; download('답장초안_' + b.buyer + '.txt', String(b.reply.reply_draft || ''), 'text/plain;charset=utf-8'); }; });
     document.querySelectorAll('[data-bd-label]').forEach(function (el) { el.onclick = function () { var fx = state.lastFix, rows = Object.keys(fx.fields).filter(function (k) { return fx.fields[k] && k !== 'country'; }); downloadPdf('라벨문안_' + fx.country + '_' + (fx.file || ''), '<div class="sheet"><h3>라벨 문안 (수정안) · ' + esc(fx.country) + '</h3><table>' + rows.map(function (k) { return '<tr><th>' + esc(k) + '</th><td>' + esc(fx.fields[k]) + '</td></tr>'; }).join('') + '</table></div>'); }; });
   }
