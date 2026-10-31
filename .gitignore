@@ -1,13 +1,17 @@
 # 비밀·회사 데이터는 절대 올리지 않는다
+*.mp4
+*.pyc
+*.webm
 .env
+.playwright/
+__pycache__/
+agent/eval_report.json
+agent/ledger.json
+agent/notify_last.txt
+agent/out/
+agent/proposals/
+agent/qr/
+agent/redacted/
 server/*.db
 server/backup/
-agent/ledger.json
-agent/proposals/
-agent/eval_report.json
 tests/last_run.txt
-__pycache__/
-*.pyc
-.playwright/
-*.webm
-*.mp4
