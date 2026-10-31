@@ -199,8 +199,9 @@
         (items.length ? '<div class="list">' + items.slice(0, 5).map(function (t) { var badge = t.href === '#intake' ? '<span class="tag">대기</span>' : '<span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '수정' : '확인') + '</span>'; return listRow(t.href, badge, esc(t.text), t.go); }).join('') + '</div>' : '<p class="muted">처리할 일이 없어요.</p>') +
       '</div><div class="card"><div class="sec-head"><h3>진행 중인 선적</h3><a href="#ship">전체 ›</a></div>' +
         (shipRows ? '<table class="plain"><tr><th>선적</th><th>출항</th><th>서류 준비</th></tr>' + shipRows + '</table>' : '<p class="muted">진행 중인 선적이 없어요. <a href="#quick">서류 넣기 ›</a></p>') +
-      '</div></div>';
+      '</div></div>' + homeDeal();
   };
+  screens.home.bind = function () { bindBundles(); };
   screens.intro = function () {   // 서비스 소개: 처음 보는 사람용 (공식·숫자·근거)
     var nLaw = LC.laws ? Object.keys(LC.laws).length : 0;
     return '<section class="hero-block"><p class="hero">수출 라벨 규정 위반을 <em>선적 전에</em> 잡습니다</p>' +
@@ -295,13 +296,13 @@
     var sel = Object.keys(LC.sampleLabels).map(function (k) { var sl = LC.sampleLabels[k]; return '<option value="' + k + '"' + (k === la.key ? ' selected' : '') + '>' + ((LC.rules[sl.country] || LC.rules[k] || {}).name || sl.country) + ' — ' + sl.file + '</option>'; }).join('');
     return '<h2>라벨 판정</h2><p class="sub">라벨 한 장을 도착국 규칙으로 검사합니다. 틀린 칸과 고친 문구, 수정 요청서가 나옵니다.</p>' +
       '<div class="card no-print"><div class="chips" id="lbl-countries">' + Object.keys(LC.rules).map(function (k) { return '<button class="chip" data-ctry="' + k + '" aria-label="' + esc(LC.rules[k].name) + ' 규칙으로 판정">' + esc(LC.rules[k].name) + '</button>'; }).join('') + '</div>' +
-      '<div class="row"><label>받은 파일 <select id="lbl-sample">' + sel + '</select></label>' +
+      '<details class="lbl-setup"><summary><span id="lbl-setup-sum">라벨·도착국·날짜 바꾸기</span></summary><div class="row"><label>받은 파일 <select id="lbl-sample">' + sel + '</select></label>' +
       '<label>또는 엑셀 업로드 <input type="file" id="lbl-file" accept=".xlsx,.xls"></label>' +
       '<label>도착국 <select id="lbl-country">' + Object.keys(LC.rules).map(function (k) { return '<option value="' + k + '">' + LC.rules[k].name + '</option>'; }).join('') + '</select></label>' +
       '<label>라벨 기준일 <input type="date" id="lbl-made"></label><button class="ghost" id="lbl-run">판정</button></div>' +
       '<div class="row" id="lbl-dates"><label>로트(날짜 가져오기) <select id="lbl-lot"><option value="">직접 입력</option>' + state.ledger.slice().sort(function (a, b) { return String(b.mfg).localeCompare(String(a.mfg)); }).slice(0, 30).map(function (l) { return '<option value="' + esc(l.lot) + '">' + esc(l.lot) + (l.company_code ? ' (' + esc(l.company_code) + ')' : '') + ' · ' + esc(l.product) + ' · ' + esc(l.mfg) + '</option>'; }).join('') + '</select></label>' +
       '<label>제조일 <input type="date" id="lbl-mfg"></label><label>소비(상미)기한 <input type="date" id="lbl-exp"></label>' +
-      '<label>날짜 표기 <select id="lbl-datefmt">' + ['YYYY.MM.DD', 'YYYY/MM/DD', 'DD/MM/YYYY', 'DD.MM.YYYY', 'YYYY年MM月DD日', 'YYYY-MM-DD'].map(function (f) { return '<option>' + f + '</option>'; }).join('') + '</select></label><span class="muted">비우면 라벨 원문 날짜 그대로. 소비기한은 제조일+품목 기한으로 자동, 고칠 수 있음</span></div></div>' +
+      '<label>날짜 표기 <select id="lbl-datefmt">' + ['YYYY.MM.DD', 'YYYY/MM/DD', 'DD/MM/YYYY', 'DD.MM.YYYY', 'YYYY年MM月DD日', 'YYYY-MM-DD'].map(function (f) { return '<option>' + f + '</option>'; }).join('') + '</select></label><span class="muted">비우면 라벨 원문 날짜 그대로. 소비기한은 제조일+품목 기한으로 자동, 고칠 수 있음</span></div></details></div>' +
       '<div id="lbl-out"></div>' + nutritionSourceTable();
   };
   // 영양값 출처: 바이어마다 다른 추정값이 어디서 왔는지. 비어 있으면 안 그림
@@ -389,8 +390,19 @@
       var df = $('#lbl-datefmt'); if (df && !df.dataset.touched && DATE_FMT_BY[country]) df.value = DATE_FMT_BY[country];
       if (uploaded) renderJudge(country, applyLabelDates(country, uploaded.fields), { made: made, file: uploaded.file });
       else { var l = LC.sampleLabels[sampleSel.value]; renderJudge(country, applyLabelDates(country, l.fields), { made: made, file: l.file }); }
+      if (typeof setupSum === 'function') setupSum();
     };
     if ($('#lbl-datefmt')) $('#lbl-datefmt').onchange = function () { $('#lbl-datefmt').dataset.touched = '1'; };
+    // 접힌 선택 폼의 요약 줄: 지금 무엇을 판정 중인지 한 줄로
+    var setupSum = function () {
+      var el = $('#lbl-setup-sum'); if (!el) return;
+      var file = uploaded ? uploaded.file : (LC.sampleLabels[sampleSel.value] || {}).file, ctry = (LC.rules[$('#lbl-country').value] || {}).name || '', lotv = $('#lbl-lot') && $('#lbl-lot').value, mfg = $('#lbl-mfg') && $('#lbl-mfg').value;
+      el.textContent = '지금: ' + (file || '라벨 없음') + ', 도착국 ' + ctry + (lotv ? ', 로트 ' + lotv : (mfg ? ', 제조일 ' + mfg : ', 날짜는 라벨 원문')) + ' — 바꾸려면 펼치기';
+    };
+    ['#lbl-sample', '#lbl-country', '#lbl-lot', '#lbl-mfg', '#lbl-exp', '#lbl-file'].forEach(function (id) { var el = $(id); if (el) el.addEventListener('change', function () { setTimeout(setupSum, 0); }); });
+    setupSum();
+    // 첫 화면부터 결과가 보이게: 들어오자마자 기본 라벨을 판정한다(서류 넣기에서 넘어온 경우는 위에서 이미 실행)
+    if (!(state.pendingLabel && state.pendingLabel.fields) && !$('#lbl-out').innerHTML.trim()) setTimeout(function () { $('#lbl-run').click(); setupSum(); }, 0);
     $('#lbl-run').click();
   };
 
@@ -1267,11 +1279,11 @@
     var vals = {}; docs.forEach(function (d) { (d.rows || []).forEach(function (r, i) { vals[d.topic + i] = String(r[1]); }); });
     return translateMissing(docs.length ? docs[0].lang : 'en', vals);
   }
-  function bundleCards() {
+  function bundleCards(only) {
     var bs = bundleBuyers(); if (!bs.length) return '';
     var btn = function (attr, text, cls) { return '<button class="' + (cls || 'small ghost') + '" ' + attr + '>' + text + '</button>'; };
     var a = function (href, text, attr) { return '<a class="btn small ghost dl" href="' + href + '"' + (attr || '') + '>' + text + '</a>'; };
-    var cards = bs.map(function (b, i) {
+    var cardList = bs.map(function (b, i) {
       var p = LC.products[b.product] || P(), groups = [], count = 0;
       var g = function (name, items) { if (items.length) { groups.push('<div class="bd-g"><dt>' + name + '</dt><dd>' + items.join('') + '</dd></div>'); count += items.length; } };
       if (b.form) g('규격서', [btn('data-bd-pdf="' + i + '"', 'PDF')].concat(b.form.form_b64 ? [btn('data-bd-xlsx="' + i + '"', '바이어 엑셀에 채움')] : []));
@@ -1287,8 +1299,16 @@
         '<header class="bd-head"><div class="bd-who"><b>' + esc(b.buyer) + '</b><span>' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ', 로트 ' + esc(b.lot.lot) : ', 로트 없음') + '</span>' + (asked.length ? '<span class="bd-ask">문의 항목: ' + esc(asked.join(', ')) + '</span>' : '') + '</div>' +
         '<button class="bd-zip" data-bd-zip="' + i + '"><span>이 거래 서류 한 번에 받기</span><small>zip, ' + count + '건</small></button></header>' +
         '<dl class="bd-groups">' + groups.join('') + req + '</dl></article>';
-    }).join('');
+    });
+    var cards = cardList.filter(function (_, i) { return !only || only.indexOf(i) >= 0; }).join('');
+    if (only) return cards;
     return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류</h3><p class="muted">파란 버튼 하나로 한 벌이 나오고, 낱개도 받을 수 있습니다. 보내기 전 검수창을 거칩니다.</p><div class="bundles">' + cards + '</div></div>';
+  }
+  // 홈: 가장 최근 바이어(문의가 온 쪽 우선) 한 장만. 전체는 한 번에 처리 3단계
+  function homeDeal() {
+    var bs = bundleBuyers(); if (!bs.length) return '';
+    var idx = -1; bs.forEach(function (b, i) { if (b.reply) idx = i; }); if (idx < 0) idx = bs.length - 1;
+    return '<div class="card" id="home-deal"><div class="sec-head"><h3>바이어에게 보낼 서류</h3><a href="#quick">전체 ' + bs.length + '곳 보기</a></div><div class="bundles">' + bundleCards([idx]) + '</div></div>';
   }
   function bindBundles() {
     var bs = bundleBuyers();
