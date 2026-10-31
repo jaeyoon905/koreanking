@@ -492,7 +492,7 @@ header.topbar { position: sticky; top: 0; z-index: 30; height: 60px; padding: 0 
    ==================================================================== */
 :root {
   --on-primary: var(--surface); --brand-hover: var(--brand-hover); --primary-soft-2: #d6e6fb; --check-ink: var(--check-ink); --check-ink-deep: var(--check-ink-deep);
-  --label-ink: var(--label-ink); --label-mid: var(--label-mid); --fix-hover: var(--fix-hover); --pass-ink: #0f6b3b; --scrim: var(--scrim);
+  --label-ink: #111; --label-mid: #555; --label-font: "Apple SD Gothic Neo", "PingFang SC", "Hiragino Sans", "Noto Sans CJK KR", "Noto Sans SC", "Noto Sans JP", sans-serif;   /* 실제 포장 라벨처럼 검정 격자 (자기 자신을 가리키던 정의 고침) */ --fix-hover: var(--fix-hover); --pass-ink: #0f6b3b; --scrim: var(--scrim);
   --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
 }
 
@@ -631,7 +631,6 @@ details.lbl-setup[open] > summary { margin-bottom: 16px; }
 }
 @media (max-width: 700px) { .bd-head { grid-template-columns: 1fr; } .bd-who b { font-size: 17px; } }
 /* 나라별 라벨: 나라 칩 줄 아래에 라벨 탭(46px)이 들어갈 자리 */
-#tg-ctry { margin-bottom: 56px; }
 
 /* 집계: 쌓이는 데이터 표, 좁은 화면에서는 줄 단위 */
 @media (max-width: 700px) {

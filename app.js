@@ -538,23 +538,20 @@
   };
   var TAG_CTRY = [['JP', '일본', '食品表示基準', tagJP], ['CN', '중국', 'GB 7718-2025 · GB 28050-2025', tagCN], ['HK', '홍콩', 'Cap.132W', tagHK], ['TW', '대만', '식품안전위생관리법', tagTW], ['TH', '태국', '보건부 고시 450호', tagTH]];
   screens.tags = function () {
-    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 나라 칩이나 아래 겹쳐 놓은 라벨을 누르면 그 라벨과 바꾼 이유가 나와요.</p>' +
+    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 겹쳐 놓은 라벨을 누르면 그 라벨과 바꾼 이유가 나와요.</p>' +
       '<div class="row">' + productSelect('tg-prod') + '</div>' +
       '<div class="tagview"><section><h3 class="tv-h">한국 원본 <span class="muted">식품등의 표시기준</span></h3><div id="tg-kr"></div></section>' +
-      '<section><h3 class="tv-h">나라별 라벨 <span class="muted" id="tg-now"></span></h3><div class="chips" id="tg-ctry"></div><div id="tg-main"></div><div class="tag-pile" id="tg-pile"></div></section>' +
+      '<section><h3 class="tv-h">나라별 라벨</h3><div id="tg-main"></div><div class="tag-pile" id="tg-pile"></div></section>' +
       '<section><h3 class="tv-h" id="tg-why-h">바꾼 이유</h3><div id="tg-why"><p class="muted">왼쪽 라벨을 누르면 그 나라에서 바꾼 이유가 나와요.</p></div></section></div>';
   };
   screens.tags.bind = function (arg) {
     bindProductSelect('tg-prod');
-    var p = P(), sel = TAG_WHY[arg] ? arg : TAG_CTRY[0][0];   // #tags/JP: 그 나라, 아니면 첫 나라(일본)를 펼침
+    var p = P(), sel = arg === 'go' ? TAG_CTRY[0][0] : TAG_WHY[arg] ? arg : null;   // #tags/JP·#tags/go: 바로 펼친 화면
     $('#tg-kr').innerHTML = tagKR(p);
     var cardHtml = function (c) { return '<div class="tag-card" data-c="' + c[0] + '" tabindex="0" role="button" aria-label="' + c[1] + ' 라벨 보기"><span class="tc-tab">' + c[1] + '</span>' + c[3](p) + '</div>'; };
     function hl(n) { Array.prototype.forEach.call(document.querySelectorAll('#tg-main [data-mk]'), function (r) { r.classList.toggle('hl', !!n && r.dataset.mk === n); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-why .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
     function render() {
       var c = TAG_CTRY.filter(function (x) { return x[0] === sel; })[0];
-      $('#tg-ctry').innerHTML = TAG_CTRY.map(function (x) { return '<button class="chip' + (x[0] === sel ? ' on' : '') + '" data-tgc="' + x[0] + '" aria-pressed="' + (x[0] === sel) + '">' + esc(x[1]) + '</button>'; }).join('');
-      Array.prototype.forEach.call($('#tg-ctry').children, function (b) { b.onclick = function () { sel = b.dataset.tgc; render(); }; });
-      $('#tg-now').textContent = c ? '지금 보는 것: ' + c[1] + ' 라벨' : '';
       $('#tg-main').innerHTML = c ? cardHtml(c).replace('class="tag-card"', 'class="tag-card main"') : '';
       $('#tg-why-h').innerHTML = c ? c[1] + '에서 바꾼 이유 <span class="muted">' + esc(c[2]) + '</span>' : '바꾼 이유';
       if (c) $('#tg-why').innerHTML = bubbles(TAG_WHY[c[0]](), c[0]);
