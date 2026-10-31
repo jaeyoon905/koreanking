@@ -637,21 +637,38 @@
   function queueFixture(f) { var c = cardFromFixture(f, f.source); intakeCards.push(c); if (API) extractOnServer(c); return c; }
   function intakeSummary() { return '로트 ' + state.ledger.length + '건 · 입고 ' + state.raw.length + '건 · 선적 ' + state.shipments.length + '건 · 영양 출처 ' + state.nutritionSources.length + '건'; }
   // 받은 파일 묶음: 4월 수출(실제) / 6월 가상 / 수입. fixture id 로 나눈다
-  var FX_GROUPS = [['4월 수출 서류 (실제, 9종)', function (f) { return !/^imp-/.test(f.id) && !/b$/.test(f.id); }, true], ['6월 두 번째 선적 (시연용 가상, 5종)', function (f) { return /b$/.test(f.id); }, false], ['수입 서류 (4종)', function (f) { return /^imp-/.test(f.id); }, false]];
+  var FX_GROUPS = [['4월 수출', function (f) { return !/^imp-/.test(f.id) && !/b$/.test(f.id); }, true], ['6월 선적', function (f) { return /b$/.test(f.id); }, false], ['수입', function (f) { return /^imp-/.test(f.id); }, false]];
+  // 서류함: 받은 파일을 표로. 상태는 이번에 연 카드와 처리 기록(state.docs)으로
+  function docName(f) { return String(f.source || '').replace(/\s*·\s*시연용 가상/, '').replace(/\s*\(시연[^)]*\)/, ''); }
+  function docDate(f) { var m = /(\d{4}-\d{2}-\d{2})/.exec(String(f.source || '')); if (m) return m[1]; var x = (f.fields || []).filter(function (x) { return /^(date|received|issued|valid_from|date_embark|shipped)$/.test(x.k) && /^\d{4}-\d{2}-\d{2}/.test(String(x.v)); })[0]; return x ? String(x.v).slice(0, 10) : ''; }
+  function docStatus(f) {
+    var card = intakeCards.filter(function (c) { return c.fixture === f; }).pop();
+    if (card && card.done) return [card.done, card.done === '승인' ? 'ok' : 'bad'];
+    if (card) return ['열림', 'warn'];
+    var d = state.docs.filter(function (d) { return d.file === f.source; }).pop();
+    if (d) return [/^반려/.test(String(d.result)) ? '반려' : '승인', /^반려/.test(String(d.result)) ? 'bad' : 'ok'];
+    return ['대기', ''];
+  }
+  function docBox() {
+    var fx = fixtures(); if (!fx.length) return '<p class="muted">서류함 비어 있음</p>';
+    var grp = function (f) { for (var i = 0; i < FX_GROUPS.length; i++) if (FX_GROUPS[i][1](f)) return FX_GROUPS[i][0]; return ''; };
+    return '<table class="docbox"><tr><th>서류</th><th>종류</th><th>날짜</th><th>묶음</th><th>상태</th><th></th></tr>' + fx.map(function (f, i) {
+      var st = docStatus(f), open = st[0] === '열림';
+      return '<tr><td>' + esc(docName(f)) + '</td><td>' + esc(f.doc_type) + '</td><td>' + esc(docDate(f)) + '</td><td class="muted">' + esc(grp(f)) + '</td><td>' + (st[1] ? '<span class="b ' + st[1] + '">' + st[0] + '</span>' : '<span class="muted">' + st[0] + '</span>') + '</td><td><button class="ghost small" data-fxopen="' + i + '"' + (open ? ' disabled' : '') + ' aria-label="' + esc(docName(f)) + ' 열기">열기</button></td></tr>';
+    }).join('') + '</table>';
+  }
+  function bindDocBox(rerenderFn) { document.querySelectorAll('[data-fxopen]').forEach(function (el) { el.onclick = function () { queueFixture(fixtures()[+el.dataset.fxopen]); rerenderFn(); }; }); }
   screens.intake = function () {
-    var demo = fixtures().length ? FX_GROUPS.map(function (g) {
-      var btns = fixtures().map(function (f, i) { return g[1](f) ? '<button class="ghost" data-fx="' + i + '">' + esc(f.source) + '</button>' : ''; }).join(' ');
-      return btns.trim() ? '<details class="demo"' + (g[2] ? ' open' : '') + '><summary>받은 파일로 시연 · ' + g[0] + '</summary><div class="row">' + btns + '</div></details>' : '';
-    }).join('') : '<p class="muted">fixtures.js 없음. 파일명으로 종류만 봄.</p>';
     return '<h2>서류 넣기</h2><p class="sub">파일을 올리고 승인하세요.</p>' +
-      '<div class="card">' + dropZone('in') +
-      '<div class="row"><button class="ghost" id="in-empty" aria-label="원장을 비우고 시연 시작">시연 초기화(빈 원장)</button><button class="ghost" id="in-seed" aria-label="시드 데이터로 복원">시드로 복원</button></div>' +
-      demo + '<p class="summary-bar" id="in-sum">' + intakeSummary() + '</p></div>' +
-      '<div id="in-cards"></div><h3>처리 기록</h3><div id="in-docs"></div>';
+      '<div class="card">' + dropZone('in') + '<p class="summary-bar" id="in-sum">' + intakeSummary() + '</p></div>' +
+      '<div class="card"><h3>서류함</h3><div id="in-docbox">' + docBox() + '</div></div>' +
+      '<div id="in-cards"></div><h3>처리 기록</h3><div id="in-docs"></div>' +
+      '<div class="row"><button class="ghost small" id="in-empty" aria-label="원장을 비움">빈 원장</button><button class="ghost small" id="in-seed" aria-label="시드 데이터로 복원">시드로 복원</button></div>';
   };
   function renderIntake() {
     $('#in-cards').innerHTML = intakeCards.map(intakeCard).join('');
     $('#in-sum').textContent = intakeSummary();
+    if ($('#in-docbox')) { $('#in-docbox').innerHTML = docBox(); bindDocBox(renderIntake); }
     var docs = state.docs.slice().reverse();
     $('#in-docs').innerHTML = docs.length ? '<table><tr><th>일자</th><th>파일</th><th>종류</th><th>결과</th></tr>' + docs.map(function (d) { return '<tr><td>' + esc(d.at) + '</td><td>' + esc(d.file) + '</td><td>' + esc(d.doc_type) + '</td><td>' + esc(d.result) + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">없음</p>';
     document.querySelectorAll('[data-mask]').forEach(function (el) { el.onchange = function () { var c = intakeCards[+el.dataset.mask]; c.masked = el.checked; if (API && c.blocked && el.checked) extractOnServer(c); else renderIntake(); }; });
@@ -678,9 +695,6 @@
   }
   screens.intake.bind = function () {
     bindDrop('in', function (files) { Array.prototype.forEach.call(files, addFile); });
-    document.querySelectorAll('[data-fx]').forEach(function (el) { el.onclick = function () {
-      queueFixture(fixtures()[+el.dataset.fx]); renderIntake();   // 서버가 있으면 같은 경로(fixture 모드)로 받아 흐름을 맞춘다
-    }; });
     $('#in-empty').onclick = function () { state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderIntake(); };
     $('#in-seed').onclick = function () { resetAll(); intakeCards = []; renderIntake(); };
     renderIntake();
@@ -754,7 +768,8 @@
     var g = function (i) { return fx.filter(FX_GROUPS[i][1]).length; };
     return '<h2>한 번에 처리</h2><p class="sub">서류를 넣고, 확인하고, 승인하세요.</p>' +
       '<h3 class="step">1. 서류 넣기</h3><div class="card">' + dropZone('qk') +
-      (fx.length ? '<div class="row"><button id="qk-all9" aria-label="받은 파일 전부 넣기">받은 파일 전부 넣기 (시연 · 4월 수출 ' + g(0) + '건)</button><a href="#" id="qk-jun" class="muted">+ 6월 두 번째 선적 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 서류 ' + g(2) + '건</a><button class="ghost" id="qk-empty" aria-label="원장 비우기">빈 원장으로 시작</button></div>' : '') + '</div>' +
+      (fx.length ? '<div class="row"><button id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기 (4월 ' + g(0) + '건)</button><a href="#" id="qk-jun" class="muted">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="원장 비우기">빈 원장으로 시작</button></div>' +
+      '<details class="docbox-wrap"><summary>서류함 (' + fx.length + ')</summary><div id="qk-docbox">' + docBox() + '</div></details>' : '') + '</div>' +
       '<h3 class="step">2. 확인</h3><div class="card" id="qk-table"></div>' +
       '<div id="qk-results">' + resultCards() + '</div>';
   };
@@ -770,6 +785,7 @@
       document.querySelectorAll('[data-qdetail]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.qdetail]; c.detail = !c.detail; renderQuick(); }; });
       bindManual(renderQuick);
     }
+    if ($('#qk-docbox')) { $('#qk-docbox').innerHTML = docBox(); bindDocBox(renderQuick); }
     $('#qk-results').innerHTML = resultCards(); bindResults();
   }
   function bindResults() {
@@ -786,7 +802,7 @@
     if ($('#qk-all9')) $('#qk-all9').onclick = function () { addGroup(0); };
     if ($('#qk-jun')) $('#qk-jun').onclick = function (e) { e.preventDefault(); addGroup(1); };
     if ($('#qk-imp')) $('#qk-imp').onclick = function (e) { e.preventDefault(); addGroup(2); };
-    if ($('#qk-empty')) $('#qk-empty').onclick = function () { state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderQuick(); toast('빈 원장으로 시작'); };
+    if ($('#qk-empty')) $('#qk-empty').onclick = function () { state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderQuick(); toast('빈 원장'); };
     renderQuick();
   };
 

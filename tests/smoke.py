@@ -62,6 +62,13 @@ def approve_all(pg, n):
         if not click_btn(pg, '승인', 500): break
 
 
+def open_doc(pg, text, wait=500):
+    for tr in pg.query_selector_all('#main tr'):
+        if text in tr.inner_text():
+            b = tr.query_selector('button')
+            if b: b.click(); pg.wait_for_timeout(wait); return True
+    return False
+
 def summary(pg):
     import re
     m = re.search(r'로트 \d+건[^\n]*', pg.inner_text('#main')); return m.group(0) if m else ''
@@ -78,7 +85,7 @@ def offline_checks():
             n = len(pg.inner_text('#main')) if pg.query_selector('#main') else 0
             check(f'B 렌더 {h}', n >= 100, f'{n}자')
         pg.goto(url + '#intake'); pg.wait_for_timeout(400)
-        a = click_btn(pg, '빈 원장'); b_ = click_btn(pg, '7-3'); approve_all(pg, 1)
+        a = click_btn(pg, '빈 원장'); b_ = open_doc(pg, '7-3'); approve_all(pg, 1)
         check('B 오프라인 7-3 승인 → 로트 5건', a and b_ and '로트 5건' in summary(pg), summary(pg))
     errs = browser_session(fn)
     check('B 오프라인 콘솔·페이지 오류 0', not errs, errs[:3])
