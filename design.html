@@ -4,415 +4,399 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>라벨코스트 디자인 기준</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
-/* design.md 토큰 그대로. style.css 정리 때 이 :root 를 옮긴다 */
+/* design.md 2판 토큰. style.css 정리 때 :root 와 컴포넌트 블록을 그대로 옮긴다 */
 :root {
-  --primary: #0b3d6b; --primary-hover: #0e4f8a; --primary-soft: #e5eef7; --on-primary: #fff;
-  --ink: #161616; --ink-muted: #525252; --ink-subtle: #8c8c8c;
-  --canvas: #f4f4f4; --surface: #fff; --surface-alt: #f4f4f4;
-  --hairline: #e0e0e0; --hairline-strong: #8d8d8d;
-  --fix: #da1e28; --fix-soft: #fff1f1; --check: #f1c21b; --check-soft: #fcf4d6; --pass: #198038; --pass-soft: #defbe6;
-  --ai: #6929c4; --ai-soft: #f6f2ff; --focus: #0f62fe;
-  --font: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --primary: #2f62e6; --primary-hover: #2152cc; --primary-soft: #e9f2fd; --brand: #0b3d6b; --on-primary: #fff;
+  --ink: #181a1d; --ink-2: #464b51; --ink-muted: #6b7178; --ink-subtle: #9aa0a6;
+  --canvas: #f8fafc; --surface: #fff; --tile: #eff2f7; --hairline: #dee0e3;
+  --fix: #d92d20; --fix-soft: #fef0ef; --check: #f5b400; --check-soft: #fff7e0; --pass: #16824a; --pass-soft: #e7f6ee;
+  --ai: #6a3fd4; --ai-soft: #f2edff;
+  --font: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --code: "SF Mono", Consolas, "D2Coding", monospace;
-  --r: 2px;
 }
 * { box-sizing: border-box; }
-body { margin: 0; font-family: var(--font); font-size: 15px; line-height: 1.55; color: var(--ink); background: var(--canvas); }
-a { color: var(--primary); text-decoration: none; } a:hover { text-decoration: underline; }
+body { margin: 0; font-family: var(--font); font-size: 16px; line-height: 1.6; color: var(--ink); background: var(--canvas); -webkit-font-smoothing: antialiased; }
+a { color: var(--primary); text-decoration: none; }
+svg.ico { width: 28px; height: 28px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------- 가이드 페이지 틀 ---------- */
-.guide-top { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 28px 24px 20px; }
-.guide-top .in, .wrap { max-width: 1240px; margin: 0 auto; }
-.guide-top h1 { margin: 0 0 6px; font-size: 32px; font-weight: 600; }
-.guide-top p { margin: 0; color: var(--ink-muted); max-width: 760px; }
-.toc { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 16px; font-size: 13px; }
-.wrap { padding: 0 24px 64px; }
-section.g { padding: 40px 0 8px; border-bottom: 1px solid var(--hairline); }
-section.g > h2 { font-size: 13px; font-weight: 600; color: var(--ink-muted); letter-spacing: .04em; margin: 0 0 4px; }
-section.g > h3 { font-size: 24px; font-weight: 600; margin: 0 0 8px; }
-section.g > p.lead { color: var(--ink-muted); margin: 0 0 20px; max-width: 760px; }
-.label { font-size: 12px; font-weight: 600; color: var(--ink-muted); margin: 20px 0 8px; }
-.grid { display: grid; gap: 16px; }
-.g2 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
-@media (max-width: 860px) { .g2, .g3, .g4 { grid-template-columns: 1fr; } }
-.code { font-family: var(--code); font-size: 12px; color: var(--ink-muted); }
-.key { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 24px; }
-.key li { padding-left: 14px; position: relative; } .key li::before { content: ""; position: absolute; left: 0; top: 10px; width: 6px; height: 6px; background: var(--primary); }
+.gtop { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 40px 24px 24px; }
+.gtop .in, .wrap { max-width: 1240px; margin: 0 auto; }
+.gtop h1 { margin: 0 0 8px; font-size: 36px; font-weight: 700; letter-spacing: -0.02em; }
+.gtop p { margin: 0; color: var(--ink-muted); max-width: 780px; font-size: 17px; }
+.toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.toc a { font-size: 15px; padding: 6px 14px; border-radius: 9999px; border: 1px solid var(--hairline); color: var(--ink-2); background: var(--surface); }
+.wrap { padding: 0 24px 80px; }
+section.g { padding: 56px 0 8px; }
+.eyebrow { font-size: 14px; font-weight: 700; color: var(--primary); margin: 0 0 6px; }
+section.g > h2 { font-size: 28px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.01em; }
+section.g > p.lead { color: var(--ink-muted); margin: 0 0 24px; max-width: 780px; }
+.lbl { font-size: 14px; font-weight: 700; color: var(--ink-muted); margin: 28px 0 10px; }
+.grid { display: grid; gap: 16px; } .g2 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 860px) { .g2, .g3, .g4 { grid-template-columns: 1fr 1fr; } }
+.mono { font-family: var(--code); font-size: 13px; color: var(--ink-muted); }
+.sw { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+.sw .chip-c { height: 80px; }
+.sw .t { padding: 12px 14px; font-size: 14px; color: var(--ink-muted); } .sw .t b { display: block; color: var(--ink); font-size: 15px; }
+.trow { display: grid; grid-template-columns: 170px 1fr; gap: 16px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--hairline); }
+.heur { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.heur div { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 16px 18px; }
+.heur b { display: block; font-size: 16px; margin-bottom: 4px; } .heur span { font-size: 14px; color: var(--ink-muted); }
+.heur i { font-style: normal; color: var(--primary); font-weight: 700; margin-right: 6px; }
 
-/* 색 견본 */
-.sw { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r); }
-.sw .chip { height: 72px; border-bottom: 1px solid var(--hairline); }
-.sw .t { padding: 8px 10px; font-size: 13px; } .sw .t b { display: block; font-weight: 600; }
-/* 글꼴 사다리 */
-.type-row { display: grid; grid-template-columns: 160px 1fr; gap: 16px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
-/* 간격·모서리 */
-.space { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
-.space div { background: var(--primary-soft); border: 1px solid var(--primary); }
-.space span { display: block; font-size: 12px; color: var(--ink-muted); margin-top: 6px; text-align: center; }
+/* ---------- 앱 컴포넌트 (design.md 7장) ---------- */
+.app { background: var(--canvas); border: 1px solid var(--hairline); border-radius: 16px; overflow: hidden; }
+header.ah { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 0 32px; }
+header.ah .top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 6px; }
+header.ah .logo { font-size: 22px; font-weight: 700; color: var(--brand); letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+header.ah .logo i { width: 26px; height: 26px; border-radius: 8px; background: var(--brand); display: inline-block; position: relative; }
+header.ah .logo i::after { content: ""; position: absolute; inset: 7px 6px 9px 6px; border: 2.5px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg); }
+header.ah .mode { font-size: 14px; color: var(--ink-muted); }
+.nav-main { display: flex; gap: 40px; }
+.nav-main a { display: block; padding: 14px 0 12px; font-size: 18px; font-weight: 700; color: var(--ink-2); border-bottom: 3px solid transparent; }
+.nav-main a.on { color: var(--brand); border-bottom-color: var(--brand); }
+.nav-sub { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 10px 32px; display: flex; gap: 6px; }
+.nav-sub a { font-size: 15px; padding: 6px 14px; border-radius: 8px; color: var(--ink-2); }
+.nav-sub a.on { background: var(--primary-soft); color: var(--brand); font-weight: 700; }
+.amain { padding: 32px; }
+.amain h2.pt { font-size: 28px; font-weight: 700; margin: 0 0 20px; letter-spacing: -0.01em; }
 
-/* ---------- 앱 컴포넌트 (design.md 6장, 이 이름 그대로 style.css 로) ---------- */
-.app { background: var(--canvas); border: 1px solid var(--hairline); }
-header.ah { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 0 20px; display: flex; align-items: flex-end; gap: 28px; }
-header.ah .logo { font-size: 16px; font-weight: 600; padding: 14px 0; }
-header.ah .mode { margin-left: auto; font-size: 13px; color: var(--ink-subtle); padding: 14px 0; }
-.nav-main { display: flex; gap: 24px; }
-.nav-main a { display: block; padding: 14px 0 11px; font-weight: 600; color: var(--ink-muted); border-bottom: 3px solid transparent; text-decoration: none; }
-.nav-main a.on { color: var(--ink); border-bottom-color: var(--primary); }
-.nav-sub { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 6px 20px; display: flex; gap: 4px; }
-.nav-sub a { font-size: 13px; padding: 4px 10px; border-radius: var(--r); color: var(--ink-muted); text-decoration: none; }
-.nav-sub a.on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
-.amain { padding: 20px; }
-.amain h2 { font-size: 24px; font-weight: 600; margin: 0 0 16px; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 16px; }
+.sec-head h3 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+.sec-head a { font-size: 14px; color: var(--ink-muted); }
 
-.verdict { border-left: 6px solid; padding: 12px 16px; font-size: 18px; font-weight: 600; margin: 0 0 16px; }
-.verdict.bad { border-color: var(--fix); background: var(--fix-soft); }
-.verdict.warn { border-color: var(--check); background: var(--check-soft); }
-.verdict.ok { border-color: var(--pass); background: var(--pass-soft); }
+.panel { background: var(--primary-soft); border-radius: 16px; padding: 24px; }
+.card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; padding: 24px; }
+.card > h3 { font-size: 17px; font-weight: 700; margin: 0 0 12px; }
 
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 16px; max-width: 720px; }
-.stat { background: var(--surface); border: 1px solid var(--hairline); border-top: 3px solid var(--hairline-strong); border-radius: var(--r); padding: 10px 14px; display: block; color: var(--ink); text-decoration: none; }
-.stat .k { display: block; font-size: 13px; color: var(--ink-muted); }
-.stat .v { display: block; font-size: 32px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.stat .v small { font-size: 14px; color: var(--ink-muted); font-weight: 400; margin-left: 4px; }
-.stat.bad { border-top-color: var(--fix); } .stat.warn { border-top-color: var(--check); } .stat.ok { border-top-color: var(--pass); }
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid transparent; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 12px; color: var(--ink); }
+.tile:hover { border-color: var(--primary); }
+.tile .tx { flex: 1; } .tile .t-name { display: block; font-size: 17px; font-weight: 700; } .tile .t-desc { display: block; font-size: 14px; color: var(--ink-muted); }
+.tile svg.ico { color: var(--primary); }
 
-.b { display: inline-block; white-space: nowrap; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: var(--r); line-height: 1.5; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.list-row { background: var(--tile); border-radius: 12px; min-height: 56px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; color: var(--ink); }
+.list-row:hover { background: var(--primary-soft); }
+.list-row .lr-main { flex: 1; font-weight: 700; font-size: 16px; } .list-row .lr-meta { font-size: 14px; color: var(--ink-muted); } .list-row .chev { font-size: 22px; color: var(--ink-subtle); line-height: 1; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { height: 40px; padding: 0 18px; border-radius: 9999px; border: 1px solid var(--hairline); background: var(--surface); color: var(--ink-2); font-size: 15px; display: inline-flex; align-items: center; cursor: pointer; }
+.chip.on { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 700; }
+
+.v-ico { width: 32px; height: 32px; border-radius: 50%; color: #fff; font-size: 18px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.verdict { display: flex; align-items: center; gap: 14px; border-radius: 12px; padding: 20px 24px; font-size: 22px; font-weight: 700; margin: 0 0 16px; letter-spacing: -0.01em; }
+.verdict .v-sub { margin-left: auto; font-size: 14px; font-weight: 400; color: var(--ink-muted); }
+.verdict.bad { background: var(--fix-soft); } .verdict.bad .v-ico { background: var(--fix); }
+.verdict.warn { background: var(--check-soft); } .verdict.warn .v-ico { background: var(--check); color: var(--ink); }
+.verdict.ok { background: var(--pass-soft); } .verdict.ok .v-ico { background: var(--pass); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 0 0 16px; }
+.stat { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 16px 20px; display: block; color: var(--ink); }
+.stat .k { display: block; font-size: 15px; font-weight: 700; color: var(--ink-2); }
+.stat .v { display: block; font-size: 36px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.stat .v small { font-size: 15px; font-weight: 400; color: var(--ink-muted); margin-left: 4px; }
+.stat.bad .k { color: var(--fix); } .stat.warn .k { color: #a87800; } .stat.ok .k { color: var(--pass); }
+
+.b { display: inline-block; white-space: nowrap; font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 6px; line-height: 1.5; }
 .b.bad { background: var(--fix); color: #fff; } .b.warn { background: var(--check); color: var(--ink); } .b.ok { background: var(--pass); color: #fff; }
-.tag { display: inline-block; white-space: nowrap; font-size: 12px; padding: 1px 7px; border: 1px solid var(--hairline-strong); border-radius: var(--r); color: var(--ink-muted); background: var(--surface); }
-.ai { display: inline-block; font-size: 12px; padding: 1px 6px; border-radius: var(--r); background: var(--ai-soft); color: var(--ai); font-weight: 600; }
-.ref { font-family: var(--code); font-size: 12px; color: var(--primary); white-space: nowrap; }
+.tag { display: inline-block; white-space: nowrap; font-size: 13px; padding: 3px 10px; border-radius: 6px; background: var(--tile); color: var(--ink-2); }
+.ai { display: inline-block; font-size: 13px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--ai-soft); color: var(--ai); }
+.ref { display: inline-block; font-family: var(--code); font-size: 13px; padding: 2px 8px; border-radius: 6px; background: var(--primary-soft); color: var(--primary); white-space: nowrap; }
 
-.card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r); padding: 16px 20px; margin: 0 0 16px; }
-.card h3 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
-
-table.t { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--surface); }
-table.t th { background: var(--surface-alt); color: var(--ink-muted); font-size: 12px; font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--hairline-strong); }
-table.t td { padding: 8px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+.tcard { background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; overflow: hidden; }
+table.t { width: 100%; border-collapse: collapse; font-size: 15px; }
+table.t th { background: var(--tile); color: var(--ink-muted); font-size: 14px; font-weight: 700; text-align: left; padding: 12px 16px; }
+table.t td { padding: 14px 16px; border-top: 1px solid var(--hairline); vertical-align: middle; }
 table.t tr:hover td { background: var(--primary-soft); }
 table.t tr.st-bad td { background: var(--fix-soft); } table.t tr.st-check td { background: var(--check-soft); }
-td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-.clip { display: block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-muted); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.clip { display: block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+td.fixto { font-weight: 700; }
 
-button, .btn { font: inherit; font-size: 14px; font-weight: 600; height: 36px; padding: 0 16px; border-radius: var(--r); border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary); cursor: pointer; display: inline-flex; align-items: center; }
+button, .btn { font: inherit; font-size: 16px; font-weight: 700; height: 44px; padding: 0 20px; border-radius: 8px; border: 1px solid var(--primary); background: var(--primary); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 button:hover { background: var(--primary-hover); }
-button.ghost { background: var(--surface); color: var(--ink); border-color: var(--hairline-strong); }
-button.ghost:hover { background: var(--surface-alt); }
-button.small { height: 28px; font-size: 12px; padding: 0 10px; }
-button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ink-muted); }
-input, select { font: inherit; font-size: 14px; height: 36px; padding: 0 10px; border: 1px solid var(--hairline); border-bottom-color: var(--hairline-strong); border-radius: var(--r); background: var(--surface); color: var(--ink); }
+button.ghost { background: var(--surface); color: var(--ink); border-color: var(--hairline); } button.ghost:hover { background: var(--tile); }
+button.small { height: 32px; font-size: 14px; padding: 0 12px; }
+button.lg { height: 56px; font-size: 18px; width: 100%; }
+button[disabled] { background: var(--tile); border-color: var(--tile); color: var(--ink-subtle); cursor: default; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+input, select { font: inherit; font-size: 16px; height: 48px; padding: 0 14px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); color: var(--ink); }
+input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.search { display: flex; align-items: center; height: 56px; border: 2px solid var(--primary); border-radius: 9999px; background: var(--surface); padding: 0 8px 0 24px; }
+.search input { border: 0; flex: 1; height: 100%; font-size: 17px; padding: 0; background: transparent; } .search input:focus { outline: 0; }
+.search svg.ico { color: var(--ink); margin-right: 10px; }
 .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 
-.alert { border-left: 4px solid var(--check); background: var(--check-soft); padding: 8px 12px; font-size: 14px; margin: 0 0 12px; }
-.alert.ok { border-color: var(--pass); background: var(--pass-soft); } .alert.bad { border-color: var(--fix); background: var(--fix-soft); }
+.alert { display: flex; align-items: center; gap: 12px; border-radius: 12px; padding: 14px 18px; font-size: 15px; background: var(--check-soft); margin: 0 0 16px; }
+.alert .v-ico { width: 26px; height: 26px; font-size: 15px; background: var(--check); color: var(--ink); }
+.alert.bad { background: var(--fix-soft); } .alert.bad .v-ico { background: var(--fix); color: #fff; }
+.alert.ok { background: var(--pass-soft); } .alert.ok .v-ico { background: var(--pass); color: #fff; }
+.alert b { font-weight: 700; }
 
-.pipeline { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--hairline); background: var(--surface); }
-.stage { padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--ink-subtle); border-bottom: 3px solid transparent; }
-.stage + .stage { border-left: 1px solid var(--hairline); }
-.stage.done { color: var(--pass); } .stage.done::before { content: "✓ "; }
-.stage.now { color: var(--ink); border-bottom-color: var(--primary); }
+.pipeline { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; padding: 20px 28px; }
+.stage { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--ink-subtle); }
+.stage .n { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--hairline); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+.stage.done { color: var(--ink-2); } .stage.done .n { background: var(--pass); border-color: var(--pass); color: #fff; }
+.stage.now { color: var(--ink); } .stage.now .n { background: var(--primary); border-color: var(--primary); color: #fff; }
+.pipeline .line { flex: 1; height: 2px; background: var(--hairline); margin: 0 16px; } .pipeline .line.done { background: var(--pass); }
 
-.drop { border: 1px dashed var(--hairline-strong); background: var(--surface); padding: 24px; text-align: center; color: var(--ink-muted); border-radius: var(--r); }
-.drop p { margin: 0 0 10px; }
-.empty { text-align: center; padding: 28px; color: var(--ink-muted); } .empty p { margin: 0 0 10px; }
-.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
-.doc { background: var(--surface-alt); border: 1px solid var(--hairline); height: 220px; display: flex; align-items: center; justify-content: center; color: var(--ink-subtle); font-size: 13px; }
-.hero { font-size: 18px; font-weight: 600; margin: 0 0 4px; } .hero-sub { color: var(--ink-muted); margin: 0 0 12px; }
+.drop { border: 2px dashed var(--primary); background: var(--primary-soft); border-radius: 16px; padding: 32px; text-align: center; color: var(--ink-muted); }
+.drop svg.ico { width: 40px; height: 40px; color: var(--primary); }
+.drop b { display: block; font-size: 17px; color: var(--ink); margin: 8px 0 2px; } .drop p { margin: 0 0 14px; font-size: 14px; }
+.empty { text-align: center; color: var(--ink-muted); padding: 24px; } .empty svg.ico { width: 40px; height: 40px; color: var(--ink-subtle); } .empty p { margin: 8px 0 14px; }
+.cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.home { display: grid; grid-template-columns: 1.7fr 1fr; gap: 20px; align-items: start; }
+@media (max-width: 860px) { .home, .cols2 { grid-template-columns: 1fr; } .tiles { grid-template-columns: 1fr; } }
+.doc { background: var(--tile); border-radius: 12px; height: 240px; display: flex; align-items: center; justify-content: center; color: var(--ink-subtle); font-size: 14px; flex-direction: column; gap: 8px; }
+.hero { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; line-height: 1.35; } .hero em { font-style: normal; color: var(--primary); }
+.hero-sub { color: var(--ink-muted); margin: 0 0 20px; }
 
-/* 하지 말 것 예시 (일부러 나쁜 모양) */
-.bad-ex { background: #eef3f7; padding: 14px; border-radius: 12px; }
-.bad-ex .pill { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #dce8f4; color: #0b3d6b; font-weight: 600; margin: 0 4px 6px 0; font-size: 13px; }
+/* 하지 말 것 (일부러 나쁜 모양) */
+.bad-ex { background: #eef3f7; padding: 16px; border-radius: 12px; font-size: 14px; }
+.bad-ex .pill { display: inline-block; padding: 6px 12px; border-radius: 999px; background: #dce8f4; color: #0b3d6b; font-weight: 600; margin: 0 4px 6px 0; font-size: 13px; }
 .bad-ex .pill.on { background: #0b3d6b; color: #fff; }
-.bad-ex .sh { background: #fff; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 12px; margin-top: 8px; font-size: 13px; }
+.bad-ex .sh { background: #fff; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 12px; margin-top: 8px; }
 .bad-ex .sh .sh { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
-.bad-ex .grad { background: linear-gradient(90deg,#5b3fb8,#1b5fb8); color: #fff; border-radius: 999px; padding: 6px 14px; display: inline-block; font-size: 13px; }
-.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } @media (max-width: 860px) { .vs { grid-template-columns: 1fr; } }
-.vs h4 { margin: 0 0 8px; font-size: 14px; } .vs .no h4 { color: var(--fix); } .vs .yes h4 { color: var(--pass); }
-.dd { list-style: none; padding: 0; margin: 0; } .dd li { padding: 6px 0; border-bottom: 1px solid var(--hairline); font-size: 14px; }
+.bad-ex .gb { display: inline-block; border: 1px solid #0b3d6b; color: #0b3d6b; border-radius: 6px; padding: 4px 8px; margin: 2px; font-size: 12px; font-weight: 600; }
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } @media (max-width: 860px) { .vs { grid-template-columns: 1fr; } }
+.vs h4 { margin: 0 0 10px; font-size: 17px; } .vs .no h4 { color: var(--fix); } .vs .yes h4 { color: var(--pass); }
+.dd { list-style: none; padding: 0; margin: 14px 0 0; } .dd li { padding: 8px 0; border-bottom: 1px solid var(--hairline); font-size: 15px; }
 </style>
 </head>
 <body>
 
-<div class="guide-top"><div class="in">
-  <h1>라벨코스트 디자인 기준</h1>
-  <p>design.md를 화면으로 옮긴 것. 수출 식품 공장 사무실에서 매일 여는 업무 도구처럼. IBM Carbon 계열 규제 문서형: 흰 패널, 남색 하나, 모서리 2px, 그림자 없음. 색이 의미를 가지는 곳은 판정 세 가지뿐.</p>
+<!-- 아이콘 세트 (design.md 7-18). 선 아이콘, 인라인 SVG -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M7 18H6a4 4 0 0 1-.5-8A6 6 0 0 1 17 8.5 4.5 4.5 0 0 1 17.5 18H17"/><path d="M12 12v9M9 15l3-3 3 3"/></symbol>
+</svg>
+
+<div class="gtop"><div class="in">
+  <h1>라벨코스트 디자인 기준 <span style="font-size:18px;color:var(--ink-subtle);font-weight:400">2판</span></h1>
+  <p>정부24·KRDS 계열 공공 업무형. 처음 보는 사람도 어디를 누를지 바로 아는 화면. 큰 건 크게, 작은 건 작게. 묶음은 바탕색으로, 행동은 파랑 하나, 판정은 세 가지 색.</p>
   <div class="toc">
-    <a href="#overview">개요</a><a href="#color">색</a><a href="#type">글꼴</a><a href="#layout">간격·모서리</a>
-    <a href="#comp">컴포넌트</a><a href="#screen">화면 예시: 라벨 판정</a><a href="#home">화면 예시: 홈</a><a href="#intake">화면 예시: 서류 넣기</a><a href="#voice">문구</a><a href="#dodont">해야 할 것 / 하지 말 것</a>
+    <a href="#ux">사용성 원칙</a><a href="#color">색</a><a href="#type">크기 위계</a><a href="#comp">컴포넌트</a>
+    <a href="#s-home">화면: 홈</a><a href="#s-label">화면: 라벨 판정</a><a href="#s-intake">화면: 서류 넣기</a><a href="#dodont">해야 할 것 / 하지 말 것</a>
   </div>
 </div></div>
 
 <div class="wrap">
 
-<section class="g" id="overview">
-  <h2>01 · 개요</h2>
-  <h3>결론 먼저, 근거는 옆에</h3>
-  <p class="lead">판정 화면은 언제나 판정 띠 → 숫자 → 근거가 붙은 표. 우승작 TARA(판정 띠·숫자 카드), CrossBeam(색 배지 3개·근거 링크·내려받기 하나), FoodSteps(단계별 추적 표)에서 가져왔다.</p>
-  <ul class="key">
-    <li>흰 패널 + 옅은 회색 바탕 + 검정 글자가 95%</li>
-    <li>강조색은 남색 하나</li>
-    <li>판정 색: 수정 빨강 · 확인 노랑 · 통과 초록</li>
-    <li>모서리 2px, 그림자·그라데이션 없음</li>
-    <li>화면의 주인공은 표. 카드 안에 카드 금지</li>
-    <li>숫자는 고정폭, 표에서는 오른쪽 정렬</li>
-  </ul>
-</section>
-
-<section class="g" id="color">
-  <h2>02 · 색</h2>
-  <h3>남색 하나와 판정 세 가지</h3>
-  <div class="label">기본</div>
-  <div class="grid g4">
-    <div class="sw"><div class="chip" style="background:#0b3d6b"></div><div class="t"><b>primary</b><span class="code">#0b3d6b</span> 버튼·링크·현재 메뉴</div></div>
-    <div class="sw"><div class="chip" style="background:#e5eef7"></div><div class="t"><b>primary-soft</b><span class="code">#e5eef7</span> 선택된 행</div></div>
-    <div class="sw"><div class="chip" style="background:#161616"></div><div class="t"><b>ink</b><span class="code">#161616</span> 본문</div></div>
-    <div class="sw"><div class="chip" style="background:#525252"></div><div class="t"><b>ink-muted</b><span class="code">#525252</span> 표 머리·보조</div></div>
-    <div class="sw"><div class="chip" style="background:#8c8c8c"></div><div class="t"><b>ink-subtle</b><span class="code">#8c8c8c</span> 날짜·출처</div></div>
-    <div class="sw"><div class="chip" style="background:#f4f4f4"></div><div class="t"><b>canvas</b><span class="code">#f4f4f4</span> 페이지 바탕</div></div>
-    <div class="sw"><div class="chip" style="background:#fff"></div><div class="t"><b>surface</b><span class="code">#ffffff</span> 패널·표</div></div>
-    <div class="sw"><div class="chip" style="background:#e0e0e0"></div><div class="t"><b>hairline</b><span class="code">#e0e0e0</span> 선</div></div>
-  </div>
-  <div class="label">판정 (의미 고정, 다른 용도 금지)</div>
-  <div class="grid g3">
-    <div class="sw"><div class="chip" style="background:linear-gradient(90deg,#da1e28 50%,#fff1f1 50%)"></div><div class="t"><b>수정 · fix</b><span class="code">#da1e28 / #fff1f1</span> 이대로 나가면 규정 위반</div></div>
-    <div class="sw"><div class="chip" style="background:linear-gradient(90deg,#f1c21b 50%,#fcf4d6 50%)"></div><div class="t"><b>확인 · check</b><span class="code">#f1c21b / #fcf4d6</span> 사람 확인 필요. 글자는 검정</div></div>
-    <div class="sw"><div class="chip" style="background:linear-gradient(90deg,#198038 50%,#defbe6 50%)"></div><div class="t"><b>통과 · pass</b><span class="code">#198038 / #defbe6</span> 규정 충족</div></div>
-  </div>
-  <div class="label">특수</div>
-  <div class="grid g4">
-    <div class="sw"><div class="chip" style="background:#6929c4"></div><div class="t"><b>ai</b><span class="code">#6929c4</span> AI가 읽은 값 표시에만</div></div>
-    <div class="sw"><div class="chip" style="background:#0f62fe"></div><div class="t"><b>focus</b><span class="code">#0f62fe</span> 키보드 포커스</div></div>
-  </div>
-</section>
-
-<section class="g" id="type">
-  <h2>03 · 글꼴</h2>
-  <h3>시스템 한글 글꼴, 외부 글꼴 없음</h3>
-  <p class="lead">Apple SD Gothic Neo / 맑은 고딕. LOT·조항 번호는 고정폭. 굵게는 제목·표 머리·판정 띠·배지에만.</p>
-  <div class="type-row"><span class="code">page-title 24/600</span><span style="font-size:24px;font-weight:600">라벨 판정</span></div>
-  <div class="type-row"><span class="code">section 18/600</span><span style="font-size:18px;font-weight:600">수출 라벨 규정 위반을 선적 전에 잡습니다</span></div>
-  <div class="type-row"><span class="code">panel-title 16/600</span><span style="font-size:16px;font-weight:600">바이어별 영양값</span></div>
-  <div class="type-row"><span class="code">body 15/400</span><span>홍콩은 열량과 단백질·총지방 등 7종 표시가 의무예요.</span></div>
-  <div class="type-row"><span class="code">table 14/400</span><span style="font-size:14px">냉동 자숙 홍게 다리 파살 (LB) · 250 g</span></div>
-  <div class="type-row"><span class="code">small 13/400</span><span style="font-size:13px;color:var(--ink-muted)">홍콩_LABEL_CNEN_11.1.xlsx · 2026-10-31</span></div>
-  <div class="type-row"><span class="code">caption 12/600</span><span><span class="b bad">■ 수정</span> <span class="b warn">▲ 확인</span> <span class="b ok">● 통과</span></span></div>
-  <div class="type-row"><span class="code">stat-value 32/600</span><span style="font-size:32px;font-weight:600;font-variant-numeric:tabular-nums">734 <small style="font-size:14px;color:var(--ink-muted);font-weight:400">C/T</small></span></div>
-  <div class="type-row"><span class="code">code 12</span><span class="ref">20260410-LB · Cap.132W 附表5 · GB 7718-2025 4.3.1</span></div>
-</section>
-
-<section class="g" id="layout">
-  <h2>04 · 간격 · 모서리 · 깊이</h2>
-  <h3>4px 단위, 모서리 두 가지, 그림자 0</h3>
-  <div class="label">간격</div>
-  <div class="space">
-    <div><div style="width:4px;height:4px"></div><span>xs 4</span></div>
-    <div><div style="width:8px;height:8px"></div><span>sm 8</span></div>
-    <div><div style="width:12px;height:12px"></div><span>md 12</span></div>
-    <div><div style="width:16px;height:16px"></div><span>lg 16</span></div>
-    <div><div style="width:24px;height:24px"></div><span>xl 24</span></div>
-    <div><div style="width:32px;height:32px"></div><span>xxl 32</span></div>
-  </div>
-  <div class="label">모서리 · 깊이</div>
-  <div class="row">
-    <div class="card" style="margin:0;width:200px"><b>2px</b><br><span class="code">패널·버튼·입력·배지</span></div>
-    <div style="background:#fff;border:1px solid var(--hairline);padding:16px 20px;width:200px"><b>0</b><br><span class="code">표·판정 띠</span></div>
-    <div style="background:#fff;border:1px solid var(--hairline);padding:16px 20px;width:200px"><b>그림자 없음</b><br><span class="code">구분은 선과 바탕색</span></div>
-  </div>
-</section>
-
-<section class="g" id="comp">
-  <h2>05 · 컴포넌트</h2>
-  <h3>app.js는 이 클래스 이름만 쓴다</h3>
-
-  <div class="label">머리와 메뉴 · header / .nav-main / .nav-sub</div>
+<section class="g" id="s-home">
+  <p class="eyebrow">화면 예시 · 홈</p>
+  <h2>처음 연 사람이 3초 안에 어디를 누를지 안다</h2>
+  <p class="lead">왼쪽 넓은 칸은 주요 기능 입구, 오른쪽 좁은 칸은 오늘 할 일. 정부24의 "자주 찾는 서비스 + 오른쪽 패널" 구조.</p>
   <div class="app">
-    <header class="ah"><span class="logo">라벨코스트</span>
-      <nav class="nav-main"><a href="#">홈</a><a href="#">한 번에 처리</a><a href="#" class="on">라벨</a><a href="#">생산·LOT</a><a href="#">서류</a></nav>
-      <span class="mode">서버 · 2026-10-31</span></header>
-    <div class="nav-sub"><a href="#" class="on">라벨 판정</a><a href="#">품목</a><a href="#">규격서</a></div>
-  </div>
-
-  <div class="label">판정 띠 · .verdict.bad / .warn / .ok</div>
-  <div class="verdict bad">수출 전 수정 필요 · 4항목</div>
-  <div class="verdict warn">확인 필요 · 2항목</div>
-  <div class="verdict ok">통과 · 홍콩 규정 7항목 충족</div>
-
-  <div class="label">숫자 카드 · .stats > .stat(.bad/.warn/.ok)</div>
-  <div class="stats">
-    <a class="stat bad" href="#"><span class="k">수정</span><span class="v">4</span></a>
-    <a class="stat warn" href="#"><span class="k">확인</span><span class="v">2</span></a>
-    <a class="stat ok" href="#"><span class="k">통과</span><span class="v">1</span></a>
-    <div class="stat"><span class="k">FDA 등록 만료</span><span class="v">D-61</span></div>
-  </div>
-
-  <div class="label">배지 · 태그 · AI 표시 · 근거</div>
-  <div class="row" style="align-items:center">
-    <span class="b bad">■ 수정</span><span class="b warn">▲ 확인</span><span class="b ok">● 통과</span>
-    <span class="tag">선적됨</span><span class="tag">대기</span><span class="tag">승인</span>
-    <span class="ai">AI 읽음</span>
-    <a class="ref" href="#">Cap.132W 附表5</a>
-  </div>
-
-  <div class="label">버튼 · 입력</div>
-  <div class="row">
-    <label class="field">도착국<select><option>홍콩</option><option>대만</option></select></label>
-    <label class="field">라벨 기준일<input type="date" value="2026-01-15"></label>
-    <button>판정</button><button class="ghost">예시 데이터로 되돌리기</button><button class="small ghost">펼치기</button>
-  </div>
-
-  <div class="label">알림 · .alert / .alert.ok / .alert.bad (한 화면에 하나)</div>
-  <div class="alert bad">같은 제품, 바이어별 열량 76 · 40 · 42 kcal — 자사 성적서는 다른 제품(68.3 kcal)</div>
-  <div class="alert">확인 항목 2개는 검사기관·대행사에 물어볼 목록으로 모았어요</div>
-  <div class="alert ok">원장에 3건 넣었어요</div>
-
-  <div class="label">단계 표시 · .pipeline > .stage(.done/.now)</div>
-  <div class="pipeline"><div class="stage done">접수</div><div class="stage done">읽기</div><div class="stage now">검증</div><div class="stage">승인</div></div>
-
-  <div class="label">업로드 · 빈 상태</div>
-  <div class="grid g2">
-    <div class="drop"><p>서류 사진이나 PDF를 끌어다 놓으세요</p><button class="ghost">파일 선택</button></div>
-    <div class="card empty" style="margin:0"><p>아직 조회한 LOT이 없어요</p><button class="ghost">최근 LOT 보기</button></div>
+    <header class="ah"><div class="top"><span class="logo"><i></i>라벨코스트</span><span class="mode">서버 · 2026-10-31</span></div>
+      <nav class="nav-main"><a href="#" class="on">홈</a><a href="#">한 번에 처리</a><a href="#">라벨</a><a href="#">생산·LOT</a><a href="#">서류</a></nav></header>
+    <div class="amain">
+      <div class="home">
+        <div>
+          <p class="hero">수출 라벨 규정 위반을<br><em>선적 전에</em> 잡습니다</p>
+          <p class="hero-sub">홍콩 · 대만 · 태국 · 일본 · 중국 규칙으로 항목별 판정, 공장 LOT 기록까지 한 줄로.</p>
+          <div class="search" style="margin-bottom:24px"><input placeholder="LOT 번호나 회사 코드로 찾기 (예: 20260410-LB)"><svg class="ico"><use href="#i-search"/></svg></div>
+          <div class="panel">
+            <div class="sec-head"><h3>바로 하기</h3></div>
+            <div class="tiles">
+              <a class="tile" href="#"><span class="tx"><span class="t-name">라벨 판정</span><span class="t-desc">나라별 규정으로 항목 검사</span></span><svg class="ico"><use href="#i-shield"/></svg></a>
+              <a class="tile" href="#"><span class="tx"><span class="t-name">한 번에 처리</span><span class="t-desc">서류 넣기 → 판정 → 기록</span></span><svg class="ico"><use href="#i-bolt"/></svg></a>
+              <a class="tile" href="#"><span class="tx"><span class="t-name">LOT 조회</span><span class="t-desc">원어 입고까지 역추적</span></span><svg class="ico"><use href="#i-box"/></svg></a>
+              <a class="tile" href="#"><span class="tx"><span class="t-name">서류 넣기</span><span class="t-desc">사진·PDF를 읽어 기록</span></span><svg class="ico"><use href="#i-doc"/></svg></a>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sec-head"><h3>오늘 할 일</h3><a href="#">더 보기 →</a></div>
+          <div class="list" style="margin-bottom:20px">
+            <a class="list-row" href="#"><span class="b bad">■ 수정</span><span class="lr-main">홍콩 라벨 4항목</span><span class="chev">›</span></a>
+            <a class="list-row" href="#"><span class="b warn">▲ 확인</span><span class="lr-main">FDA 등록 갱신</span><span class="lr-meta">D-61</span><span class="chev">›</span></a>
+            <a class="list-row" href="#"><span class="b warn">▲ 확인</span><span class="lr-main">GB 7718-2025</span><span class="lr-meta">D-136</span><span class="chev">›</span></a>
+            <a class="list-row" href="#"><span class="tag">대기</span><span class="lr-main">승인 기다리는 서류</span><span class="lr-meta">2건</span><span class="chev">›</span></a>
+          </div>
+          <button class="lg">예시로 보기</button>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
-<section class="g" id="screen">
-  <h2>06 · 화면 예시</h2>
-  <h3>라벨 판정 (주인공 화면)</h3>
-  <p class="lead">판정 띠 → 숫자 → 근거 표 → 수정 요청서. 바이어별 영양값 불일치는 경쟁 서비스에 없는 기능이라 위로 끌어올린다.</p>
+<section class="g" id="s-label">
+  <p class="eyebrow">화면 예시 · 라벨 판정 (주인공 화면)</p>
+  <h2>결론 → 숫자 → 근거 → 결과물</h2>
+  <p class="lead">판정 띠가 가장 크고, 표의 "고칠 것"이 가장 굵다. 바이어별 열량 불일치는 경쟁 서비스에 없는 장면이라 표 위로 올린다.</p>
   <div class="app">
-    <header class="ah"><span class="logo">라벨코스트</span>
-      <nav class="nav-main"><a href="#">홈</a><a href="#">한 번에 처리</a><a href="#" class="on">라벨</a><a href="#">생산·LOT</a><a href="#">서류</a></nav>
-      <span class="mode">서버 · 2026-10-31</span></header>
+    <header class="ah"><div class="top"><span class="logo"><i></i>라벨코스트</span><span class="mode">서버 · 2026-10-31</span></div>
+      <nav class="nav-main"><a href="#">홈</a><a href="#">한 번에 처리</a><a href="#" class="on">라벨</a><a href="#">생산·LOT</a><a href="#">서류</a></nav></header>
     <div class="nav-sub"><a href="#" class="on">라벨 판정</a><a href="#">품목</a><a href="#">규격서</a></div>
     <div class="amain">
-      <h2>라벨 판정</h2>
-      <div class="row" style="margin-bottom:16px">
-        <label class="field">받은 파일<select><option>홍콩 — 홍콩_LABEL_CNEN_11.1.xlsx</option></select></label>
-        <label class="field">도착국<select><option>홍콩</option></select></label>
-        <label class="field">라벨 기준일<input type="date"></label>
-        <button>판정</button>
+      <h2 class="pt">라벨 판정</h2>
+      <div class="card" style="margin-bottom:20px">
+        <div class="field" style="margin-bottom:10px">도착국</div>
+        <div class="chips" style="margin-bottom:16px"><a class="chip on">홍콩</a><a class="chip">대만</a><a class="chip">태국</a><a class="chip">일본</a><a class="chip">중국</a></div>
+        <div class="row">
+          <label class="field" style="flex:1;min-width:260px">받은 라벨<select><option>홍콩_LABEL_CNEN_11.1.xlsx</option></select></label>
+          <label class="field">라벨 기준일<input type="date" value="2025-11-01"></label>
+          <button class="ghost">다시 판정</button>
+        </div>
       </div>
-      <div class="verdict bad">수출 전 수정 필요 · 4항목</div>
+      <div class="verdict bad"><span class="v-ico">!</span>수출 전 수정 필요 · 4항목<span class="v-sub">홍콩 Cap.132W 기준 · 2026-10-31</span></div>
       <div class="stats">
-        <a class="stat bad" href="#"><span class="k">수정</span><span class="v">4</span></a>
-        <a class="stat warn" href="#"><span class="k">확인</span><span class="v">2</span></a>
-        <a class="stat ok" href="#"><span class="k">통과</span><span class="v">1</span></a>
+        <a class="stat bad" href="#"><span class="k">수정</span><span class="v">4<small>항목</small></span></a>
+        <a class="stat warn" href="#"><span class="k">확인</span><span class="v">2<small>항목</small></span></a>
+        <a class="stat ok" href="#"><span class="k">통과</span><span class="v">1<small>항목</small></span></a>
       </div>
-      <div class="alert bad">같은 제품, 바이어별 열량 76 · 40 · 42 kcal — 자사 성적서는 다른 제품(68.3 kcal)</div>
-      <div class="card" style="padding:0">
+      <div class="alert bad"><span class="v-ico">!</span><span>같은 제품인데 바이어별 열량이 <b>76 · 40 · 42 kcal</b>로 달라요. 자사 성적서는 다른 제품(68.3 kcal)이에요.</span></div>
+      <div class="tcard" style="margin-bottom:20px">
         <table class="t">
           <tr><th>항목</th><th>판정</th><th>근거</th><th>현재</th><th>고칠 것</th></tr>
-          <tr class="st-bad"><td>영양표시 1+7</td><td><span class="b bad">■ 수정</span></td><td><a class="ref" href="#">Cap.132W 附表5</a></td><td><span class="clip">영양표시 없음. 홍콩은 열량 + 단백질·총지방·포화지방·트랜스지방·탄수화물·당·나트륨 7종 의무</span></td><td>품목 영양값으로 1+7 표 생성</td></tr>
-          <tr class="st-bad"><td>알레르겐</td><td><span class="b bad">■ 수정</span></td><td><a class="ref" href="#">Cap.132W 附表3</a></td><td><span class="clip">성분에 없는 밀·대두·닭고기를 알레르겐으로 선언</span></td><td>含甲殼類動物（蟹）/ Contains crustacea (crab)</td></tr>
-          <tr class="st-bad"><td>첨가물 표기</td><td><span class="b bad">■ 수정</span></td><td><a class="ref" href="#">Cap.132W 附表3</a></td><td><span class="clip">기능분류 + 명칭 또는 INS 번호 필요. 일본식 직역 흔적</span></td><td>增味劑(621) / flavour enhancer (621)</td></tr>
-          <tr class="st-bad"><td>유통기한 문구</td><td><span class="b bad">■ 수정</span></td><td><a class="ref" href="#">Cap.132W 附表3 §8</a></td><td><span class="clip">"有効日期"는 규정 문구 아님</span></td><td>此日期前最佳 / Best before</td></tr>
-          <tr class="st-check"><td>제조자·포장자 주소</td><td><span class="b warn">▲ 확인</span></td><td><a class="ref" href="#">Cap.132W 附表3</a></td><td><span class="clip">수입자만 기재. 대체 가능 조건 확인 필요</span></td><td>제조자 A사 주소 추가 또는 조건 확인</td></tr>
-          <tr class="st-check"><td>한자 표기</td><td><span class="b warn">▲ 확인</span></td><td><a class="ref" href="#">Cap.132W</a></td><td><span class="clip">일본 한자(原産·有効) 사용</span></td><td>原產地 · 有效</td></tr>
-          <tr><td>품명·내용량·보존·원산지</td><td><span class="b ok">● 통과</span></td><td><a class="ref" href="#">Cap.132W 附表3</a></td><td>기재됨</td><td></td></tr>
+          <tr class="st-bad"><td><b>영양표시 1+7</b></td><td><span class="b bad">■ 수정</span></td><td><span class="ref">Cap.132W 附表5</span></td><td><span class="clip">영양표시 없음. 열량 + 7종 의무</span></td><td class="fixto">1+7 영양표 넣기</td></tr>
+          <tr class="st-bad"><td><b>알레르겐</b></td><td><span class="b bad">■ 수정</span></td><td><span class="ref">Cap.132W 附表3</span></td><td><span class="clip">성분에 없는 밀·대두·닭고기 선언</span></td><td class="fixto">含甲殼類動物（蟹）</td></tr>
+          <tr class="st-bad"><td><b>첨가물 표기</b></td><td><span class="b bad">■ 수정</span></td><td><span class="ref">Cap.132W 附表3</span></td><td><span class="clip">기능분류 + 명칭 또는 INS 번호 필요</span></td><td class="fixto">增味劑(621)</td></tr>
+          <tr class="st-bad"><td><b>유통기한 문구</b></td><td><span class="b bad">■ 수정</span></td><td><span class="ref">Cap.132W 附表3</span></td><td><span class="clip">"有効日期"는 규정 문구 아님</span></td><td class="fixto">此日期前最佳</td></tr>
+          <tr class="st-check"><td><b>제조자 주소</b></td><td><span class="b warn">▲ 확인</span></td><td><span class="ref">Cap.132W 附表3</span></td><td><span class="clip">수입자만 기재</span></td><td class="fixto">A사 주소 추가 검토</td></tr>
+          <tr class="st-check"><td><b>한자 표기</b></td><td><span class="b warn">▲ 확인</span></td><td><span class="ref">Cap.132W</span></td><td><span class="clip">일본 한자(原産·有効) 사용</span></td><td class="fixto">原產地 · 有效</td></tr>
+          <tr><td><b>품명·내용량·원산지</b></td><td><span class="b ok">● 통과</span></td><td><span class="ref">Cap.132W 附表3</span></td><td>기재됨</td><td></td></tr>
         </table>
       </div>
-      <div class="row" style="justify-content:flex-end"><button class="ghost">읽은 값 보기</button><button>수정 요청서 PDF</button></div>
+      <div style="max-width:360px;margin-left:auto"><button class="lg">수정 요청서 PDF</button></div>
     </div>
   </div>
-  <p class="code" style="margin-top:8px">※ 근거 조항 표기는 예시. 실제 값은 data.js 규칙의 src에서 가져오고, 모르는 조항은 법령명만 쓴다.</p>
+  <p class="mono" style="margin-top:10px">※ 근거 조항은 모양 예시. 실제 값은 data.js 규칙의 src, 모르는 조항은 법령명만.</p>
 </section>
 
-<section class="g" id="home">
-  <h2>07 · 화면 예시</h2>
-  <h3>홈</h3>
-  <p class="lead">가치 한 줄 + 예시로 보기(MaestrIA 패턴) → 오늘 할 일 → 최근 LOT. 주 버튼은 하나.</p>
-  <div class="app">
-    <header class="ah"><span class="logo">라벨코스트</span>
-      <nav class="nav-main"><a href="#" class="on">홈</a><a href="#">한 번에 처리</a><a href="#">라벨</a><a href="#">생산·LOT</a><a href="#">서류</a></nav>
-      <span class="mode">서버 · 2026-10-31</span></header>
-    <div class="amain">
-      <div class="card">
-        <p class="hero">수출 라벨 규정 위반을 선적 전에 잡습니다</p>
-        <p class="hero-sub">홍콩 · 대만 · 태국 · 일본 · 중국 규칙 파일로 항목별 판정, 공장 LOT 기록까지 한 줄로.</p>
-        <div class="row"><button>예시로 보기</button><button class="ghost">한 번에 처리</button></div>
-      </div>
-      <div class="stats" style="max-width:none">
-        <div class="stat bad"><span class="k">수정 필요한 라벨</span><span class="v">1</span></div>
-        <div class="stat"><span class="k">FDA 등록 만료</span><span class="v">D-61</span></div>
-        <div class="stat"><span class="k">규정 개정 시행</span><span class="v">D-136</span></div>
-        <div class="stat warn"><span class="k">성적서 없는 품목</span><span class="v">2</span></div>
-      </div>
-      <div class="card" style="padding:0">
-        <table class="t">
-          <tr><th style="width:90px">상태</th><th>오늘 할 일</th><th style="width:120px"></th></tr>
-          <tr><td><span class="b bad">■ 수정</span></td><td>홍콩 라벨 4항목 수정 필요</td><td><a href="#">라벨 판정 →</a></td></tr>
-          <tr><td><span class="b warn">▲ 확인</span></td><td>미국 FDA 식품시설등록 갱신 · D-61</td><td><a href="#">대시보드 →</a></td></tr>
-          <tr><td><span class="b warn">▲ 확인</span></td><td>GB 7718-2025 시행 D-136 · 영향 라벨 확인</td><td><a href="#">라벨 판정 →</a></td></tr>
-          <tr><td><span class="tag">대기</span></td><td>승인 기다리는 서류 2건</td><td><a href="#">서류 넣기 →</a></td></tr>
-        </table>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="g" id="intake">
-  <h2>08 · 화면 예시</h2>
-  <h3>서류 넣기 — 원본과 읽은 값 나란히</h3>
-  <p class="lead">AI가 무엇을 읽었는지 보이게(Wrench Board·MaestrIA 패턴). 사람이 승인해야 기록에 들어간다.</p>
+<section class="g" id="s-intake">
+  <p class="eyebrow">화면 예시 · 서류 넣기</p>
+  <h2>AI가 무엇을 읽었는지 보이고, 사람이 승인한다</h2>
+  <p class="lead">지금 단계가 늘 보이고(원칙 1), 승인 전엔 기록에 안 들어간다(원칙 3).</p>
   <div class="app"><div class="amain">
-    <div class="pipeline" style="margin-bottom:16px"><div class="stage done">접수</div><div class="stage done">읽기</div><div class="stage now">검증</div><div class="stage">승인</div></div>
-    <div class="cols">
-      <div class="card" style="margin:0"><h3>원본 · 7-1.원료입고검사서.pdf</h3><div class="doc">원본 미리보기</div></div>
-      <div class="card" style="margin:0"><h3>읽은 값</h3>
+    <div class="pipeline" style="margin-bottom:20px">
+      <span class="stage done"><span class="n">✓</span>접수</span><span class="line done"></span>
+      <span class="stage done"><span class="n">✓</span>읽기</span><span class="line done"></span>
+      <span class="stage now"><span class="n">3</span>검증</span><span class="line"></span>
+      <span class="stage"><span class="n">4</span>승인</span>
+    </div>
+    <div class="cols2">
+      <div class="card"><h3>원본 · 7-1.원료입고검사서.pdf</h3><div class="doc"><svg class="ico"><use href="#i-doc"/></svg>원본 미리보기</div></div>
+      <div class="card"><h3>읽은 값</h3>
+        <div class="tcard" style="border-radius:12px">
         <table class="t">
           <tr><th>칸</th><th>값</th><th></th></tr>
-          <tr><td>어종</td><td>붉은대게</td><td><span class="ai">AI 읽음</span></td></tr>
-          <tr><td>입고일</td><td>2026-04-08</td><td><span class="ai">AI 읽음</span></td></tr>
-          <tr><td>박스</td><td class="num">58</td><td><span class="ai">AI 읽음</span></td></tr>
-          <tr class="st-check"><td>총중량</td><td class="num">17,400 kg</td><td><span class="b warn">▲ 확인</span></td></tr>
-        </table>
-        <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="ghost">반려</button><button>승인</button></div>
+          <tr><td>어종</td><td><b>붉은대게</b></td><td><span class="ai">AI 읽음</span></td></tr>
+          <tr><td>입고일</td><td><b>2026-04-08</b></td><td><span class="ai">AI 읽음</span></td></tr>
+          <tr><td>박스</td><td class="num"><b>58</b></td><td><span class="ai">AI 읽음</span></td></tr>
+          <tr class="st-check"><td>총중량</td><td class="num"><b>17,400 kg</b></td><td><span class="b warn">▲ 확인</span></td></tr>
+        </table></div>
+        <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="ghost">반려</button><button>승인</button></div>
       </div>
     </div>
   </div></div>
 </section>
 
-<section class="g" id="voice">
-  <h2>09 · 문구</h2>
-  <h3>짧게, 판정 어휘는 세 개로 고정</h3>
-  <div class="card" style="padding:0">
-    <table class="t">
-      <tr><th>지금</th><th>바꿀 말</th></tr>
-      <tr><td>시드로 복원 / 시연 초기화(빈 원장)</td><td>예시 데이터로 되돌리기 / 모두 비우기</td></tr>
-      <tr><td>추출된 필드</td><td>읽은 값</td></tr>
-      <tr><td>서버 연결 · AI 추출 꺼짐</td><td>서버 / 오프라인</td></tr>
-      <tr><td>원장 반영</td><td>기록에 넣기</td></tr>
-      <tr><td>오류 · 경고 · 주의 · 실패</td><td>수정 · 확인 · 통과 만</td></tr>
-    </table>
+<section class="g" id="ux">
+  <p class="eyebrow">01 · 사용성 원칙</p>
+  <h2>화면을 고칠 때마다 확인하는 10가지</h2>
+  <p class="lead">닐슨 사용성 10원칙과 직관성·일관성·가독성을 라벨코스트에 맞게 옮겼다.</p>
+  <div class="heur">
+    <div><b><i>1</i>지금 상태가 보인다</b><span>접수 → 읽기 → 검증 → 승인 단계 표시, 처리 중 표시</span></div>
+    <div><b><i>2</i>현장 말을 쓴다</b><span>원어 입고·포장일지·선적. fixture·시드·필드 금지</span></div>
+    <div><b><i>3</i>되돌릴 수 있다</b><span>승인 전엔 기록에 안 들어감, 반려·되돌리기</span></div>
+    <div><b><i>4</i>같은 건 같게</b><span>판정은 어디서나 수정·확인·통과, 같은 색</span></div>
+    <div><b><i>5</i>실수를 막는다</b><span>필수 칸이 비면 버튼 비활성, 지우기 전 확인</span></div>
+    <div><b><i>6</i>기억 말고 보고 고른다</b><span>최근 LOT 목록, 나라는 칩, 파일은 목록에서</span></div>
+    <div><b><i>7</i>익숙한 사람은 빠르게</b><span>한 번에 처리: 서류 → 판정 → 기록을 한 화면에</span></div>
+    <div><b><i>8</i>덜어낸다</b><span>설명문·버튼 나열·카드 안 카드 금지</span></div>
+    <div><b><i>9</i>오류는 쉬운 말 + 해결책</b><span>"글자를 못 읽었어요. 더 밝게 찍거나 직접 입력해 주세요"</span></div>
+    <div><b><i>10</i>근거와 도움말이 옆에</b><span>판정마다 근거 조항, 처음 쓰는 사람은 예시로 보기</span></div>
   </div>
 </section>
 
-<section class="g" id="dodont" style="border-bottom:0">
-  <h2>10 · 해야 할 것 / 하지 말 것</h2>
-  <h3>"AI가 만든 티" 지우기</h3>
+<section class="g" id="color">
+  <p class="eyebrow">02 · 색</p>
+  <h2>행동은 파랑, 묶음은 하늘과 회색, 판정은 세 가지</h2>
+  <p class="lead">정부24 실제 화면에서 뽑은 값 기준 (로그인 버튼 #3a6cec, 하늘 패널 #e9f4fd, 회색 타일 #eff2f7, 바탕 #f8fafc, 선 #dee0e3).</p>
+  <div class="grid g4">
+    <div class="sw"><div class="chip-c" style="background:#2f62e6"></div><div class="t"><b>primary</b><span class="mono">#2f62e6</span> 버튼·링크</div></div>
+    <div class="sw"><div class="chip-c" style="background:#e9f2fd"></div><div class="t"><b>primary-soft</b><span class="mono">#e9f2fd</span> 하늘 패널</div></div>
+    <div class="sw"><div class="chip-c" style="background:#0b3d6b"></div><div class="t"><b>brand</b><span class="mono">#0b3d6b</span> 로고·선택 상태</div></div>
+    <div class="sw"><div class="chip-c" style="background:#eff2f7"></div><div class="t"><b>tile</b><span class="mono">#eff2f7</span> 회색 타일·목록 행</div></div>
+    <div class="sw"><div class="chip-c" style="background:#181a1d"></div><div class="t"><b>ink</b><span class="mono">#181a1d</span> 제목·본문</div></div>
+    <div class="sw"><div class="chip-c" style="background:#464b51"></div><div class="t"><b>ink-2</b><span class="mono">#464b51</span> 메뉴·보조</div></div>
+    <div class="sw"><div class="chip-c" style="background:#6b7178"></div><div class="t"><b>ink-muted</b><span class="mono">#6b7178</span> 설명</div></div>
+    <div class="sw"><div class="chip-c" style="background:#f8fafc;border-bottom:1px solid var(--hairline)"></div><div class="t"><b>canvas</b><span class="mono">#f8fafc</span> 페이지 바탕</div></div>
+  </div>
+  <div class="lbl">판정 (의미 고정)</div>
+  <div class="grid g3">
+    <div class="sw"><div class="chip-c" style="background:linear-gradient(90deg,#d92d20 50%,#fef0ef 50%)"></div><div class="t"><b>수정 · fix</b><span class="mono">#d92d20 / #fef0ef</span> 규정 위반</div></div>
+    <div class="sw"><div class="chip-c" style="background:linear-gradient(90deg,#f5b400 50%,#fff7e0 50%)"></div><div class="t"><b>확인 · check</b><span class="mono">#f5b400 / #fff7e0</span> 사람 확인, 글자는 검정</div></div>
+    <div class="sw"><div class="chip-c" style="background:linear-gradient(90deg,#16824a 50%,#e7f6ee 50%)"></div><div class="t"><b>통과 · pass</b><span class="mono">#16824a / #e7f6ee</span> 규정 충족</div></div>
+  </div>
+</section>
+
+<section class="g" id="type">
+  <p class="eyebrow">03 · 크기 위계</p>
+  <h2>큰 건 크게, 작은 건 작게</h2>
+  <p class="lead">한 묶음 안에서 세 단계까지: 제목 → 항목(굵게) → 설명(작고 회색). 굵기는 700과 400 두 가지. 글꼴은 Pretendard(인터넷 없으면 시스템 고딕).</p>
+  <div class="trow"><span class="mono">page-title 28/700</span><span style="font-size:28px;font-weight:700">라벨 판정</span></div>
+  <div class="trow"><span class="mono">section 22/700</span><span style="font-size:22px;font-weight:700">오늘 할 일</span></div>
+  <div class="trow"><span class="mono">nav 18/700</span><span style="font-size:18px;font-weight:700;color:var(--ink-2)">홈 · 한 번에 처리 · 라벨 · 생산·LOT · 서류</span></div>
+  <div class="trow"><span class="mono">item 17/700</span><span style="font-size:17px;font-weight:700">LOT 조회</span></div>
+  <div class="trow"><span class="mono">body 16/400</span><span>홍콩은 열량과 7가지 영양성분 표시가 의무예요.</span></div>
+  <div class="trow"><span class="mono">meta 14/400</span><span style="font-size:14px;color:var(--ink-muted)">원어 입고까지 역추적 · 2026-10-31</span></div>
+  <div class="trow"><span class="mono">badge 13/700</span><span><span class="b bad">■ 수정</span> <span class="b warn">▲ 확인</span> <span class="b ok">● 통과</span> <span class="tag">대기</span> <span class="ai">AI 읽음</span> <span class="ref">Cap.132W 附表5</span></span></div>
+  <div class="trow"><span class="mono">stat 36/700</span><span style="font-size:36px;font-weight:700;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">734<small style="font-size:15px;font-weight:400;color:var(--ink-muted);margin-left:4px">C/T</small></span></div>
+</section>
+
+<section class="g" id="comp">
+  <p class="eyebrow">04 · 컴포넌트</p>
+  <h2>app.js는 이 클래스 이름만 쓴다</h2>
+  <div class="lbl">판정 띠 · .verdict.bad / .warn / .ok</div>
+  <div class="verdict bad"><span class="v-ico">!</span>수출 전 수정 필요 · 4항목<span class="v-sub">홍콩 Cap.132W 기준</span></div>
+  <div class="verdict warn"><span class="v-ico">?</span>확인 필요 · 2항목<span class="v-sub">대만 식품안전위생관리법 기준</span></div>
+  <div class="verdict ok"><span class="v-ico">✓</span>통과 · 일본 규정 9항목 충족<span class="v-sub">식품표시기준 기준</span></div>
+  <div class="lbl">알림 · .alert / .alert.bad / .alert.ok (한 화면에 하나)</div>
+  <div class="alert bad"><span class="v-ico">!</span><span>글자를 못 읽었어요. 더 밝게 찍거나 직접 입력해 주세요.</span><button class="small ghost" style="margin-left:auto">직접 입력</button></div>
+  <div class="alert ok"><span class="v-ico">✓</span><span>기록에 3건 넣었어요.</span></div>
+  <div class="lbl">버튼 · 입력 · 칩</div>
+  <div class="row" style="margin-bottom:16px"><button>판정</button><button class="ghost">반려</button><button class="small ghost">펼치기</button><button disabled>판정 (라벨을 고르세요)</button></div>
+  <div class="chips"><a class="chip on">바이어 면</a><a class="chip">회사 면</a></div>
+  <div class="lbl">업로드 · 빈 상태</div>
+  <div class="grid g2">
+    <div class="drop"><svg class="ico"><use href="#i-up"/></svg><b>서류 사진이나 PDF를 끌어다 놓으세요</b><p>입고검사서 · 가공일지 · 포장일지 · 패킹리스트</p><button class="ghost">파일 선택</button></div>
+    <div class="card empty"><svg class="ico"><use href="#i-box"/></svg><p>아직 조회한 LOT이 없어요</p><button class="ghost">최근 LOT 보기</button></div>
+  </div>
+</section>
+
+<section class="g" id="dodont">
+  <p class="eyebrow">05 · 해야 할 것 / 하지 말 것</p>
+  <h2>"AI가 만든 티" 지우기</h2>
   <div class="vs">
     <div class="no"><h4>✕ 지금 같은 모양</h4>
       <div class="bad-ex">
         <span class="pill">① 라벨 판정</span><span class="pill on">② 품목·4개국</span><span class="pill">③ 규격서</span><span class="pill">④ 선적·원장</span>
         <div class="sh">라벨 파일을 올리거나 받은 파일을 고르고 도착국을 정하면 규칙 파일로 항목별 판정. 추출만 자동, 판정은 규칙, 최종 확인은 사람.
-          <div class="sh"><span class="grad">받은 파일로 시연: 7-1.원료입고검사서.pdf</span> <span class="grad">받은 파일로 시연: 7-2.가공일지.pdf</span></div>
-        </div>
+          <div class="sh"><span class="gb">받은 파일로 시연: 7-1.원료입고검사서.pdf</span><span class="gb">받은 파일로 시연: 7-2.가공일지.pdf</span><span class="gb">받은 파일로 시연: 7-3.포장 일지.pdf</span></div></div>
       </div>
-      <ul class="dd" style="margin-top:12px">
-        <li>원문자 번호, 알약 모양 메뉴</li><li>화면 위 개발 원칙 설명문</li><li>그림자·카드 안 카드</li><li>같은 버튼 나열, 그라데이션, 강조색 여러 개</li>
-      </ul>
+      <ul class="dd"><li>모든 글자가 같은 크기 → 위계 없음</li><li>원문자 번호, 개발 원칙 설명문</li><li>그림자 카드 안 카드</li><li>같은 버튼 나열</li></ul>
     </div>
     <div class="yes"><h4>✓ 이렇게</h4>
-      <div class="app">
-        <header class="ah"><span class="logo">라벨코스트</span><nav class="nav-main"><a href="#" class="on">라벨</a><a href="#">생산·LOT</a></nav></header>
-        <div class="amain"><h2 style="font-size:18px">라벨 판정</h2><div class="verdict bad" style="font-size:15px">수출 전 수정 필요 · 4항목</div>
-          <table class="t"><tr><th>서류</th><th>상태</th><th></th></tr><tr><td>7-1.원료입고검사서.pdf</td><td><span class="tag">대기</span></td><td><button class="small ghost">열기</button></td></tr><tr><td>7-2.가공일지.pdf</td><td><span class="tag">승인</span></td><td><button class="small ghost">열기</button></td></tr></table>
+      <div class="card">
+        <div class="sec-head"><h3>서류함</h3><a href="#">전체 →</a></div>
+        <div class="list">
+          <a class="list-row" href="#"><span class="tag">대기</span><span class="lr-main">원료입고검사서</span><span class="lr-meta">04-08</span><span class="chev">›</span></a>
+          <a class="list-row" href="#"><span class="tag">승인</span><span class="lr-main">가공일지</span><span class="lr-meta">04-10</span><span class="chev">›</span></a>
+          <a class="list-row" href="#"><span class="tag">승인</span><span class="lr-main">포장 일지</span><span class="lr-meta">04-15</span><span class="chev">›</span></a>
         </div>
       </div>
-      <ul class="dd" style="margin-top:12px">
-        <li>글자 탭 + 밑줄, 번호 없음</li><li>결론 한 줄(판정 띠)부터</li><li>선과 바탕색으로만 구분</li><li>버튼 나열 대신 표 + [열기]</li>
-      </ul>
+      <ul class="dd"><li>제목 22 / 항목 16 굵게 / 날짜 14 회색</li><li>번호 없음, 설명문 없음</li><li>바탕색으로 묶음, 그림자 없음</li><li>버튼 대신 누르는 목록 행 + ›</li></ul>
     </div>
   </div>
 </section>
