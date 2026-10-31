@@ -15,10 +15,10 @@
       ledger: LC.seedLedger.slice(), raw: LC.rawLots.slice(), registry: LC.registry.slice(),
       shipments: (LC.shipmentsSeed || []).slice(), nutritionSources: (LC.nutritionSources || []).slice(), docs: [], specForms: {}, revisions: [],
       labels: Object.values(LC.sampleLabels).map(function (l) { return { file: l.file, country: l.country, made: l.made }; }),
-      importShipments: [], processLog: {}, importWaybills: [], publicData: {}, extraProducts: [], productNutrition: {}
+      importShipments: [], processLog: {}, importWaybills: [], publicData: {}, extraProducts: [], productNutrition: {}, replies: []
     };
   }
-  var SAVED = ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'docs', 'specForms', 'revisions', 'labels', 'importShipments', 'processLog', 'importWaybills', 'publicData', 'extraProducts', 'productNutrition'];
+  var SAVED = ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'docs', 'specForms', 'revisions', 'labels', 'importShipments', 'processLog', 'importWaybills', 'publicData', 'extraProducts', 'productNutrition', 'replies'];
   var state = { lastLabel: null };
   (function load() { var s = seeds(); SAVED.forEach(function (k) { state[k] = JSON.parse(localStorage.getItem('lc.' + k) || 'null') || s[k]; }); })();
   // 서버(server/app.py)가 있으면 서버 상태가 원본, 없으면(file://) 브라우저 저장. 동작은 같다
@@ -400,13 +400,14 @@
     var lots = specLots(), cur = specLot();
     var lotSel = lots.length ? '<label>로트 <select id="sp-lot"><option value=""' + (cur ? '' : ' selected') + '>없음(품목 규격서)</option>' + lots.map(function (l) { return '<option value="' + esc(l.lot) + '"' + (cur && cur.lot === l.lot ? ' selected' : '') + '>' + esc(l.lot) + (l.company_code ? ' (' + esc(l.company_code) + ')' : '') + ' · ' + esc(l.mfg) + '</option>'; }).join('') + '</select></label>' : '';
     return '<h2>규격서</h2><p class="sub">품목·양식·로트를 고르고 인쇄하세요. 로트를 고르면 Lot No.·제조일·소비기한 칸이 채워집니다.</p>' +
-      '<div class="row">' + productSelect('sp-prod') + formSelect('sp-form') + lotSel + '</div><div class="row"><button id="sp-pdf">PDF 받기</button>' + (state.specBuyer && state.specForms[state.specBuyer] && state.specForms[state.specBuyer].form_b64 ? '<button id="sp-xlsx">바이어 엑셀 양식에 채워 받기</button>' : '') + '<button class="ghost" onclick="window.print()">인쇄</button></div>' + sheetFor(cur);
+      '<div class="row">' + productSelect('sp-prod') + formSelect('sp-form') + lotSel + '</div><div class="row"><button id="sp-pdf">PDF 받기</button>' + (state.specBuyer && state.specForms[state.specBuyer] && state.specForms[state.specBuyer].form_b64 ? '<button id="sp-xlsx">바이어 엑셀 양식에 채워 받기</button>' : '') + '<button class="ghost" onclick="window.print()">인쇄</button></div>' + sheetFor(cur) + bundleCards();
   };
   screens.spec.bind = function () {
     bindProductSelect('sp-prod'); var el = $('#sp-form'); if (el) el.onchange = function () { state.specBuyer = el.value; route(); }; var ls = $('#sp-lot'); if (ls) ls.onchange = function () { state.specLot = ls.value; route(); };
     var cur = specLot(), nm = '규격서_' + (state.specBuyer || '기본') + '_' + P().code + (cur ? '_' + cur.lot : '');
     var pb = $('#sp-pdf'); if (pb) pb.onclick = function () { downloadPdf(nm, $('.sheet').outerHTML); };
     var xb = $('#sp-xlsx'); if (xb) xb.onclick = function () { downloadFilledXlsx(state.specBuyer, cur); };
+    bindBundles();
   };
 
   screens.ship = function () {
@@ -888,6 +889,44 @@
     save(); renderQuick();
     toast('승인 ' + done + '건 반영' + (skipped ? ' · 건너뜀 ' + skipped + '건(가림 미확인·종류 미확인)' : '') + ' → ' + intakeSummary());
   }
+  // 바이어별 서류 묶음: 바이어가 보낸 양식·문의마다 "보낼 것" 한 줄 (규격서 PDF·엑셀, 답장, 라벨 문안, 로트 패키지·QR, 선적 서류)
+  function bundleBuyers() {
+    var map = {};
+    Object.keys(state.specForms || {}).forEach(function (k) { var f = state.specForms[k], m = /[_\-\s](LB|WF|SR|LEG|CL)(?=[_\-\s.]|$)/i.exec(String(f.form_name || '')); map[k] = map[k] || { buyer: k, product: null }; map[k].form = f; if (m) map[k].product = m[1].toUpperCase(); });
+    // 문의 메일을 양식의 바이어와 합친다: 회사명 첫 토큰이 같으면(U社=U사, H Foods=H社) 그 줄, 아니면 같은 품목 양식이 하나뿐일 때 그 줄, 아니면 새 줄
+    var norm = function (x) { return String(x || '').replace(/社|사$/g, '사').replace(/[\s·,.()（）]+/g, ' ').trim().toLowerCase(); };
+    var head = function (x) { var t = norm(x).split(' ')[0] || ''; return t.replace(/사$/, ''); };
+    (state.replies || []).forEach(function (r) {
+      var ks = Object.keys(map), hit = ks.filter(function (b) { var h = head(b), hr = head(r.buyer); return h && hr && h.length >= 1 && (h === hr || (h.length >= 2 && hr.indexOf(h) === 0) || (hr.length >= 2 && h.indexOf(hr) === 0)); })[0];
+      if (!hit && r.product) { var same = ks.filter(function (b) { return map[b].product === r.product; }); if (same.length === 1) hit = same[0]; }
+      var k = hit || r.buyer || '(문의)'; map[k] = map[k] || { buyer: k, product: null }; map[k].reply = r; if (!map[k].product && r.product && LC.products[r.product]) map[k].product = r.product;
+    });
+    return Object.keys(map).map(function (k) { var b = map[k]; b.product = b.product && LC.products[b.product] ? b.product : P().code; var lots = state.ledger.filter(function (l) { return l.product === b.product; }).sort(function (x, y) { return String(y.mfg).localeCompare(String(x.mfg)); }); b.lot = lots[0] || null; return b; });
+  }
+  function bundleCards() {
+    var bs = bundleBuyers(); if (!bs.length) return '';
+    var btn = function (attr, text, cls) { return '<button class="' + (cls || 'small') + '" ' + attr + '>' + text + '</button>'; };
+    var a = function (href, text, attr) { return '<a class="btn small" href="' + href + '"' + (attr || '') + '>' + text + '</a>'; };
+    var rows = bs.map(function (b, i) {
+      var p = LC.products[b.product] || P(), items = [];
+      if (b.form) { items.push(btn('data-bd-pdf="' + i + '"', '규격서 PDF (' + esc(b.form.form_title || '양식') + ')')); if (b.form.form_b64) items.push(btn('data-bd-xlsx="' + i + '"', '바이어 엑셀에 채워 받기', 'small ghost')); }
+      if (b.reply) items.push(btn('data-bd-reply="' + i + '"', '답장 초안 .txt' + (b.reply.deadline ? ' (기한 ' + esc(b.reply.deadline) + ')' : ''), 'small'));
+      if (state.lastFix && state.lastFix.fields) items.push(btn('data-bd-label="' + i + '"', '라벨 문안 PDF (' + esc(state.lastFix.country) + ' 수정안)', 'small ghost'));
+      if (b.lot && API) items.push(a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(b.lot.lot), '로트 패키지 zip · ' + esc(b.lot.lot), ' download'), a(API + '/lot/' + encodeURIComponent(b.lot.lot) + '/qr.png', 'QR', ' target="_blank"'));
+      if (state.shipments.length && API) { var no = state.shipments[state.shipments.length - 1].no; items.push(a(API + '/shipdocs/pl?no=' + encodeURIComponent(no), '패킹리스트 초안 xlsx', ' download'), a(API + '/shipdocs/mdl?no=' + encodeURIComponent(no), '제조일자 리스트 xlsx', ' download')); }
+      var asked = b.reply && b.reply.answers ? b.reply.answers.map(function (x) { return x['주제'] || x.topic; }).filter(function (v, j, arr) { return v && arr.indexOf(v) === j; }).join('·') : '';
+      return '<tr><td><b>' + esc(b.buyer) + '</b><br><span class="muted">' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ' · 로트 ' + esc(b.lot.lot) : ' · 로트 없음') + (asked ? ' · 문의: ' + esc(asked) : '') + '</span></td><td class="outs">' + items.join(' ') + '</td></tr>';
+    }).join('');
+    return '<div class="card" id="bundle-card"><h3>바이어가 요청한 서류 묶음 <span class="muted">(바이어별로 보낼 것 · 버튼 누르면 파일)</span></h3><table><tr><th>바이어 · 품목</th><th>보낼 것</th></tr>' + rows + '</table></div>';
+  }
+  function bindBundles() {
+    var bs = bundleBuyers();
+    var withProduct = function (b, fn) { var prev = state.productCode; setProduct(b.product); try { fn(); } finally { setProduct(prev); } };
+    document.querySelectorAll('[data-bd-pdf]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdPdf]; withProduct(b, function () { downloadPdf('규격서_' + b.buyer + '_' + b.product + (b.lot ? '_' + b.lot.lot : ''), buyerFormSheet(b.buyer, b.lot)); }); }; });
+    document.querySelectorAll('[data-bd-xlsx]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdXlsx]; withProduct(b, function () { downloadFilledXlsx(b.buyer, b.lot); }); }; });
+    document.querySelectorAll('[data-bd-reply]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdReply]; download('답장초안_' + b.buyer + '.txt', String(b.reply.reply_draft || ''), 'text/plain;charset=utf-8'); }; });
+    document.querySelectorAll('[data-bd-label]').forEach(function (el) { el.onclick = function () { var fx = state.lastFix, rows = Object.keys(fx.fields).filter(function (k) { return fx.fields[k] && k !== 'country'; }); downloadPdf('라벨문안_' + fx.country + '_' + (fx.file || ''), '<div class="sheet"><h3>라벨 문안 (수정안) · ' + esc(fx.country) + '</h3><table>' + rows.map(function (k) { return '<tr><th>' + esc(k) + '</th><td>' + esc(fx.fields[k]) + '</td></tr>'; }).join('') + '</table></div>'); }; });
+  }
   function resultCards() {
     if (!state.ledger.length) return '';
     var ymd = LC.TODAY.replace(/-/g, '');
@@ -916,7 +955,7 @@
     if (state.shipments.length) { var last = state.shipments[state.shipments.length - 1]; sd = card('#ship', '선적 서류 · ' + esc(last.no), shipDocLinks(last.no) + (API && state.ledger.filter(shipped).length ? '<p><a href="/api/shipdocs/buyer?lot=' + encodeURIComponent(state.ledger.filter(shipped)[0].lot) + '" download>바이어 패키지 zip (' + esc(state.ledger.filter(shipped)[0].lot) + ')</a></p>' : '')); }
     var ntf = API ? '<details id="qk-notify"><summary class="muted">알림 미리보기 (만료·수입 미완, 매일 08:00 메일용)</summary><pre id="qk-notify-txt" class="muted">불러오는 중…</pre></details>' : '';
     var all = card('#export', '전체 CSV 묶음', '<button id="qk-all" aria-label="CSV 7개 전부 받기">CSV ' + EXPORTS.length + '개 전부 받기</button><p class="muted">로트원장·입고분·선적·만료·영양출처·수입체크·처리기록 (파일명 라벨코스트_표_' + ymd + ')</p>');
-    return '<h3 class="step">3. 결과물</h3><div class="grid4">' + ledger + link + spec + claim + dash + imp + sd + pub + all + '</div>' + ntf;
+    return '<h3 class="step">3. 보낼 서류</h3>' + (bundleCards() || '<p class="muted">바이어 양식이나 문의 메일을 올려 승인하면 바이어별로 보낼 서류가 여기 모입니다.</p>') + '<details class="fold-sec"><summary>회사 내부 기록 (로트 원장 · 선적 서류 · 클레임 · 대시보드 · 수입 · 내보내기)</summary><div class="grid4">' + ledger + link + spec + claim + dash + imp + sd + pub + all + '</div>' + ntf + '</details>';
   }
   screens.quick = function () {
     var fx = fixtures();
@@ -942,7 +981,7 @@
     }
     if ($('#qk-docbox')) { $('#qk-docbox').innerHTML = docBox(); bindDocBox(renderQuick); }
     if ($('#qk-guide')) $('#qk-guide').innerHTML = docGuide();
-    $('#qk-results').innerHTML = resultCards(); bindResults();
+    $('#qk-results').innerHTML = resultCards(); bindResults(); bindBundles();
   }
   function bindResults() {
     var b = $('#qk-spec'); if (b) b.onclick = function () { if ($('#qk-prod')) setProduct($('#qk-prod').value); if ($('#qk-form')) state.specBuyer = $('#qk-form').value; location.hash = '#spec'; setTimeout(function () { window.print(); }, 400); };

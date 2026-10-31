@@ -27,7 +27,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   }
   function ensure(s) { // app.js 가 안 만든 키 방어
     ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'labels', 'importShipments'].forEach(function (k) { s[k] = s[k] || []; });
-    s.specForms = s.specForms || {}; s.processLog = s.processLog || {}; s.revisions = s.revisions || []; s.productNutrition = s.productNutrition || {};
+    s.specForms = s.specForms || {}; s.processLog = s.processLog || {}; s.revisions = s.revisions || []; s.productNutrition = s.productNutrition || {}; s.replies = s.replies || [];
   }
   // 로트의 원료 연결. 그날 가공일지 약어가 있으면 그 입고분들, 없으면 제조일 이전 가장 가까운 입고분 1건
   function linkRaw(s, lot) {
@@ -221,6 +221,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   A['영양성적서'] = function (o, s) {
     upsert(s.nutritionSources, 'buyer', reportKey(o), { buyer: reportKey(o), product: o.product, kcal: num(o.kcal), protein: num(o.protein), fat: num(o.fat), carb: num(o.carb), salt_g: saltOf(o), basis: '실측', src: (o.issuer || '성적서') + ' ' + (o.report_no || '') + ' ' + (o.date || '') });
     var m = /\b(LB|WF|SR|LEG|CL)\b/.exec(String(o.product || '').toUpperCase()), code = m ? m[1] : null, extra = '';
+    if (code && /아님|참고|다른 제품|조미 전/.test(String(o.product || '') + ' ' + String(o.note || ''))) { code = null; extra = ' · 참고용 성적서라 품목 영양값은 그대로 둠'; }
     if (code) {   // 품목 영양값(100g) 채움. 실측 성적서가 바이어 추정값보다 우선
       var nv = { kcal: num(o.kcal), protein: num(o.protein), fat: num(o.fat), satfat: num(o.satfat), transfat: num(o.transfat), carb: num(o.carb), sugar: num(o.sugar), sodium_mg: num(o.sodium_mg) };
       s.productNutrition[code] = { n: nv, source: '자사 성적서 ' + (o.issuer || '') + ' ' + (o.report_no || '') + ' ' + (o.date || '') };
@@ -271,6 +272,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   };
   A['메일'] = function (o, s) {
     var ans = Array.isArray(o.answers) ? o.answers : [], ok = ans.filter(function (x) { return (x['상태'] || x.status) === '근거 있음'; }).length;
+    if (o.reply_draft) upsert(s.replies, 'subject', o.subject || '(제목 없음)', { buyer: o.from || '', subject: o.subject || '(제목 없음)', lang: o.lang || '', product: String(o.product || '').toUpperCase(), deadline: o.deadline || '', reply_draft: o.reply_draft, answers: ans, at: (window.LC && LC.TODAY) || '' });
     return '문의 "' + (o.subject || '') + '" 질문 ' + ans.length + '개 중 근거 있음 ' + ok + '개' + (o.reply_draft ? ' · 답장 초안 저장(agent/out)' : '') + (o.deadline ? ' · 기한 ' + o.deadline : '');
   };
 
