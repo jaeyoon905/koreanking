@@ -1,4 +1,4 @@
-// ⑧ 수입 체크 — 수입 건 데이터 + 화면. 수출 체크리스트와 같은 구조(서류 = 행, 상태 = 배지). 회사·거래처는 마스킹.
+// 수입 체크 — 수입 건 데이터 + 화면. 수출 체크리스트와 같은 구조(서류 = 행, 상태 = 배지). 회사·거래처는 마스킹.
 var LC = (typeof LC !== 'undefined') ? LC : {};
 
 LC.importSeed = [
@@ -35,7 +35,7 @@ LC.renderImport = function (state) {
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var CLS = { '있음': 'ok', '확인': 'warn', '없음': 'bad' };
   var tr = function (cells) { return '<tr>' + cells.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>'; };
-  return '<h2>⑧ 수입 체크</h2><p class="sub">수출의 반대 방향. 선적 1건에 딸린 서류가 다 왔는지, 신고서가 제품·제조소별로 몇 장 필요한지 센다.' + (live ? '' : ' <span class="muted">(아직 ⑦에서 승인한 수입 서류가 없어 시드를 표시)</span>') + '</p>' +
+  return '<h2>수입 체크</h2><p class="sub">수입 선적 서류가 다 왔는지 봅니다.' + (live ? '' : ' <span class="muted">(승인한 수입 서류가 없어 시드 표시)</span>') + '</p>' +
     list.map(function (s) {
       s.checklist = s.checklist || []; s.items = s.items || []; s.notes = s.notes || [];
       var req = s.checklist.filter(function (c) { return c.required; });
@@ -53,6 +53,6 @@ LC.renderImport = function (state) {
           return tr([c.required ? '필수' : '<span class="muted">선택</span>', esc(c.doc), st, esc(c.date || '-'), esc(c.note), '<span class="muted">' + esc(c.src || '-') + '</span>']);
         }).join('') + '</table>' +
         '<ul class="muted">' + s.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' +
-        '<p class="muted">수출 체크리스트와 같은 엔진. 서류 PDF를 ⑦에 넣으면 상태가 채워진다. 해외제조업소 등록 만료는 ⑥ 대시보드에서 D-day로 본다.</p></div>';
+        '<p class="muted">서류 PDF를 서류 넣기에 넣으면 상태가 채워진다. 해외제조업소 등록 만료는 대시보드에서.</p></div>';
     }).join('');
 };

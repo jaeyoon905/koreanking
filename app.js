@@ -48,13 +48,13 @@
     var t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
     t.textContent = msg; t.className = 'show'; clearTimeout(toast.timer); toast.timer = setTimeout(function () { t.className = ''; }, 3000);
   }
-  // 빈 원장 안내 (④⑤⑨ 공용)
+  // 빈 원장 안내 (선적·LOT·내보내기 공용)
   function shipped(l) { return !!(l.ship && !/미선적/.test(l.ship)); }   // 시드의 '미선적 (재고)' 문자열은 선적 아님
   function emptyLedger() { return '<p class="alert">아직 로트가 없습니다 → <a href="#quick">한 번에 처리에서 서류를 넣으세요</a></p>'; }
   function modeBadge() {
-    if (!API) return '오프라인(브라우저 저장)';
+    if (!API) return '오프라인';
     if (!health) return '서버 확인 중';
-    return health.ok ? '서버 연결 · AI 추출 ' + (health.llm ? '켜짐' : '꺼짐') : '서버 없음(브라우저 저장)';
+    return health.ok ? '서버' + (health.llm ? ' · AI' : '') : '오프라인';
   }
   if (API) {
     api('/health').then(function (h) { health = h; if (h && h.today) LC.TODAY = h.today; return api('/state'); })
@@ -178,7 +178,7 @@
   screens.label = function (arg) {
     var la = labelArg(arg);
     var sel = Object.keys(LC.sampleLabels).map(function (k) { var sl = LC.sampleLabels[k]; return '<option value="' + k + '"' + (k === la.key ? ' selected' : '') + '>' + ((LC.rules[sl.country] || LC.rules[k] || {}).name || sl.country) + ' — ' + sl.file + '</option>'; }).join('');
-    return '<h2>① 라벨 판정</h2><p class="sub">라벨 파일을 올리거나 받은 파일을 고르고 도착국을 정하면 규칙 파일로 항목별 판정. 추출만 자동, 판정은 규칙, 최종 확인은 사람.</p>' +
+    return '<h2>라벨 판정</h2><p class="sub">라벨 파일을 올리거나 받은 파일을 고르고 도착국을 정하면 규칙 파일로 항목별 판정. 추출만 자동, 판정은 규칙, 최종 확인은 사람.</p>' +
       '<div class="row"><label>받은 파일 <select id="lbl-sample">' + sel + '</select></label>' +
       '<label>또는 엑셀 업로드 <input type="file" id="lbl-file" accept=".xlsx,.xls"></label>' +
       '<label>도착국 <select id="lbl-country">' + Object.keys(LC.rules).map(function (k) { return '<option value="' + k + '">' + LC.rules[k].name + '</option>'; }).join('') + '</select></label>' +
@@ -201,7 +201,7 @@
       (rev.length ? '<p class="alert">고시 개정 이후 라벨: ' + rev.map(function (v) { return esc(v.title) + ' (시행 ' + v.effective + ')'; }).join(', ') + ' → 재검토 필요</p>' : '') +
       '<table><tr><th>항목</th><th>판정</th><th>현재</th><th>고칠 것</th></tr>' +
       res.map(function (x) { return '<tr><td>' + esc(x.item) + '</td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td>' + esc(x.msg) + '</td><td>' + esc(x.fix || '') + '</td></tr>'; }).join('') +
-      '</table><p class="muted">확인 항목만 모아 검사기관·대행사에 질의. 수정 항목은 품목 입력값에서 문구 생성 (② 화면).</p>' +
+      '</table><p class="muted">확인 항목만 모아 검사기관·대행사에 질의. 수정 항목은 품목 화면에서 문구 생성.</p>' +
       '<details><summary>추출된 필드</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details></div>';
     $('#lbl-out').innerHTML = html;
     state.lastLabel = { country: country, made: meta.made, file: meta.file, summary: s };
@@ -231,7 +231,7 @@
     var p = P();
     var ing = p.ingredients.map(function (i) { return '<tr><td>' + esc(i.name_ko) + '</td><td>' + (i.pct != null ? i.pct + '%' : '') + '</td><td>' + (i.type === 'additive' ? esc(i.func) + ' / INS ' + i.ins : '원료') + '</td></tr>'; }).join('');
     var nut = p.nutrition100 ? '<table>' + Object.keys(n).map(function (k) { return '<tr><td>' + k + '</td><td><input data-n="' + k + '" value="' + n[k] + '" size="6"></td></tr>'; }).join('') + '</table>' : '<p class="alert">성적서 필요 · 이 품목은 영양값이 없음</p>';
-    return '<h2>② 품목 입력 → 4개국 판정표</h2><p class="sub">한 번 입력. 배합비는 태국 라벨, 영양값은 대만 라벨에서 가져옴(추정값). 나라별 영양 항목·알레르겐·첨가물 문구가 같은 값에서 나오므로 나라마다 두 배씩 다른 일이 없어짐.</p>' +
+    return '<h2>품목</h2><p class="sub">한 번 입력. 배합비는 태국 라벨, 영양값은 대만 라벨에서 가져옴(추정값). 나라별 영양 항목·알레르겐·첨가물 문구가 같은 값에서 나오므로 나라마다 두 배씩 다른 일이 없어짐.</p>' +
       '<div class="row">' + productSelect('prd-prod') + '</div><div class="cols"><div class="card"><h3>' + esc(p.name_ko) + ' (' + p.code + ')</h3><table><tr><th>원재료</th><th>배합비</th><th>구분</th></tr>' + ing + '</table><p class="muted">알레르겐: 갑각류(게) · 공정: ' + esc(p.process) + '</p></div>' +
       '<div class="card"><h3>영양 (100g)</h3>' + nut + '<p class="muted">' + esc(p.nutrition_source) + '</p>' + (p.nutrition100 ? '<button id="prd-apply">환산</button>' : '') + '</div></div>' +
       (API ? '<details class="demo" id="prd-pub"><summary>품목제조보고에서 가져오기 (식약처 OpenAPI)</summary><div id="prd-pub-out" class="muted">열면 조회합니다</div></details>' : '<p class="muted">품목제조보고 가져오기는 서버 모드(run.bat)에서</p>') +
@@ -250,13 +250,13 @@
           var x = r.rows[+b.dataset.pubAdd], m = /(\d+)\s*개월/.exec(String(x.shelf_life || ''));
           var o = { code: 'P' + String(x.report_no || '').slice(-4), name_ko: x.prdlst_nm, type: x.prdlst_dcnm, report_no: x.report_no, shelf_months: m ? +m[1] : 24, source: '식약처 품목제조보고 ' + (x.report_date || '') };
           state.extraProducts = (state.extraProducts || []).filter(function (e) { return e.code !== o.code; }).concat([o]); addExtraProduct(o); setProduct(o.code); save();
-          toast('품목 추가: ' + o.code + ' ' + o.name_ko + ' (영양 성적서는 ⑦에서)'); route();
+          toast('품목 추가: ' + o.code + ' ' + o.name_ko + ' (영양 성적서는 서류 넣기에서)'); route();
         };
       });
     }).catch(function (e) { box.textContent = '조회 실패: ' + e; });
   }
   function renderProductOut() {
-    if (!P().nutrition100) { $('#prd-out').innerHTML = '<p class="alert">성적서 필요 · 영양 성적서가 들어오면(⑦ 서류 넣기) 4개국 환산표가 나옴</p>'; return; }
+    if (!P().nutrition100) { $('#prd-out').innerHTML = '<p class="alert">성적서 필요 · 영양 성적서가 들어오면(서류 넣기) 나라별 환산표가 나옴</p>'; return; }
     var html = '<div class="grid4">' + Object.keys(LC.rules).map(function (k) {
       var r = LC.rules[k];
       return '<div class="card"><h3>' + r.name + '</h3><p class="muted">' + esc(r.law) + '</p><table>' + (k === 'CN' && typeof LC.nutritionCN === 'function' ? LC.nutritionCN(P()) : nutritionBy[k] ? nutritionBy[k]() : [['영양표시', '환산표 미구현']]).map(function (x) { return '<tr><td>' + esc(x[0]) + '</td><td>' + esc(x[1]) + '</td></tr>'; }).join('') + '</table>' +
@@ -282,7 +282,7 @@
     if (lot) rows = rows.concat([['LOT', lot.lot + (lot.company_code ? ' (회사 코드 ' + lot.company_code + ')' : '')], ['製造日 / 제조일', lot.mfg], ['賞味期限 / 소비기한', lot.expiry], ['数量 / 수량', lot.qty_ct + ' C/T, ' + lot.kg + ' kg'], ['衛生証明書 / 위생증명서', lot.cert], ['出荷 / 선적', lot.ship], ['LOT 조회', location.origin + location.pathname + '#lot/' + lot.lot]]);
     return '<div class="sheet"><h3>' + (lot ? '로트 규격서 (出荷ロット規格書)' : '품목 규격서 (原材料規格書・製造工程表)') + '</h3><p class="muted">바이어 양식 템플릿 기준 · 발행일 ' + LC.TODAY + '</p><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>';
   }
-  // ③ 바이어 양식 규격서: ⑦에서 승인한 양식(state.specForms[buyer])의 칸 순서 그대로. 우리 데이터에 없는 값은 노란 빈칸
+  // 바이어 양식 규격서: 서류 넣기에서 승인한 양식(state.specForms[buyer])의 칸 순서 그대로. 우리 데이터에 없는 값은 노란 빈칸
   function buyerFormSheet(buyer, lot) {
     var f = state.specForms[buyer] || {}, p = (lot && LC.products && LC.products[lot.product]) || P(), miss = ' style="background:#fff3bf"';
     var code = (String(f.spec || '').match(/商品コード\s*([\w\-－]+)/) || [])[1] || '';
@@ -303,27 +303,27 @@
   }
   function sheetFor(lot) { return state.specBuyer && state.specForms[state.specBuyer] ? buyerFormSheet(state.specBuyer, lot) : specSheet(lot); }
   screens.spec = function () {
-    return '<h2>③ 품목 규격서</h2><p class="sub">②의 값 + 인증 목록이 그대로 들어감. 거래 시작 때 1회. ⑦에서 바이어 규격서 양식을 승인하면 그 양식으로도 나옴. 인쇄 → PDF.</p>' +
+    return '<h2>규격서</h2><p class="sub">품목 값 + 인증 목록이 그대로 들어감. 거래 시작 때 1회. 서류 넣기에서 바이어 규격서 양식을 승인하면 그 양식으로도 나옴. 인쇄 → PDF.</p>' +
       '<div class="row">' + productSelect('sp-prod') + formSelect('sp-form') + '</div><button onclick="window.print()">PDF로 저장(인쇄)</button>' + sheetFor(null);
   };
   screens.spec.bind = function () { bindProductSelect('sp-prod'); var el = $('#sp-form'); if (el) el.onchange = function () { state.specBuyer = el.value; route(); }; };
 
   screens.ship = function () {
     var raw = state.raw.map(function (r) { return '<label class="chk"><input type="checkbox" name="raw" value="' + r.id + '"> ' + r.id + ' · ' + r.species + ' 어획 ' + r.caught + ' ' + r.landing + ' ' + r.kg + 'kg' + (r.note ? ' <small class="muted">' + esc(r.note) + '</small>' : '') + '</label>'; }).join('');
-    return '<h2>④ 선적 입력 → 로트 규격서 + 원장</h2><p class="sub">선적 때 넣는 건 세 칸(제조일·수량·증명서 번호(요구하는 바이어만))과 원어 로트 체크. LOT = 제조일-품목코드. 원장 한 줄과 LOT 링크가 생김.</p>' +
+    return '<h2>선적·원장</h2><p class="sub">선적 때 넣는 건 세 칸(제조일·수량·증명서 번호(요구하는 바이어만))과 원어 로트 체크. LOT = 제조일-품목코드. 원장 한 줄과 LOT 링크가 생김.</p>' +
       '<div class="card"><div class="row">' + productSelect('sh-prod') + '<label>제조일 <input type="date" id="sh-mfg" value="2026-10-14"></label><label>수량(C/T) <input type="number" id="sh-qty" value="100"></label><label>중량(kg) <input type="number" id="sh-kg" value="1000"></label>' +
       '<label>위생증명서 번호 <input id="sh-cert" value="해당 없음" placeholder="요구하는 바이어만 번호 입력"></label><label>도착국 <select id="sh-country"><option>TW</option><option>JP</option><option>HK</option><option>TH</option><option>CN</option></select></label>' +
       '<label>바이어 <input id="sh-buyer" list="buyer-list" value="' + (LC.buyers && LC.buyers.length ? '일본 바이어 ' + LC.buyers[0].code : '대만 바이어 F사') + '"><datalist id="buyer-list">' + (LC.buyers || []).map(function (b) { return '<option value="' + (b.country === 'JP' ? '일본' : b.country) + ' 바이어 ' + esc(b.code) + '">' + esc(b.port + ' · ' + b.spec_form + ' · 증명서 ' + b.cert) + '</option>'; }).join('') + '</datalist></label><label>선적 <input id="sh-ship" value="2026-10-20 부산→기륭"></label></div><div class="rawbox"><b>원어 입고 로트</b><br>' + raw + '</div><button id="sh-add">원장에 추가 + 로트 규격서</button></div>' +
       '<div id="sh-out"></div><h3>선적 목록</h3>' + shipmentCards() + '<h3>로트 원장</h3><div id="sh-ledger"></div><button class="ghost" id="sh-reset">시드로 초기화</button>';
   };
-  function shipmentCards() {  // state.shipments(⑦ 패킹리스트 승인 또는 시드) → 선적별 카드
-    if (!state.shipments.length) return '<p class="muted">선적 없음 · ⑦에서 패킹리스트를 승인하면 생김</p>';
+  function shipmentCards() {  // state.shipments(패킹리스트 승인 또는 시드) → 선적별 카드
+    if (!state.shipments.length) return '<p class="muted">선적 없음 · 서류 넣기에서 패킹리스트를 승인하면 생김</p>';
     return state.shipments.map(function (sh) {
       var lots = state.ledger.filter(function (l) { return (l.ship || '').indexOf(sh.no) >= 0; });
       return '<div class="card"><b>' + esc(sh.no) + '</b> · 출항 ' + esc(sh.etd || sh.date) + ' · ' + esc(sh.buyer) + ' · ' + esc(sh.vessel) + ' · ' + esc(sh.route) + ' · 증명서: ' + esc(sh.cert || '해당 없음') +
         '<table><tr><th>품목</th><th class="num">C/T</th><th class="num">kg</th></tr>' + (sh.items || []).map(function (it) { return '<tr><td>' + esc(it.desc) + '</td><td class="num">' + it.ct + '</td><td class="num">' + (it.kg != null ? it.kg : '-') + '</td></tr>'; }).join('') +
         '<tr><th>합계</th><th class="num">' + (sh.total_ct != null ? sh.total_ct : '') + '</th><th class="num">' + (sh.total_kg != null ? sh.total_kg : '') + '</th></tr></table>' +
-        '<p><b>이 선적에 연결된 LOT</b> ' + (lots.length ? lots.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + (l.company_code ? ' (' + l.company_code + ')' : '') + '</a>'; }).join(', ') : '연결된 LOT 없음 · ⑦에서 패킹리스트를 승인하면 연결') + '</p>' +
+        '<p><b>이 선적에 연결된 LOT</b> ' + (lots.length ? lots.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + (l.company_code ? ' (' + l.company_code + ')' : '') + '</a>'; }).join(', ') : '연결된 LOT 없음 · 서류 넣기에서 패킹리스트를 승인하면 연결') + '</p>' +
         (sh.note ? '<p class="muted">' + esc(sh.note) + '</p>' : '') + shipDocLinks(sh.no) + '</div>';
     }).join('');
   }
@@ -356,7 +356,7 @@
   };
 
   screens.lot = function (arg) {
-    return '<h2>⑤ LOT 조회</h2><p class="sub">바이어 면은 지금 메일로 보내는 서류 수준만. 회사 면에서만 원어 로트·출고처 역추적. 원어 로트 번호를 넣으면 거꾸로 제품 로트→선적이 나옴.</p>' +
+    return '<h2>LOT 조회</h2><p class="sub">바이어 면은 지금 메일로 보내는 서류 수준만. 회사 면에서만 원어 로트·출고처 역추적. 원어 로트 번호를 넣으면 거꾸로 제품 로트→선적이 나옴.</p>' +
       (state.ledger.length ? '' : emptyLedger()) +
       '<div class="row"><input id="lot-q" list="lot-list" placeholder="LOT · 회사 코드(AJ) · 입고 ID(R-…)" value="' + esc(arg || '') + '" size="34" aria-label="LOT 검색">' + lotDatalist() + '<button id="lot-go" aria-label="조회">조회</button>' +
       '<span class="tabs" role="tablist"><button class="tab' + (lotInside ? ' ghost' : '') + '" id="lot-tab-buyer" role="tab" aria-selected="' + !lotInside + '">바이어 면</button><button class="tab' + (lotInside ? '' : ' ghost') + '" id="lot-tab-inside" role="tab" aria-selected="' + lotInside + '">회사 면(내부)</button></span></div><div id="lot-out"></div>';
@@ -458,7 +458,7 @@
       var d = daysTo(v.effective);
       return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + revisionLabels(v) + '</td><td class="muted">' + esc(v.note) + '</td></tr>';
     }).join('');
-    return '<h2>⑥ 대시보드 — 등록·인증 D-day, 고시 개정</h2><p class="sub">평소엔 안 봄. 90일·30일 전 알림. HACCP 끊기면 EU·GACC 등록까지 흔들리므로 최상위.</p>' +
+    return '<h2>대시보드</h2><p class="sub">평소엔 안 봄. 90일·30일 전 알림. HACCP 끊기면 EU·GACC 등록까지 흔들리므로 최상위.</p>' +
       '<div class="badges"><span class="b bad">30일 이내 ' + cnt.bad + '</span><span class="b warn">90일 이내 ' + cnt.warn + '</span><span class="b ok">여유 ' + cnt.ok + '</span></div>' +
       '<div class="card"><h3>등록·인증 레지스트리 (오늘 ' + LC.TODAY + ')</h3><table><tr><th>층</th><th>종류</th><th>번호</th><th>발급</th><th>만료</th><th>D-day</th><th>국가</th><th>비고</th></tr>' + rows + '</table></div>' +
       '<div class="card"><h3>고시 개정 → 영향받는 라벨</h3><table><tr><th>국</th><th>고시</th><th>시행일</th><th>재검토 라벨</th><th>비고</th></tr>' + rev + '</table></div>' +
@@ -490,7 +490,7 @@
     };
   };
 
-  // ---------- ⑦ 서류 넣기: 접수부 → 읽기부 → 검증부 → 결재부 ----------
+  // ---------- 서류 넣기: 접수부 → 읽기부 → 검증부 → 결재부 ----------
   var intakeCards = [];   // 이번 화면에서 올린 파일들 (새로고침하면 비움)
   function fixtures() { return LC.extractFixtures || []; }
   function matchFixture(name) { return fixtures().filter(function (f) { return f.match && f.match.test ? f.match.test(name) : name.indexOf(f.match) >= 0; })[0] || null; }
@@ -560,7 +560,7 @@
     Object.keys(obj).forEach(function (k) { var lab = (def.fields.filter(function (f) { return f.k === k; })[0] || def.rows && def.rows.k === k && def.rows || { label: k }).label; fields.push({ k: k, label: lab, v: obj[k], src: '직접 입력' }); });
     c.fields = fields; c.mode = 'manual'; c.manual = false; c.sensitive = false; c.open = true;
   }
-  // ⑦ 카드·한 번에 처리 표 공용 바인딩. rerenderFn 은 그 화면의 다시 그리기
+  // 서류 넣기 카드·한 번에 처리 표 공용 바인딩. rerenderFn 은 그 화면의 다시 그리기
   function bindManual(rerenderFn) {
     document.querySelectorAll('[data-man]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.man]; c.manual = !c.manual; c.open = true; rerenderFn(); }; });
     document.querySelectorAll('[data-mantype]').forEach(function (el) { el.onchange = function () { var i = +el.dataset.mantype; harvest(i); intakeCards[i].doc_type = el.value; rerenderFn(); }; });
@@ -616,7 +616,7 @@
     };
     fr.readAsDataURL(file);
   }
-  // fixture 를 큐에 넣는다 (⑦ 버튼·한 번에 처리 공용)
+  // fixture 를 큐에 넣는다 (서류 넣기·한 번에 처리 공용)
   function queueFixture(f) { var c = cardFromFixture(f, f.source); intakeCards.push(c); if (API) extractOnServer(c); return c; }
   function intakeSummary() { return '로트 ' + state.ledger.length + '건 · 입고 ' + state.raw.length + '건 · 선적 ' + state.shipments.length + '건 · 영양 출처 ' + state.nutritionSources.length + '건'; }
   // 받은 파일 묶음: 4월 수출(실제) / 6월 가상 / 수입. fixture id 로 나눈다
@@ -626,7 +626,7 @@
       var btns = fixtures().map(function (f, i) { return g[1](f) ? '<button class="ghost" data-fx="' + i + '">' + esc(f.source) + '</button>' : ''; }).join(' ');
       return btns.trim() ? '<details class="demo"' + (g[2] ? ' open' : '') + '><summary>받은 파일로 시연 · ' + g[0] + '</summary><div class="row">' + btns + '</div></details>' : '';
     }).join('') : '<p class="muted">fixtures.js 없음. 파일명으로 종류만 봄.</p>';
-    return '<h2>⑦ 서류 넣기 (하나씩 보기)</h2><p class="sub">사진·PDF를 올리면 접수부가 종류를 정하고, 읽기부가 칸을 뽑고, 검증부가 원장과 대조하고, 결재(사람)가 승인해야 반영된다. 한꺼번에 처리하려면 <a href="#quick">한 번에 처리</a>.</p>' +
+    return '<h2>서류 넣기</h2><p class="sub">사진·PDF를 올리면 접수부가 종류를 정하고, 읽기부가 칸을 뽑고, 검증부가 원장과 대조하고, 결재(사람)가 승인해야 반영된다. 한꺼번에 처리하려면 <a href="#quick">한 번에 처리</a>.</p>' +
       '<div class="card">' + dropZone('in') +
       '<div class="row"><button class="ghost" id="in-empty" aria-label="원장을 비우고 시연 시작">시연 초기화(빈 원장)</button><button class="ghost" id="in-seed" aria-label="시드 데이터로 복원">시드로 복원</button></div>' +
       demo + '<p class="summary-bar" id="in-sum">' + intakeSummary() + '</p></div>' +
@@ -643,7 +643,7 @@
     document.querySelectorAll('[data-toggle]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.toggle]; c.open = !c.open; renderIntake(); }; });
     bindManual(renderIntake);
   }
-  // 드롭 영역 + 파일 선택. prefix 로 id 를 나눈다(⑦: in, 한 번에: qk)
+  // 드롭 영역 + 파일 선택. prefix 로 id 를 나눈다(서류 넣기: in, 한 번에: qk)
   function dropZone(prefix) { return '<div class="drop" id="' + prefix + '-drop"><b>여기에 사진·PDF 놓기</b><span class="muted">또는 파일 선택 · 여러 개 가능</span><label>사진·PDF 올리기 <input type="file" id="' + prefix + '-file" multiple aria-label="서류 파일 선택"></label></div>'; }
   function bindDrop(prefix, onFiles) {
     var dz = $('#' + prefix + '-drop'); if (!dz) return;
@@ -735,7 +735,7 @@
   screens.quick = function () {
     var fx = fixtures();
     var g = function (i) { return fx.filter(FX_GROUPS[i][1]).length; };
-    return '<h2>한 번에 처리</h2><p class="sub">서류를 넣고 → 표에서 확인할 것만 보고 → 전부 승인하면 → 결과물이 나온다. 하나씩 보고 싶으면 <a href="#intake">⑦ 서류 넣기</a>.</p>' +
+    return '<h2>한 번에 처리</h2><p class="sub">서류를 넣고 → 표에서 확인할 것만 보고 → 전부 승인하면 → 결과물이 나온다. 하나씩 보려면 <a href="#intake">서류 넣기</a>.</p>' +
       '<h3 class="step">1. 서류 넣기</h3><div class="card">' + dropZone('qk') +
       (fx.length ? '<div class="row"><button id="qk-all9" aria-label="받은 파일 전부 넣기">받은 파일 전부 넣기 (시연 · 4월 수출 ' + g(0) + '건)</button><a href="#" id="qk-jun" class="muted">+ 6월 두 번째 선적 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 서류 ' + g(2) + '건</a><button class="ghost" id="qk-empty" aria-label="원장 비우기">빈 원장으로 시작</button></div>' : '') + '</div>' +
       '<h3 class="step">2. 확인</h3><div class="card" id="qk-table"></div>' +
@@ -800,11 +800,11 @@
     document.querySelectorAll('[data-stcsv]').forEach(function (b) { b.onclick = function () { download('라벨코스트_집계_' + b.dataset.stcsv + '_' + LC.TODAY.replace(/-/g, '') + '.csv', '\ufeff' + STAT_CSV[b.dataset.stcsv]); }; });
   };
 
-  // ---------- ⑧ 수입 체크: 본문은 import.js ----------
-  screens['import'] = function () { return typeof LC.renderImport === 'function' ? LC.renderImport(state) : '<h2>⑧ 수입 체크</h2><p class="muted">import.js 준비 중</p>'; };
+  // ---------- 수입 체크: 본문은 import.js ----------
+  screens['import'] = function () { return typeof LC.renderImport === 'function' ? LC.renderImport(state) : '<h2>수입 체크</h2><p class="muted">import.js 준비 중</p>'; };
   screens['import'].bind = function () { if (LC.bindImport) LC.bindImport(state, $); };
 
-  // ---------- ⑨ 내보내기: CSV(UTF-8 BOM)·JSON 백업. 전부 브라우저 Blob, 서버 불필요 ----------
+  // ---------- 내보내기: CSV(UTF-8 BOM)·JSON 백업. 전부 브라우저 Blob, 서버 불필요 ----------
   function csvText(rows, cols) {
     var q = function (v) { if (Array.isArray(v)) v = v.join('; '); v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     return '\ufeff' + [cols.join(',')].concat(rows.map(function (r) { return cols.map(function (c) { return q(r[c]); }).join(','); })).join('\r\n');
@@ -823,7 +823,7 @@
   ];
   screens['export'] = function () {
     var ymd = LC.TODAY.replace(/-/g, '');
-    return '<h2>⑨ 내보내기</h2><p class="sub">원장을 CSV(엑셀)로. 백업은 JSON 한 파일. 서버 없이 브라우저에서 바로 내려받는다.</p>' + (state.ledger.length ? '' : emptyLedger()) +
+    return '<h2>내보내기</h2><p class="sub">원장을 CSV(엑셀)로. 백업은 JSON 한 파일. 서버 없이 브라우저에서 바로 내려받는다.</p>' + (state.ledger.length ? '' : emptyLedger()) +
       '<div class="card"><h3>표 내보내기 (CSV)</h3><div class="row">' + EXPORTS.map(function (e, i) { return '<button data-csv="' + i + '">' + e[0] + '</button>'; }).join('') + '</div><p class="muted">파일명 라벨코스트_표이름_' + ymd + '.csv</p></div>' +
       '<div class="card"><h3>백업</h3><div class="row"><button id="exp-json">전체 백업(JSON)</button><label>백업 불러오기 <input type="file" id="exp-load" accept=".json"></label>' + (API ? '<a href="' + API + '/backup" target="_blank">서버 백업 내려받기</a>' : '') + '</div><p id="exp-msg" class="muted">' + intakeSummary() + '</p></div>';
   };
@@ -839,16 +839,17 @@
   };
 
   // ---------- 라우팅 ----------
-  // 첫 줄: 홈 / 한 번에 처리 / LOT 찾기 / 만료. 둘째 줄("자세히"): ①~⑨
-  var NAV_MAIN = [['home', '홈', '오늘 할 일 요약'], ['quick', '한 번에 처리', '서류 넣기 → 확인 → 결과물'], ['lot', 'LOT 찾기', '바이어 면 / 회사 면 역추적, 클레임 보고서'], ['dash', '만료', '등록·인증 만료 D-day'], ['stats', '집계', '월별 생산·선적·재고·수율']];
-  var NAV = [['label', '① 라벨 판정', '라벨을 나라 규칙으로 판정'], ['product', '② 품목·4개국', '품목 한 번 입력 → 나라별 영양·문구'], ['spec', '③ 규격서', '품목·바이어 양식 규격서 PDF'], ['ship', '④ 선적·원장', '선적 한 줄 입력, 로트 원장'], ['lot', '⑤ LOT 조회', '역추적'], ['dash', '⑥ 대시보드', '만료 D-day'], ['intake', '⑦ 서류 넣기', '하나씩 보기'], ['import', '⑧ 수입 체크', '수입 선적 서류 체크리스트'], ['export', '⑨ 내보내기', 'CSV·JSON 백업']];
-  function navLink(x, name) { return '<a href="#' + x[0] + '" class="' + (x[0] === name ? 'on' : '') + '" title="' + esc(x[2]) + '"' + (x[0] === name ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }
+  // 첫 줄: 묶음 6개. 둘째 줄: 현재 묶음 안의 화면들
+  var NAV_MAIN = [['home', '홈', '오늘 할 일'], ['quick', '한 번에 처리', '서류 넣기 → 확인 → 결과물'], ['label', '라벨', '라벨 판정 · 품목 · 규격서'], ['ship', '생산·LOT', '선적·원장 · LOT 조회'], ['intake', '서류', '서류 넣기 · 대시보드 · 수입 체크 · 내보내기'], ['stats', '집계', '월별 생산·선적·재고·수율']];
+  var NAV_SUB = { label: [['label', '라벨 판정'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['export', '내보내기']] };
+  function groupOf(name) { for (var g in NAV_SUB) if (NAV_SUB[g].some(function (x) { return x[0] === name; })) return g; return name; }
+  function navLink(x, on) { return '<a href="#' + x[0] + '" class="' + (on ? 'on' : '') + '" title="' + esc(x[2] || x[1]) + '"' + (on ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }
   function route() {
     var h = location.hash.replace('#', '') || 'home'; var parts = h.split('/'); var name = parts[0]; var arg = decodeURIComponent(parts.slice(1).join('/'));
     if (!screens[name]) name = 'home';
-    var inDetail = NAV.some(function (x) { return x[0] === name; }) && !NAV_MAIN.some(function (x) { return x[0] === name; });
-    $('#nav').innerHTML = '<div class="nav-main">' + NAV_MAIN.map(function (x) { return navLink(x, name); }).join('') + ' <span class="muted" id="mode">' + esc(modeBadge()) + ' · 오늘 ' + LC.TODAY + '</span></div>' +
-      '<details class="nav-more"' + (inDetail ? ' open' : '') + '><summary>자세히 ①~⑨</summary><div class="nav-sub">' + NAV.map(function (x) { return navLink(x, name); }).join('') + '</div></details>';
+    var g = groupOf(name), sub = NAV_SUB[g];
+    $('#nav').innerHTML = '<div class="nav-main">' + NAV_MAIN.map(function (x) { return navLink(x, x[0] === g); }).join('') + ' <span class="muted" id="mode">' + esc(modeBadge()) + ' · ' + LC.TODAY + '</span></div>' +
+      (sub ? '<div class="nav-sub">' + sub.map(function (x) { return navLink(x, x[0] === name); }).join('') + '</div>' : '');
     $('#main').innerHTML = screens[name](arg);
     if (screens[name].bind) screens[name].bind(arg);
   }

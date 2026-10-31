@@ -131,7 +131,7 @@ def server_checks():
         def fn(pg, errs):
             pg.goto(B + '/#intake'); pg.wait_for_timeout(900)
             badge = pg.inner_text('#mode') if pg.query_selector('#mode') else ''
-            check('C 모드 배지 서버 연결', '서버 연결' in badge, badge)
+            check('C 모드 배지 서버', badge.startswith('서버'), badge)
             click_btn(pg, '빈 원장', 800)
             files = [DOCS / '7-3.포장 일지.pdf', DOCS / '7-1.원료입고검사서.pdf', DOCS / '7-2.가공일지.pdf', DOCS / '5-2.패킹리스트.png']
             missing = [f.name for f in files if not f.exists()]
