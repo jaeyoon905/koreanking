@@ -238,6 +238,44 @@ tr.qk-sub .log { margin: 4px 0 0; } tr.qk-sub .log li { border: 0; padding: 3px 
 .home > *, .feature > *, .cols > *, .grid4 > *, .stats > * { min-width: 0; }
 select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 
+
+/* ---------- 나라별 라벨: 실제 포장 라벨처럼 + 바꾼 이유 말풍선 ---------- */
+.tagview { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 32px; align-items: start; }
+.tagview > section { min-width: 0; }
+.tv-h { font-size: 22px; margin: 0 0 12px; display: flex; align-items: baseline; gap: 8px; } .tv-h .muted { font-weight: 400; }
+.tv-country + .tv-country { margin-top: 40px; }
+.tv-pair { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 24px; align-items: start; }
+#tg-out.shown .tv-country { animation: tv-in .35s ease-out both; } #tg-out.shown .tv-country + .tv-country { animation-delay: .15s; }
+@keyframes tv-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #tg-out.shown .tv-country { animation: none; } }
+
+.pkg { background: #fff; border: 2px solid #111; color: #111; font-family: "Apple SD Gothic Neo", "PingFang SC", "Hiragino Sans", "Noto Sans CJK KR", "Noto Sans SC", "Noto Sans JP", sans-serif; font-size: 13px; line-height: 1.45; padding: 0; }
+.pkg > table { border: 0; border-radius: 0; margin: 0; background: #fff; font-size: 13px; }
+.pkg > table th, .pkg > table td { border: 0; border-bottom: 1px solid #111; padding: 6px 8px; vertical-align: top; background: #fff !important; color: #111; }
+.pkg > table th { width: 30%; font-weight: 700; font-size: 13px; border-right: 1px solid #111; white-space: nowrap; }
+.pkg.jp > table th { width: 24%; }
+.pkg .sep { color: var(--primary); padding: 0 2px; }
+.pkg-al { margin: 0; padding: 6px 8px; border-bottom: 1px solid #111; }
+.pkg-nut { margin: 8px; border: 2px solid #111; }
+.pkg-nut .pn-h { background: #111; color: #fff; font-weight: 800; font-size: 15px; padding: 4px 8px; display: flex; justify-content: space-between; align-items: baseline; }
+.pkg-nut .pn-h small { font-weight: 400; font-size: 12px; }
+.pkg-nut.jp .pn-h { background: #fff; color: #111; border-bottom: 2px solid #111; }
+.pkg-nut table { border: 0; border-radius: 0; margin: 0; font-size: 12px; }
+.pkg-nut td { border: 0; border-bottom: 1px solid #111; padding: 3px 8px; background: #fff !important; color: #111; }
+.pkg-nut p { margin: 0; padding: 4px 8px; font-size: 11px; }
+.mk { display: inline-flex; width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; align-items: center; justify-content: center; margin-right: 6px; vertical-align: 1px; flex: none; font-family: var(--font); }
+.mk-wrap { margin: 8px 8px -4px; }
+
+.bubbles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.bubble { position: relative; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 12px 16px 12px 44px; }
+.bubble::before { content: ""; position: absolute; left: -7px; top: 16px; width: 12px; height: 12px; background: var(--surface); border-left: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); transform: rotate(45deg); }
+.bubble > .mk { position: absolute; left: 14px; top: 13px; }
+.bubble b { display: block; font-size: 16px; }
+.bubble p { margin: 2px 0 8px; font-size: 14px; color: var(--ink-2); }
+.bubble .ref { max-width: none; white-space: normal; }
+@media (max-width: 1100px) { .tv-pair { grid-template-columns: 1fr; } }
+@media (max-width: 800px) { .tagview { grid-template-columns: 1fr; } }
+
 /* ---------- 모바일 ---------- */
 @media (max-width: 800px) {
   header { padding: 0 16px; } .nav-sub { margin: 0 -16px; padding: 8px 16px; }

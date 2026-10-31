@@ -175,7 +175,7 @@
       '<p class="hero-sub">홍콩 · 대만 · 태국 · 일본 · 중국 규칙으로 항목별 판정, 공장 LOT 기록까지 한 줄로.</p>' +
       '<div class="search"><input id="home-q" list="lot-list" placeholder="LOT 번호나 회사 코드로 찾기 (예: 20260410-LB)" aria-label="LOT 찾기"><button id="home-go" aria-label="LOT 조회">찾기</button></div>' + lotDatalist() +
       '<div class="panel feature"><a class="lead-tile" href="' + go0 + '"><span class="lt-k">라벨 판정 · ' + esc(LC.rules[l0.country].name) + ' 라벨</span><span class="lt-v">' + (s0.fix ? '수정 ' + s0.fix + '항목' : '통과') + '</span><span class="lt-d">확인 ' + s0.check + ' · 통과 ' + s0.pass + ' · ' + esc(l0.file) + '</span></a>' +
-      '<div class="list">' + listRow('#quick', '', '한 번에 처리', '서류 → 판정 → 기록') + listRow('#lot', '', 'LOT 조회', '원어 입고까지') + listRow('#intake', '', '서류 넣기', '사진·PDF 읽기') + '</div></div>' +
+      '<div class="list">' + listRow('#tags/go', '', '나라별 라벨', '한국 → 중국·일본') + listRow('#quick', '', '한 번에 처리', '서류 → 판정 → 기록') + listRow('#lot', '', 'LOT 조회', '원어 입고까지') + listRow('#intake', '', '서류 넣기', '사진·PDF 읽기') + '</div></div>' +
       '</div><div class="card"><div class="sec-head"><h3>오늘 할 일</h3><span class="muted">' + LC.TODAY + '</span></div>' +
       (items.length ? '<div class="list">' + items.map(function (t) { var badge = t.href === '#intake' ? '<span class="tag">대기</span>' : '<span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '수정' : '확인') + '</span>'; return listRow(t.href, badge, esc(t.text), t.go); }).join('') + '</div>' : '<p class="muted">오늘 할 일 없음</p>') +
       '<p class="muted home-recent">' + (recent.length ? '최근 LOT ' + recent.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + '</a>'; }).join(' · ') : 'LOT 없음') + monthLine() + '</p>' +
@@ -359,6 +359,76 @@
       });
     }).catch(function (e) { box.textContent = '조회 실패: ' + e; });
   }
+  // ---------- 나라별 라벨: 한국 원본 → 중국·일본 라벨 + 바꾼 이유(근거 조항) ----------
+  // 값은 품목 원본(P())과 위의 나라별 문구(nutritionBy·allergenBy·additiveBy), 근거는 data.js 규칙의 src 에서만 가져온다
+  var KR_DV = { carb: 324, sugar: 100, protein: 55, fat: 54, satfat: 15, sodium_mg: 2000 };          // 식품등의 표시기준 1일 영양성분 기준치
+  var CN_NRV = { kj: 8400, protein: 60, fat: 60, satfat: 20, carb: 300, sodium_mg: 2000 };           // GB 28050-2011 附录A (2025판 값 확인 필요)
+  function pct(v, d) { return v == null || !d ? '' : Math.round(v / d * 100) + '%'; }
+  function srcOf(c, id) { var x = (LC.rules[c].checks || []).filter(function (k) { return k.id === id; })[0]; return (x && x.src) || LC.rules[c].short; }
+  function pkgRow(k, v, mk) { return '<tr><th>' + (mk ? '<span class="mk">' + mk + '</span>' : '') + k + '</th><td>' + v + '</td></tr>'; }
+  function tagKR(p) {
+    var n = p.nutrition100, ing = (p.ingredients || []).map(function (i) { return esc(i.name_ko) + (i.pct ? ' ' + i.pct + '%' : '') + (i.func ? '(' + esc(i.func) + ')' : ''); }).join(', ');
+    var nut = n ? '<div class="pkg-nut"><div class="pn-h">영양정보 <small>100 g 당 ' + n.kcal + ' kcal</small></div><table>' +
+      [['나트륨', n.sodium_mg + ' mg', pct(n.sodium_mg, KR_DV.sodium_mg)], ['탄수화물', n.carb + ' g', pct(n.carb, KR_DV.carb)], ['　당류', n.sugar + ' g', pct(n.sugar, KR_DV.sugar)], ['지방', n.fat + ' g', pct(n.fat, KR_DV.fat)], ['　트랜스지방', n.transfat + ' g', ''], ['　포화지방', n.satfat + ' g', pct(n.satfat, KR_DV.satfat)], ['단백질', n.protein + ' g', pct(n.protein, KR_DV.protein)]]
+        .map(function (r) { return '<tr><td>' + r[0] + ' <b>' + r[1] + '</b></td><td class="num"><b>' + r[2] + '</b></td></tr>'; }).join('') + '</table><p>1일 영양성분 기준치에 대한 비율(%)은 2,000 kcal 기준</p></div>' : '<div class="pkg-nut"><div class="pn-h">영양정보</div><p>성적서 필요</p></div>';
+    return '<div class="pkg kr"><table>' + pkgRow('제품명', esc(p.name_ko)) + pkgRow('식품유형', '기타수산물가공품') + pkgRow('내용량', esc(p.net || '')) + pkgRow('원재료명', ing) +
+      pkgRow('알레르기', '게 함유') + pkgRow('보관방법', esc(p.storage || '')) + pkgRow('소비기한', '제조일로부터 ' + (p.shelf_months || '') + '개월') + pkgRow('제조원', esc(p.factory ? p.factory.name : '')) + '</table>' + nut + '</div>';
+  }
+  function tagCN(p) {
+    var n = p.nutrition100, kj = n ? Math.round(n.kcal * 4.184) : null;
+    var raws = (p.ingredients || []).filter(function (i) { return i.type !== 'additive'; }).sort(function (a, b) { return (b.pct || 0) - (a.pct || 0); });
+    var cnName = { '홍게 다리살': '红雪蟹腿肉', '정제수': '水', '정제소금': '食用盐' };
+    var cfg = raws.map(function (i) { return cnName[i.name_ko] || esc(i.name_ko); }).join('、') + '、' + esc(additiveBy.CN.split(' (')[0]);
+    var nut = n ? '<div class="pkg-nut"><div class="pn-h">营养成分表</div><table><tr><td><b>项目</b></td><td class="num"><b>每100克</b></td><td class="num"><b>NRV%</b></td></tr>' +
+      [['能量', kj + ' 千焦', pct(kj, CN_NRV.kj)], ['蛋白质', n.protein + ' 克', pct(n.protein, CN_NRV.protein)], ['脂肪', n.fat + ' 克', pct(n.fat, CN_NRV.fat)], ['—饱和脂肪', n.satfat + ' 克', pct(n.satfat, CN_NRV.satfat)], ['碳水化合物', n.carb + ' 克', pct(n.carb, CN_NRV.carb)], ['—糖', n.sugar + ' 克', ''], ['钠', n.sodium_mg + ' 毫克', pct(n.sodium_mg, CN_NRV.sodium_mg)]]
+        .map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td><td class="num">' + r[2] + '</td></tr>'; }).join('') + '</table><p>儿童青少年应避免过量摄入盐油糖</p></div>' : '<div class="pkg-nut"><div class="pn-h">营养成分表</div><p>성적서 필요</p></div>';
+    return '<div class="pkg cn"><table>' + pkgRow('产品名称', '冷冻熟红雪蟹腿碎肉') + pkgRow('配料表', cfg, 1) + pkgRow('致敏物质提示', '本品含有甲壳纲类（蟹）', 2) + pkgRow('净含量', esc(p.net || '')) +
+      pkgRow('生产日期', '见包装标示', 3) + pkgRow('保质期至', '见包装标示') + pkgRow('贮存条件', '-18℃以下冷冻保存') + pkgRow('原产国', '韩国') + pkgRow('进口商', '（中国境内进口商名称·地址·电话）', 4) + '</table>' +
+      '<div class="mk-wrap"><span class="mk">5</span></div>' + nut + '</div>';
+  }
+  function tagJP(p) {
+    var n = p.nutrition100;
+    var nut = n ? '<div class="pkg-nut jp"><div class="pn-h">栄養成分表示（100gあたり）</div><table>' + nutritionBy.JP().filter(function (r) { return r[1]; }).map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td></tr>'; }).join('') + '</table><p>この表示値は、目安です。</p></div>' : '<div class="pkg-nut jp"><div class="pn-h">栄養成分表示</div><p>성적서 필요</p></div>';
+    var ad = additiveBy.JP.split('／'), u = (LC.buyers || []).filter(function (b) { return b.country === 'JP'; })[0];
+    return '<div class="pkg jp"><table>' + pkgRow('名称', esc(p.name_ja || p.name_ko)) + pkgRow('原材料名', '紅ずわいがに、' + esc(ad[0]) + '<b class="sep">／</b>' + esc(ad[1] || ''), 1) + pkgRow('内容量', esc(p.net || '')) +
+      pkgRow('賞味期限', '枠外下部に記載') + pkgRow('保存方法', '−18℃以下で保存してください') + pkgRow('原産国名', '韓国', 2) + pkgRow('輸入者', esc(u ? u.code.replace('사', '社') : '輸入者') + '（日本国内の住所）', 3) + '</table>' +
+      '<p class="pkg-al"><span class="mk">4</span>アレルギー物質：<b>かに</b></p><div class="mk-wrap"><span class="mk">5</span></div>' + nut + '</div>';
+  }
+  function bubbles(list) { return '<ol class="bubbles">' + list.map(function (b, i) { return '<li class="bubble"><span class="mk">' + (i + 1) + '</span><b>' + b[0] + '</b><p>' + b[1] + '</p><span class="ref">' + esc(b[2]) + '</span></li>'; }).join('') + '</ol>'; }
+  var TAG_WHY = {
+    CN: function () { return [
+      ['원료는 많이 든 순서, 첨가물은 기능+이름', '配料表에 함량이 많은 원료부터 적고, 첨가물은 "增味剂（谷氨酸钠）"처럼 기능 분류와 통용 명칭을 함께 써요.', srcOf('CN', 'ingredients') + ' · ' + srcOf('CN', 'additive')],
+      ['알레르기 유발물질을 따로 알림', '게는 甲壳纲类로 묶어 "本品含有甲壳纲类（蟹）"로 따로 표시해요.', srcOf('CN', 'allergen')],
+      ['생산일·보존기한 날짜', '날짜는 생산일과 보존기한 만료일을 표시해요. 한국식 "제조일로부터 N개월"은 그대로 못 써요.', srcOf('CN', 'dates')],
+      ['중국 안 수입상', '중국 내 수입·대리상의 이름·주소·연락처가 들어가야 해요.', srcOf('CN', 'importer')],
+      ['영양표는 1+6, NRV% 필수', '能量·蛋白质·脂肪·饱和脂肪·碳水化合物·糖·钠과 NRV%를 적고, 표 아래 "儿童青少年应避免过量摄入盐油糖" 문구를 넣어요. 2027-03-16 시행.', 'GB 28050-2025 4.1']
+    ]; },
+    JP: function () { return [
+      ['원재료와 첨가물 사이 ／', '원재료를 다 적은 뒤 ／로 나누고 첨가물을 적어요. 한국 라벨처럼 섞어 쓰면 안 돼요.', '食品表示基準 · 원재료명 ／ 구분'],
+      ['원산국 표시', '수입 가공식품은 原産国名을 따로 칸으로 적어요.', '食品表示基準 · 原産国名'],
+      ['일본 안 수입자', '제조원 대신 일본의 輸入者 이름·주소를 적어요.', '食品表示基準 · 輸入者'],
+      ['게(かに)는 특정원재료', 'かに는 반드시 표시해야 하는 特定原材料예요. 한국 "게 함유"를 かに로 바꿔요.', '食品表示基準 · 特定原材料'],
+      ['나트륨 대신 식염상당량', '영양은 5항목(熱量·たんぱく質·脂質·炭水化物·食塩相当量). 나트륨 mg를 식염상당량 g로 바꿔요(× 2.54 ÷ 1000).', '食品表示基準 · 栄養成分表示']
+    ]; }
+  };
+  screens.tags = function () {
+    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 중국·일본 라벨을 만들고, 왜 그렇게 바꿨는지 보여 줘요.</p>' +
+      '<div class="row">' + productSelect('tg-prod') + '<button id="tg-go">중국·일본 라벨로 바꾸기</button></div>' +
+      '<div class="tagview"><section><h3 class="tv-h">한국 원본 <span class="muted">식품등의 표시기준</span></h3><div id="tg-kr"></div></section><section id="tg-out"><div class="empty card"><p>왼쪽 한국 라벨을 확인하고 <b>중국·일본 라벨로 바꾸기</b>를 누르세요.</p></div></section></div>';
+  };
+  screens.tags.bind = function (arg) {
+    bindProductSelect('tg-prod');
+    $('#tg-kr').innerHTML = tagKR(P());
+    $('#tg-go').onclick = function () {
+      var p = P();
+      $('#tg-out').innerHTML = [['CN', '중국', 'GB 7718-2025 · GB 28050-2025', tagCN], ['JP', '일본', '食品表示基準', tagJP]].map(function (c) {
+        return '<div class="tv-country"><h3 class="tv-h">' + c[1] + ' <span class="muted">' + c[2] + '</span></h3><div class="tv-pair">' + c[3](p) + bubbles(TAG_WHY[c[0]]()) + '</div></div>';
+      }).join('');
+      $('#tg-out').classList.add('shown');
+    };
+    if (arg === 'go') $('#tg-go').click();   // #tags/go: 바로 바뀐 화면 (시연·링크용)
+  };
+
   function renderProductOut() {
     if (!P().nutrition100) { $('#prd-out').innerHTML = '<p class="alert">성적서 필요 · 영양 성적서가 들어오면(서류 넣기) 나라별 환산표가 나옴</p>'; return; }
     var html = '<div class="grid4">' + Object.keys(LC.rules).map(function (k) {
@@ -1292,7 +1362,7 @@
   // ---------- 라우팅 ----------
   // 첫 줄: 묶음 6개. 둘째 줄: 현재 묶음 안의 화면들
   var NAV_MAIN = [['home', '홈', '오늘 할 일'], ['quick', '한 번에 처리', '서류 넣기 → 확인 → 결과물'], ['label', '라벨', '라벨 판정 · 품목 · 규격서'], ['ship', '생산·LOT', '선적·원장 · LOT 조회'], ['intake', '서류', '서류 넣기 · 대시보드 · 수입 체크 · 내보내기']];
-  var NAV_SUB = { label: [['label', '라벨 판정'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
+  var NAV_SUB = { label: [['label', '라벨 판정'], ['tags', '나라별 라벨'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
   function groupOf(name) { for (var g in NAV_SUB) if (NAV_SUB[g].some(function (x) { return x[0] === name; })) return g; return name; }
   function navLink(x, on) { return '<a href="#' + x[0] + '" class="' + (on ? 'on' : '') + '" title="' + esc(x[2] || x[1]) + '"' + (on ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }
   function route() {
