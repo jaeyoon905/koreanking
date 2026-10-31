@@ -127,34 +127,40 @@
   // ---------- 화면 ----------
   var screens = {};
 
-  // 홈: 오늘 할 일 요약 4장 + 시작하기 3버튼. 첫 방문이면 3줄 안내
-  screens.home = function () {
+  // 홈: 오늘 할 일 4종을 줄 단위로. 0건은 숨김. 아래에 최근 로트·이달 요약 작은 줄과 시작하기
+  function todos() {
+    var out = [], pend = intakeCards.filter(function (c) { return !c.done; }).length;
+    if (pend) out.push({ cls: 'warn', text: '승인 기다리는 서류 ' + pend + '건', href: '#intake', go: '서류 넣기' });
     var soon = state.registry.filter(function (r) { return r.expiry && daysTo(r.expiry) <= 90; }).sort(function (a, b) { return daysTo(a.expiry) - daysTo(b.expiry); });
-    var pending = state.docs.filter(function (d) { return /반려|check|확인/.test(String(d.result)); }).length;
-    var recent = state.ledger.slice(-3).reverse();
-    var impOpen = (state.importShipments || []).filter(function (x) { return (x.checklist || []).some(function (c) { return c.status === '확인' || c.status === '없음'; }); }).length;
-    var card = function (href, title, big, sub, cls) { return '<a class="card home-card ' + (cls || '') + '" href="' + href + '"><h3>' + title + '</h3><div class="big">' + big + '</div><p class="muted">' + sub + '</p></a>'; };
+    if (soon.length) out.push({ cls: daysTo(soon[0].expiry) <= 30 ? 'bad' : 'warn', text: '만료 임박 ' + soon.length + '건 · ' + soon[0].name + ' D-' + daysTo(soon[0].expiry), href: '#dash', go: '대시보드' });
+    LC.revisions.forEach(function (v) {
+      var d = daysTo(v.effective); if (d < 0 || d > 180 || !LC.rules[v.country]) return;
+      var hits = affectedLabels(v), fix = hits.reduce(function (t, h) { return t + (h.s ? h.s.fix : 0); }, 0);
+      out.push({ cls: fix ? 'bad' : 'warn', text: '규정 개정 D-' + d + ' · ' + v.title + ' · 영향 라벨 ' + hits.length + '건' + (fix ? ' (수정 ' + fix + ')' : ''), href: hits.length ? '#label/' + hits[0].key + '/' + v.country : '#label/' + (LC.sampleLabels.HK ? 'HK' : Object.keys(LC.sampleLabels)[0]) + '/' + v.country, go: '라벨 판정' });
+    });
+    var ps = LC.products || { LB: LC.product }, noNut = Object.keys(ps).filter(function (k) { return !ps[k].nutrition100; });
+    if (noNut.length) out.push({ cls: 'warn', text: '성적서 없는 품목 ' + noNut.length + '건 · ' + noNut.join(', '), href: '#product', go: '품목' });
+    return out;
+  }
+  screens.home = function () {
+    var items = todos(), recent = state.ledger.slice(-3).reverse();
     var first = !localStorage.getItem('lc.visited');
     try { localStorage.setItem('lc.visited', '1'); } catch (e) {}
-    return '<h2>홈 · 오늘 ' + LC.TODAY + '</h2><p class="sub">종이 일지와 서류를 넣으면 추적·만료·서류 체크가 된다. 판정은 규칙 파일, 반영은 사람 승인 뒤.</p>' +
-      (first ? '<div class="alert ok"><b>처음이시죠?</b> ① "한 번에 처리"에서 서류를 넣고 전부 승인하면 원장과 결과물이 생깁니다. ② ⑤ LOT 조회에서 로트 번호나 회사 코드로 찾습니다. ③ ⑥ 대시보드에서 만료 D-day를 봅니다.</div>' : '') +
-      '<div class="grid4">' +
-      card('#dash', '만료 임박', soon.length + '<small>건</small>', (soon.length ? '가장 급한 것: ' + esc(soon[0].name) + ' D-' + daysTo(soon[0].expiry) : '90일 안 만료 없음') + '<br><small>알림 메일: agent/notify.py 로 매일 08:00 발송 가능(설정은 .env)</small>', soon.length ? 'warn' : '') +
-      monthCard(card) +
-      card('#intake', '미처리 확인 항목', pending + '<small>건</small>', pending ? '처리 기록에서 반려·확인 건' : '없음', pending ? 'warn' : '') +
-      card('#ship', '최근 로트', recent.length ? recent.map(function (l) { return '<div class="line">' + l.lot + (l.company_code ? ' (' + l.company_code + ')' : '') + ' <span class="muted">' + l.mfg + ' · ' + (shipped(l) ? '선적됨' : '미선적') + '</span></div>'; }).join('') : '<small>없음</small>', state.ledger.length + '건 보유') +
-      card('#import', '수입 체크 미완', impOpen + '<small>건</small>', impOpen ? '서류가 덜 온 수입 선적' : '미완 없음', impOpen ? 'warn' : '') +
-      '</div><div class="card"><h3>시작하기</h3><div class="row"><a class="btn" href="#quick" aria-label="한 번에 처리로 이동">한 번에 처리 (서류 넣기 → 결과물)</a>' +
+    return '<h2>오늘 할 일 · ' + LC.TODAY + '</h2>' +
+      (first ? '<p class="alert ok">서류를 넣고 승인하면 원장이 생깁니다. LOT 번호나 회사 코드로 찾고, 만료는 대시보드에서 봅니다.</p>' : '') +
+      '<div class="card">' + (items.length ? '<ul class="log todo">' + items.map(function (t) { return '<li><span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '급함' : '확인') + '</span> ' + esc(t.text) + ' · <a href="' + t.href + '">' + t.go + ' ›</a></li>'; }).join('') + '</ul>' : '<p class="muted">오늘 할 일 없음</p>') + '</div>' +
+      '<p class="muted">' + (recent.length ? '최근 로트: ' + recent.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + (l.company_code ? '(' + l.company_code + ')' : '') + '</a> ' + (shipped(l) ? '선적됨' : '미선적'); }).join(' · ') : '로트 없음') + monthLine() + '</p>' +
+      '<div class="card"><h3>시작하기</h3><div class="row"><a class="btn" href="#quick" aria-label="한 번에 처리로 이동">한 번에 처리 (서류 넣기 → 결과물)</a>' +
       '<label>LOT 찾기 <input id="home-q" list="lot-list" placeholder="LOT 번호 또는 회사 코드(AJ)" size="28"></label><button id="home-go" aria-label="LOT 조회">찾기</button>' + lotDatalist() +
-      '<a class="btn ghost" href="#export" aria-label="내보내기로 이동">⑨ 내보내기</a></div></div>';
+      '<a class="btn ghost" href="#export" aria-label="내보내기로 이동">내보내기</a></div></div>';
   };
-  // 이달(없으면 데이터가 있는 마지막 달) 생산·선적 요약 카드
-  function monthCard(card) {
-    if (typeof LC.stats !== 'function') return '';
+  // 이달(없으면 데이터가 있는 마지막 달) 생산·선적 한 줄
+  function monthLine() {
+    if (typeof LC.stats !== 'function' || !state.ledger.length) return '';
     var st = LC.stats(state), keys = Object.keys(st.monthly), m = LC.TODAY.slice(0, 7);
     if (keys.indexOf(m) < 0 && keys.length) m = keys[keys.length - 1];
     var row = st.monthly[m] || {}, sum = function (pre) { return Object.keys(row).filter(function (k) { return k.indexOf(pre) === 0; }).reduce(function (t, k) { return t + row[k]; }, 0); };
-    return card('#stats', (m === LC.TODAY.slice(0, 7) ? '이달' : m) + ' 생산·선적', sum('prod_ct_') + '<small>C/T 생산</small>', '선적 ' + sum('ship_ct_') + ' C/T · 입고 ' + (row.raw_kg || 0).toLocaleString() + ' kg · 재고·수율은 집계에서', '');
+    return ' · ' + (m === LC.TODAY.slice(0, 7) ? '이달' : m) + ' 생산 ' + sum('prod_ct_') + ' C/T · 선적 ' + sum('ship_ct_') + ' C/T · <a href="#stats">집계 ›</a>';
   }
   screens.home.bind = function () {
     var go = function () { var q = $('#home-q').value.trim(); if (q) location.hash = '#lot/' + encodeURIComponent(q); };
