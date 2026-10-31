@@ -36,7 +36,7 @@ SCHEMAS = {
 }
 # 파일명으로 먼저 맞춰 보고(공짜), 안 맞으면 LLM 분류. 앞에 있는 것이 이긴다 → 수입 힌트를 '인보이스' 보다 앞에
 NAME_HINTS = [('Declaration', '수입신고서'), ('선하증권', 'BL'), ('KMTCISI', 'BL'), ('B/L', 'BL'), ('DHL', '운송장'), ('운송장', '운송장'), ('NCSEW', '수입인보이스'),
-              ('영양', '영양성적서'), ('성적서', '영양성적서'), ('規格書', '규격서양식'), ('규격서', '규격서양식'), ('Specification', '규격서양식'), ('Spec', '규격서양식'), ('spec', '규격서양식'), ('仕様書', '바이어지시'),
+              ('영양', '영양성적서'), ('성적서', '영양성적서'), ('規格書', '규격서양식'), ('규격서', '규격서양식'), ('Specification', '규격서양식'), ('Spec', '규격서양식'), ('spec', '규격서양식'), ('規格表', '규격서양식'), ('规格', '규격서양식'), ('仕様書', '바이어지시'),
               ('表示案', '바이어지시'), ('패킹', '패킹리스트'), ('인보이스', '패킹리스트'), ('입고', '입고검사서'), ('가공일지', '가공일지'),
               ('포장', '포장일지'), ('위생증명', '위생증명서'), ('HACCP', 'HACCP인증서'), ('라벨', '라벨'), ('제품사진', '라벨'), ('메일', '메일'),
               ('고시', '고시문'), ('告示', '고시문'), ('基準', '고시문'), ('公告', '고시문'), ('解读', '고시문'), ('改正', '고시문'), ('通则', '고시문'),
@@ -302,6 +302,19 @@ def reply_draft(e: dict, answers: list) -> str:
     return llm('바이어 문의에 대한 답장 초안을 써라. 언어: ' + lang + '. 규칙: (1) status 가 "근거 있음" 인 질문만 value 의 숫자·문자를 그대로 인용해 답한다(값 변형·추정 금지, 출처 이름은 쓰지 않는다). '
                '(2) "자료 없음" 은 "확인 후 회신" 한 문장. (3) "영업 판단" 은 영업 담당이 별도 회신한다는 한 문장. (4) 사람 이름은 쓰지 않고 회사·부서로만. (5) 맨 끝에 한국어로 "[내부 메모]" 를 달고 빠진 자료와 영업 회신 필요 항목을 적는다.\n'
                '문의: ' + json.dumps({k: e.get(k) for k in ('from', 'subject', 'date', 'deadline', 'product')}, ensure_ascii=False) + '\n질문과 근거: ' + json.dumps(answers, ensure_ascii=False), want='text')
+
+
+# ---------- 라벨 수정안: 규칙이 지적한 칸만 AI가 고쳐 쓴다. 다시 판정은 규칙(app.js judge)이 한다 ----------
+def label_fix(country: str, fields: dict, results: list, hints: dict) -> dict:
+    bad = [{'item': x.get('item'), 'status': x.get('status'), 'msg': x.get('msg'), 'fix': x.get('fix')} for x in results or [] if x.get('status') in ('fix', 'check')]
+    if not bad: return {'fields': fields, 'changes': []}
+    r = llm('수출 라벨 수정안. country=' + country + '. fields 는 현재 라벨 칸(원문), results 는 규칙 판정이 지적한 항목(item·msg·fix), hints 는 코드가 품목 데이터로 만든 확정 문구(영양표·알레르겐·첨가물). '
+            '규칙: (1) results 에 지적된 칸만 고치고 나머지 칸은 글자 하나 바꾸지 않는다. (2) hints 에 문구가 있으면 그 문구를 그대로 쓴다(숫자 변형 금지). (3) 새 사실·수치를 만들지 않는다. 자료가 없어 못 고치는 항목은 그대로 두고 changes 에 "자료 필요" 로 적는다. '
+            '(4) 출력은 {"fields": {모든 칸 그대로 또는 수정}, "changes": [{"k": 칸 이름, "before": 요약, "after": 요약, "why": 지적 항목 이름}]} JSON.\n'
+            + json.dumps({'fields': fields, 'results': bad, 'hints': hints}, ensure_ascii=False))
+    r = r if isinstance(r, dict) else {}
+    out = dict(fields); out.update({k: v for k, v in (r.get('fields') or {}).items() if k in fields or v})
+    return {'fields': out, 'changes': r.get('changes') or []}
 
 
 # ---------- 개발부: 코드는 제안만, 적용은 사람 ----------

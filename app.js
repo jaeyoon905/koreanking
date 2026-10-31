@@ -181,6 +181,28 @@
     return '<datalist id="lot-list">' + opts.filter(function (v, i, a) { return a.indexOf(v) === i; }).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>';
   }
 
+  // 수정안: 규칙이 지적한 칸만 AI가 고쳐 쓰고(영양표·알레르겐·첨가물 문구는 코드가 품목 데이터로 만들어 넘김), 고친 라벨을 같은 규칙으로 다시 판정해 전후를 보여 준다
+  function labelFix(country, fields, res, meta) {
+    var hints = {};
+    try { if (nutritionBy[country] && P().nutrition100) hints.nutrition = nutritionBy[country]().map(function (x) { return x[0] + ' ' + x[1]; }).join(' / '); } catch (e) {}
+    if (allergenBy[country]) hints.allergen = allergenBy[country];
+    if (additiveBy[country]) hints.additive = additiveBy[country];
+    var out = $('#lbl-fixout'); out.innerHTML = '<p class="muted">지적된 칸만 고친 수정안을 만들고 같은 규칙으로 다시 판정합니다…</p>';
+    return api('/label/fix', 'POST', { country: country, fields: fields, results: res.filter(function (x) { return x.status !== 'pass'; }), hints: hints }).then(function (r) {
+      if (!r || !r.fields) { out.innerHTML = '<p class="alert">수정안 실패: ' + esc((r && r.error) || '응답 없음') + '</p>'; return; }
+      var fixed = r.fields, res2 = judge(country, fixed), s0 = summarize(res), s2 = summarize(res2);
+      var keys = Object.keys(fixed).filter(function (k) { return String(fixed[k] || '') !== String(fields[k] || ''); });
+      var why = {}; (r.changes || []).forEach(function (c) { if (c && c.k) why[c.k] = c.why || ''; });
+      var v = s2.fix ? ['bad', '수정안도 수정 ' + s2.fix + '항목 남음'] : s2.check ? ['warn', '수정안: 수정 0 · 확인 ' + s2.check + '항목 (자료 확인 필요)'] : ['ok', '수정안 통과 · ' + s2.pass + '항목 충족'];
+      out.innerHTML = '<div class="card" id="lbl-fixcard"><h3>수정안 <span class="muted">(AI가 고친 칸 ' + keys.length + '개 · 규칙으로 다시 판정 · 보내기 전 사람이 확인)</span></h3>' +
+        '<div class="verdict ' + v[0] + '">' + v[1] + '<span class="v-sub">전: 수정 ' + s0.fix + ' · 확인 ' + s0.check + ' → 후: 수정 ' + s2.fix + ' · 확인 ' + s2.check + '</span></div>' +
+        (keys.length ? '<table><tr><th>칸</th><th>현재</th><th>수정안</th><th>이유</th></tr>' + keys.map(function (k) { return '<tr><td><b>' + esc(k) + '</b></td><td>' + fold(fields[k] || '', 80) + '</td><td>' + fold(fixed[k] || '', 80) + '</td><td class="muted">' + esc(why[k] || '') + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">바뀐 칸 없음</p>') +
+        ((r.changes || []).some(function (c) { return /자료 필요/.test(String(c && (c.after || c.why))); }) ? '<p class="alert">자료가 없어 못 고친 칸이 있습니다. 표의 "이유"를 보고 자료를 넣으세요.</p>' : '') +
+        '<div class="actions"><button class="lg" id="lbl-fixpdf">수정안 PDF</button></div></div>';
+      state.lastFix = { country: country, file: meta.file, before: s0, after: s2, fields: fixed }; save();
+      $('#lbl-fixpdf').onclick = function () { window.print(); };
+    }).catch(function (e) { out.innerHTML = '<p class="alert">수정안 실패: ' + esc(e) + '</p>'; });
+  }
   function labelArg(arg) { var a = String(arg || '').split('/'); return { key: LC.sampleLabels[a[0]] ? a[0] : null, country: LC.rules[a[1]] ? a[1] : null }; }
   screens.label = function (arg) {
     var la = labelArg(arg);
@@ -219,10 +241,12 @@
       '<table><tr><th>항목</th><th>판정</th><th>근거</th><th>현재</th><th>고칠 것</th></tr>' +
       res.map(function (x) { return '<tr class="' + (x.status === 'fix' ? 'st-bad' : x.status === 'check' ? 'st-check' : '') + '"><td><b>' + esc(x.item) + '</b></td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td><span class="ref" title="' + esc(ref(x)) + '">' + esc(ref(x)) + '</span></td><td class="muted">' + fold(x.msg, 40) + '</td><td class="fixto">' + fold(x.fix || '', 40) + '</td></tr>'; }).join('') +
       '</table>' +
-      '<div class="actions"><details class="no-print"><summary>읽은 값</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details><button class="lg" id="lbl-pdf">수정 요청서 PDF</button></div>';
+      '<div class="actions"><details class="no-print"><summary>읽은 값</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details><button class="lg" id="lbl-pdf">수정 요청서 PDF</button>' +
+      (API && (s.fix || s.check) ? '<button class="lg" id="lbl-fix" aria-label="지적된 칸을 고친 수정안 만들기">수정안 만들기</button>' : '') + '</div><div id="lbl-fixout"></div>';
     $('#lbl-out').innerHTML = html;
     state.lastLabel = { country: country, made: meta.made, file: meta.file, summary: s };
     $('#lbl-pdf').onclick = function () { window.print(); };
+    var fb = $('#lbl-fix'); if (fb) fb.onclick = function () { fb.disabled = true; fb.textContent = '수정안 만드는 중…'; labelFix(country, fields, res, meta).then(function () { fb.disabled = false; fb.textContent = '수정안 만들기'; }); };
     document.querySelectorAll('[data-ctry]').forEach(function (b) { b.classList.toggle('on', b.dataset.ctry === country); });
   }
   screens.label.bind = function (arg) {

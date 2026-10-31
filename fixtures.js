@@ -173,7 +173,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       ] },
 
     // 8. 바이어 규격서 양식
-    { id: '4', match: /規格書|규격서/i, doc_type: '규격서양식', sensitive: false, source: '4.U사 LB규격서.xlsx (商品規格書, 2022-06-01 개정)',
+    { id: '4', match: /LB\s*규격서|4\.\s*(U사|우에노)/i, doc_type: '규격서양식', sensitive: false, source: '4.U사 LB규격서.xlsx (商品規格書, 2022-06-01 개정)',
       fields: [
         { k: 'buyer', label: '바이어', v: 'U사', src: 'B2 会社名' },
         { k: 'form_title', label: '양식명', v: '商品規格書', src: 'A1' },

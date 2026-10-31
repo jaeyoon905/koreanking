@@ -318,6 +318,11 @@ class H(BaseHTTPRequestHandler):
         if not self.authed(): return self.deny()
         if self.path == '/api/extract':
             return self.send_json(200, extract(self.body()))
+        if self.path == '/api/label/fix':   # 라벨 수정안: 지적된 칸만 AI가 고침. 다시 판정은 화면의 규칙이 한다
+            b = self.body()
+            if not os.environ.get('ANTHROPIC_API_KEY'): return self.send_json(200, {'fields': b.get('fields') or {}, 'changes': [], 'note': 'API 키 없음'})
+            try: return self.send_json(200, graph.label_fix(str(b.get('country') or ''), b.get('fields') or {}, b.get('results') or [], b.get('hints') or {}))
+            except Exception as e: return self.send_json(500, {'error': '수정안 실패: %s' % type(e).__name__})
         if self.path == '/api/docs':
             b = self.body()
             with LOCK, db() as c:
