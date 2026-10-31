@@ -119,7 +119,7 @@
     JP: '食塩／調味料(アミノ酸)、甘味料(ソルビトール)、増粘剤(グァーガム)',
     HK: '增味劑(621)、甜味劑(420)、增稠劑(412) / flavour enhancer (621), sweetener (sorbitol), thickener (guar gum)',
     TW: 'L-麩酸鈉（調味劑）、D-山梨醇（甜味劑）、關華豆膠（黏稠劑）',
-    TH: 'วัตถุปรุงแต่งรสอาหาร (INS 621) วัตถุที่ให้ความหวานแทนน้ำตาล (INS 420) สารให้ความคงตัว (INS 412)'
+    TH: 'วัตถุปรุงแต่งรสอาหาร (โมโนโซเดียมกลูตาเมต), วัตถุให้ความหวาน (ซอร์บิทอล), วัตถุเจือปนอาหาร (INS 412)'   // 450호 5(7): 향미증진제·감미료는 이름까지
   };
 
   // ---------- 엑셀 파싱 (SheetJS) : 라벨 셀의 키워드로 필드 매핑 ----------
@@ -274,6 +274,11 @@
       ns.map(function (x) { return '<tr><td>' + esc(x.buyer) + '</td><td>' + esc(x.product) + '</td><td>' + esc(x.kcal) + '</td><td>' + esc(x.protein) + '</td><td>' + esc(x.salt_g) + '</td><td>' + esc(x.basis) + '</td><td class="muted">' + esc(x.source) + '</td></tr>'; }).join('') +
       '</table><p class="muted">값이 다른 건 바이어마다 조미액이 달라서. 라벨 값은 바이어 제공, 자사 성적서는 조미 전 다른 제품.</p></div>';
   }
+  // 판정 표 근거 칸: laws.js 에 매핑된 조항이면 원문 링크, 아니면 규칙 파일의 src·법령명
+  function refCell(country, x, fallback) {
+    var id = LC.lawMap && LC.lawMap[country] && LC.lawMap[country][x.id], L = id && LC.laws && LC.laws[id];
+    return L ? '<a class="ref" href="' + esc(L.url) + '" target="_blank" rel="noopener" title="' + esc(L.law + ' ' + L.article) + '">' + esc((x.src || LC.rules[country].short + ' ' + L.article.split(/[；;，,（(]/)[0]) + ' ↗') + '</a>' : '<span class="ref" title="' + esc(fallback) + '">' + esc(fallback) + '</span>';
+  }
   function nutritionAlert() {
     var ns = state.nutritionSources || [], own = ns.filter(function (x) { return /성적서/.test(x.buyer); })[0], buy = ns.filter(function (x) { return x !== own && x.kcal != null; });
     var kc = buy.map(function (x) { return x.kcal; }).filter(function (k, i, a) { return a.indexOf(k) === i; });
@@ -290,7 +295,7 @@
       '<div class="stats">' + stat('bad', '수정', s.fix) + stat('warn', '확인', s.check) + stat('ok', '통과', s.pass) + '</div>' +
       (rev.length ? '<p class="alert">고시 개정 이후 라벨이에요: ' + rev.map(function (x) { return esc(x.title) + ' (시행 ' + x.effective + ')'; }).join(', ') + '</p>' : '') + nutritionAlert() +
       '<table><tr><th>항목</th><th>판정</th><th>근거</th><th>현재</th><th>고칠 것</th></tr>' +
-      res.map(function (x) { return '<tr class="' + (x.status === 'fix' ? 'st-bad' : x.status === 'check' ? 'st-check' : '') + '"><td><b>' + esc(x.item) + '</b></td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td><span class="ref" title="' + esc(ref(x)) + '">' + esc(ref(x)) + '</span></td><td class="muted">' + fold(x.msg, 40) + '</td><td class="fixto">' + fold(x.fix || '', 40) + '</td></tr>'; }).join('') +
+      res.map(function (x) { return '<tr class="' + (x.status === 'fix' ? 'st-bad' : x.status === 'check' ? 'st-check' : '') + '"><td><b>' + esc(x.item) + '</b></td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td>' + refCell(country, x, ref(x)) + '</td><td class="muted">' + fold(x.msg, 40) + '</td><td class="fixto">' + fold(x.fix || '', 40) + '</td></tr>'; }).join('') +
       '</table>' +
       '<div class="actions"><details class="no-print"><summary>읽은 값</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details><button class="lg" id="lbl-pdf">수정 요청서 PDF</button>' +
       (API && (s.fix || s.check) ? '<button class="lg" id="lbl-fix" aria-label="지적된 칸을 고친 수정안 만들기">수정안 만들기</button>' : '') + '</div><div id="lbl-fixout"></div>';
@@ -406,38 +411,59 @@
       pkgRow('淨重', esc(p.net || '')) + pkgRow('有效日期', '標示於包裝', 3) + pkgRow('保存方法', '-18°C以下冷凍保存') + pkgRow('原產地', '韓國') + pkgRow('國內負責廠商', '（台灣進口商名稱·電話·地址）', 4) + '</table>' +
       (p.nutrition100 ? nutBox('營養標示 <small>每100公克</small>', nutritionBy.TW()) : '') + '</div>';
   }
-  function bubbles(list) { return '<ol class="bubbles">' + list.map(function (b, i) { return '<li class="bubble" data-mk="' + (i + 1) + '"><span class="mk">' + (i + 1) + '</span><b>' + b[0] + '</b><p>' + b[1] + '</p><span class="ref">' + esc(b[2]) + '</span></li>'; }).join('') + '</ol>'; }
+  // 근거: laws.js 의 LC.laws[나라+번호] (공식 원문 링크·조항·발췌). 없으면 규칙 파일의 법령명만
+  function tagTH(p) {
+    var ing = (p.ingredients || []).filter(function (i) { return i.type !== 'additive'; }), th = { '홍게 다리살': 'เนื้อขาปูหิมะแดง', '정제수': 'น้ำ', '정제소금': 'เกลือ' };
+    return '<div class="pkg th"><table>' + pkgRow('ชื่ออาหาร', 'เนื้อขาปูหิมะแดงต้มแช่แข็ง') + pkgRow('เลขสารบบอาหาร', '<span class="th-fda">อย.</span> 00-0-00000-0-0000', 4) +
+      pkgRow('ส่วนประกอบ', ing.map(function (i) { return (th[i.name_ko] || esc(i.name_ko)) + ' ' + i.pct + '%'; }).join(', '), 1) + pkgRow('วัตถุเจือปนอาหาร', 'วัตถุปรุงแต่งรสอาหาร (โมโนโซเดียมกลูตาเมต), วัตถุให้ความหวาน (ซอร์บิทอล), วัตถุเจือปนอาหาร (INS 412)', 2) +
+      pkgRow('ข้อมูลสำหรับผู้แพ้อาหาร', 'มี ปู', 3) + pkgRow('น้ำหนักสุทธิ', esc((p.net || '').replace('g', 'กรัม'))) + pkgRow('ควรบริโภคก่อน', 'ดูที่บรรจุภัณฑ์') + pkgRow('วิธีเก็บรักษา', 'เก็บแช่แข็งที่ -18°C หรือต่ำกว่า') +
+      pkgRow('นำเข้าโดย', '(ชื่อและที่ตั้งผู้นำเข้าในประเทศไทย)', 5) + pkgRow('ผลิตโดย', esc(p.factory ? p.factory.name : '') + ', สาธารณรัฐเกาหลี') + '</table></div>';
+  }
+  var CITE_KIND = { law: '법령', notice: '고시·공고', guide: '공식 안내', own: '자사 자료' };
+  function cite(L, fallback, short) {
+    if (!L) return '<div class="cite"><span class="cite-k">근거</span><span class="tag">법령</span><span class="ref">' + esc(fallback) + '</span></div>';   // laws.js 에 없으면 규칙 파일의 법령명
+    return '<div class="cite"><span class="cite-k">근거</span><span class="tag">' + (CITE_KIND[L.kind] || '법령') + '</span><a class="ref cite-a" href="' + esc(L.url) + '" target="_blank" rel="noopener" title="' + esc(L.law) + '">' + esc((short || L.law) + (L.article ? ' ' + L.article : '')) + ' ↗</a>' +
+      (L.quote || L.ko || L.note ? '<details><summary>원문 보기</summary><p class="muted">' + esc(L.law) + '</p>' + (L.quote ? '<blockquote>' + esc(L.quote) + '</blockquote>' : '') + (L.ko ? '<p class="muted">' + esc(L.ko) + '</p>' : '') + (L.note ? '<p class="muted">' + esc(L.note) + '</p>' : '') + '</details>' : '') + '</div>';
+  }
+  function bubbles(list, code) { return '<ol class="bubbles">' + list.map(function (b, i) { var L = LC.laws && LC.laws[code + (i + 1)]; return '<li class="bubble" data-mk="' + (i + 1) + '"><span class="mk">' + (i + 1) + '</span><b>' + b[0] + '</b><p>' + b[1] + '</p>' + cite(L, b[2], LC.rules[code] && LC.rules[code].short) + '</li>'; }).join('') + '</ol>'; }
   var TAG_WHY = {
+    TH: function () { var r = LC.rules.TH.short; return [
+      ['원재료는 함량 %와 함께', '주요 원재료를 무게 기준 대략적인 %와 함께 적어요. 많은 순서로 늘어놓는 건 권장이에요.', r],
+      ['향미증진제·감미료는 이름까지', '향미증진제·감미료는 INS 번호만으론 안 되고 기능 분류 + 이름(โมโนโซเดียมกลูตาเมต)으로 적어요. 그 외 첨가물은 วัตถุเจือปนอาหาร + INS로 적을 수 있어요.', r],
+      ['알레르기 정보 줄', '"ข้อมูลสำหรับผู้แพ้อาหาร : มี ปู"처럼 정해진 머리말로 알레르기 원료를 따로 적어요.', r],
+      ['식품등록번호(อย.)', '13자리 식품등록번호를 อย. 표시 안에 넣어요. 수입식품은 수입자 명의 번호예요.', r],
+      ['수입자·제조자·제조국', '수입식품은 태국 수입자의 이름·주소(수입자라고 밝히고), 제조자 이름과 제조국을 적어요.', r]
+    ]; },
     HK: function () { var r = LC.rules.HK.short; return [
       ['첨가물은 기능 분류 + 명칭·INS 번호', '"增味劑(621)"처럼 기능 분류와 INS 번호를 같이 적어요. 일본식 직역 표기는 안 돼요.', r],
       ['알레르겐은 중·영문으로', '갑각류(蟹)를 "含甲殼類動物（蟹）/ Contains crustacea (crab)"로 적어요. 다른 제품에서 복사한 밀·대두 선언은 빼요.', r],
-      ['此日期前最佳 / Best before', '"有効日期 / Expiration date"는 규정 문구가 아니에요. 날짜는 일·월·년 순서를 밝혀요.', r],
-      ['제조자 또는 포장자 이름·주소', '수입자만 적으면 부족해요. 제조자(A사) 또는 포장자의 이름·주소를 넣어요.', r],
+      ['此日期前最佳 / Best before', '"有効日期 / Expiration date"는 규정 문구가 아니에요. 날짜는 기본 일·월·년이고, 보존기간이 길면 월·년으로 줄일 수 있어요.', r],
+      ['제조자 또는 포장자 이름·주소', '제조자(A사) 또는 포장자의 이름·주소를 적어요. 원산국 + 홍콩 유통업자를 적고 당국에 서면 신고하면 대신할 수 있어요.', r],
       ['영양표시 1+7', '열량 + 단백질·총지방·포화지방·트랜스지방·탄수화물·당·나트륨 7종이 의무예요.', r]
     ]; },
     TW: function () { var r = LC.rules.TW.short; return [
-      ['첨가물은 명칭 + 용도', '"D-山梨醇（甜味劑）"처럼 첨가물 이름 옆에 용도를 함께 적어요.', r],
-      ['알레르기 경고 문구', '"本產品含有螃蟹，不適合對其過敏體質者食用"처럼 들어 있는 알레르기 원료와 경고를 적어요.', r],
-      ['번체 한자로', '일본 한자(産·有効)를 쓰면 안 돼요. 產地·有效期限처럼 번체로 바꿔요.', r],
+      ['감미료는 기능명도', '첨가물은 이름을 적고, 감미료·보존료·산화방지제는 "D-山梨醇（甜味劑）"처럼 기능명을 함께 적어요.', r],
+      ['갑각류 알레르기 문구', '"本產品含有螃蟹"처럼 갑각류가 들어 있다고 눈에 띄게 적어요("…不適合對其過敏體質者食用"은 덧붙여도 되는 문구).', r],
+      ['중문으로 표시', '필수 사항은 중문으로 적어요. 일본식 한자(産·有効)는 대만 중문 표기(產地·有效期限)로 바꾸는 게 안전해요.', r],
       ['대만 수입업자 명·전화·주소', '국내(대만) 책임 업체의 이름·전화·주소가 모두 있어야 해요.', r],
       ['영양 8항목', '열량·단백질·지방·포화지방·트랜스지방·탄수화물·당·나트륨 8항목을 적어요.', r]
     ]; },
     CN: function () { return [
-      ['원료는 많이 든 순서, 첨가물은 기능+이름', '配料表에 함량이 많은 원료부터 적고, 첨가물은 "增味剂（谷氨酸钠）"처럼 기능 분류와 통용 명칭을 함께 써요.', srcOf('CN', 'ingredients') + ' · ' + srcOf('CN', 'additive')],
-      ['알레르기 유발물질을 따로 알림', '게는 甲壳纲类로 묶어 "本品含有甲壳纲类（蟹）"로 따로 표시해요.', srcOf('CN', 'allergen')],
-      ['생산일·보존기한 날짜', '날짜는 생산일과 보존기한 만료일을 표시해요. 한국식 "제조일로부터 N개월"은 그대로 못 써요.', srcOf('CN', 'dates')],
-      ['중국 안 수입상', '중국 내 수입·대리상의 이름·주소·연락처가 들어가야 해요.', srcOf('CN', 'importer')],
+      ['원료는 많이 든 순서, 첨가물은 한 형식으로', '配料表에 투입량이 많은 원료부터 적어요. 첨가물은 통용 명칭만 쓰거나 "增味剂（谷氨酸钠）"처럼 기능 분류+명칭으로 쓰되, 한 라벨 안에서는 한 형식으로 통일해요.', srcOf('CN', 'ingredients') + ' · ' + srcOf('CN', 'additive')],
+      ['알레르기 유발물질 표시 의무', '2025판부터 갑각류는 표시가 의무예요. 配料表 안에서 강조하거나 "本品含有甲壳纲类（蟹）"처럼 가까이에 따로 적어요.', srcOf('CN', 'allergen')],
+      ['날짜는 연-월-일 순서로', '생산일과 보존기한 만료일을 연-월-일 순으로 적어요. 보존기한이 6개월 이상이면 보존기한과 만료일만 적어도 돼요.', srcOf('CN', 'dates')],
+      ['수입상·원산국', '수입 포장식품은 중국 내 수입상/대리상의 이름·주소·연락처와 원산국을 적어요.', srcOf('CN', 'importer')],
       ['영양표는 1+6, NRV% 필수', '能量·蛋白质·脂肪·饱和脂肪·碳水化合物·糖·钠과 NRV%를 적고, 표 아래 "儿童青少年应避免过量摄入盐油糖" 문구를 넣어요. 2027-03-16 시행.', 'GB 28050-2025 4.1']
     ]; },
     JP: function () { return [
-      ['원재료와 첨가물 사이 ／', '원재료를 다 적은 뒤 ／로 나누고 첨가물을 적어요. 한국 라벨처럼 섞어 쓰면 안 돼요.', '食品表示基準 · 원재료명 ／ 구분'],
+      ['원재료와 첨가물은 나눠서', '원재료명과 첨가물은 별개 항목이에요. ／·줄바꿈·별도 칸 중 하나로 나눠요(／는 그중 한 방법). 구분 없이 이어 쓰면 안 돼요.', '食品表示基準 · 원재료명 ／ 구분'],
       ['원산국 표시', '수입 가공식품은 原産国名을 따로 칸으로 적어요.', '食品表示基準 · 原産国名'],
       ['일본 안 수입자', '제조원 대신 일본의 輸入者 이름·주소를 적어요.', '食品表示基準 · 輸入者'],
       ['게(かに)는 특정원재료', 'かに는 반드시 표시해야 하는 特定原材料예요. 한국 "게 함유"를 かに로 바꿔요.', '食品表示基準 · 特定原材料'],
       ['나트륨 대신 식염상당량', '영양은 5항목(熱量·たんぱく質·脂質·炭水化物·食塩相当量). 나트륨 mg를 식염상당량 g로 바꿔요(× 2.54 ÷ 1000).', '食品表示基準 · 栄養成分表示']
     ]; }
   };
-  var TAG_CTRY = [['JP', '일본', '食品表示基準', tagJP], ['CN', '중국', 'GB 7718-2025 · GB 28050-2025', tagCN], ['HK', '홍콩', 'Cap.132W', tagHK], ['TW', '대만', '식품안전위생관리법', tagTW]];
+  var TAG_CTRY = [['JP', '일본', '食品表示基準', tagJP], ['CN', '중국', 'GB 7718-2025 · GB 28050-2025', tagCN], ['HK', '홍콩', 'Cap.132W', tagHK], ['TW', '대만', '식품안전위생관리법', tagTW], ['TH', '태국', '보건부 고시 450호', tagTH]];
   screens.tags = function () {
     return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 겹쳐 놓은 라벨을 누르면 그 라벨과 바꾼 이유가 나와요.</p>' +
       '<div class="row">' + productSelect('tg-prod') + '</div>' +
@@ -455,7 +481,7 @@
       var c = TAG_CTRY.filter(function (x) { return x[0] === sel; })[0];
       $('#tg-main').innerHTML = c ? cardHtml(c).replace('class="tag-card"', 'class="tag-card main"') : '';
       $('#tg-why-h').innerHTML = c ? c[1] + '에서 바꾼 이유 <span class="muted">' + esc(c[2]) + '</span>' : '바꾼 이유';
-      if (c) $('#tg-why').innerHTML = bubbles(TAG_WHY[c[0]]());
+      if (c) $('#tg-why').innerHTML = bubbles(TAG_WHY[c[0]](), c[0]);
       var pile = $('#tg-pile');
       pile.innerHTML = TAG_CTRY.filter(function (x) { return x[0] !== sel; }).map(cardHtml).join('');
       var cards = Array.prototype.slice.call(pile.children);
@@ -470,6 +496,19 @@
     root.onmouseover = function (e) { var t = e.target.closest('#tg-why .bubble, #tg-main [data-mk]'); hl(t ? t.dataset.mk : null); };
     root.onmouseleave = function () { hl(null); };
     render();
+  };
+
+  // 규정 근거: 나라별 라벨에서 쓴 조항을 나라별로 모아 원문 링크와 함께
+  screens.laws = function () {
+    var L = LC.laws || {}, by = {};
+    Object.keys(L).forEach(function (k) { (by[L[k].country] = by[L[k].country] || []).push(L[k]); });
+    var name = { JP: '일본', CN: '중국', HK: '홍콩', TW: '대만', TH: '태국' };
+    return '<h2>규정 근거</h2><p class="sub">나라별 라벨의 바꾼 이유 1~5가 기대는 출처예요. 법령·고시·공식 안내·자사 자료로 나누고, 링크를 누르면 원문이 열려요.</p>' +
+      (Object.keys(by).length ? Object.keys(by).map(function (c) {
+        return '<div class="card"><h3>' + (name[c] || c) + '</h3><table><tr><th>번호</th><th>출처</th><th>요약</th><th>원문 발췌</th></tr>' + by[c].map(function (x) {
+          return '<tr id="law-' + esc(x.id) + '"><td>' + esc(x.id) + '</td><td><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.law + ' ' + x.article) + ' ↗</a>' + ' <span class="tag">' + (CITE_KIND[x.kind] || '법령') + '</span>' + '</td><td>' + esc(x.ko || '') + '</td><td class="muted">' + fold(x.quote || '', 50) + '</td></tr>';
+        }).join('') + '</table></div>';
+      }).join('') : '<p class="muted">laws.js 없음</p>');
   };
 
   function renderProductOut() {
@@ -1405,7 +1444,7 @@
   // ---------- 라우팅 ----------
   // 첫 줄: 묶음 6개. 둘째 줄: 현재 묶음 안의 화면들
   var NAV_MAIN = [['home', '홈', '오늘 할 일'], ['quick', '한 번에 처리', '서류 넣기 → 확인 → 결과물'], ['label', '라벨', '라벨 판정 · 품목 · 규격서'], ['ship', '생산·LOT', '선적·원장 · LOT 조회'], ['intake', '서류', '서류 넣기 · 대시보드 · 수입 체크 · 내보내기']];
-  var NAV_SUB = { label: [['label', '라벨 판정'], ['tags', '나라별 라벨'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
+  var NAV_SUB = { label: [['label', '라벨 판정'], ['tags', '나라별 라벨'], ['laws', '규정 근거'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
   function groupOf(name) { for (var g in NAV_SUB) if (NAV_SUB[g].some(function (x) { return x[0] === name; })) return g; return name; }
   function navLink(x, on) { return '<a href="#' + x[0] + '" class="' + (on ? 'on' : '') + '" title="' + esc(x[2] || x[1]) + '"' + (on ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }
   function route() {

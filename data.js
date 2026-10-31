@@ -175,7 +175,10 @@ LC.rules = {
       { id: 'allergen', item: '알레르겐 정보', run: function (f) { return /ข้อมูลสำหรับผู้แพ้อาหาร|แพ้/.test(f.allergen) ? { status: 'pass', msg: '알레르겐 줄 있음' } : { status: 'fix', msg: '450호 알레르겐 정보 줄 없음', fix: 'ข้อมูลสำหรับผู้แพ้อาหาร : มี ปู (갑각류)' }; } },
       { id: 'fda', item: '식품등록번호', run: function (f) { return /\d{2}-\d-\d{5}-\d-\d{4}/.test(f.fda_no || '') ? { status: 'pass', msg: f.fda_no } : { status: 'fix', msg: '13자리 등록번호 누락' }; } },
       { id: 'pct', item: '원재료 %', run: function (f) { return /%/.test(f.ingredients) ? { status: 'pass', msg: '함량 % 기재' } : { status: 'fix', msg: '주요 원재료 % 필요' }; } },
-      { id: 'additive', item: '첨가물 INS', run: function (f) { return /INS/.test(f.ingredients) ? { status: 'pass', msg: 'INS 기재' } : { status: 'check', msg: 'INS 번호 확인' }; } },
+      { id: 'additive', item: '첨가물 기능+이름', src: '보건부 고시 450호 5(7)', run: function (f) {   // 향미증진제·감미료는 INS 만으론 부족(7.3), 그 외는 วัตถุเจือปนอาหาร+INS 가능
+        var ing = f.ingredients || '';
+        if (/INS\s*(621|420)/.test(ing) && !/กลูตาเมต|ซอร์บิทอล/.test(ing)) return { status: 'fix', msg: '향미증진제(621)·감미료(420)는 INS 번호만으론 안 됨. 기능 분류 + 이름 필요', fix: 'วัตถุปรุงแต่งรสอาหาร (โมโนโซเดียมกลูตาเมต), วัตถุให้ความหวาน (ซอร์บิทอล), วัตถุเจือปนอาหาร (INS 412)' };
+        return /INS|วัตถุ/.test(ing) ? { status: 'pass', msg: '기능 분류 + 이름 또는 INS 기재' } : { status: 'check', msg: '첨가물 표기 확인' }; } },
       { id: 'maker', item: '제조자·수입자', run: function (f) { return f.manufacturer && f.importer ? { status: 'pass', msg: '기재됨' } : { status: 'fix', msg: '제조자 또는 수입자 누락' }; } },
       { id: 'nutrition', item: '영양표시', run: function () { return { status: 'pass', msg: '이 품목은 의무 아님 (영양 강조 없음)' }; } }
     ]
@@ -227,7 +230,7 @@ LC.rules = {
       { id: 'net', item: '净含量', src: 'GB 7718-2025 4.5', run: function (f) { return f.net ? { status: 'pass', msg: '食品名称과 같은 展示版面에 표시' } : { status: 'fix', msg: '净含量 누락(4.5)', fix: '净含量：250 g' }; } },
       { id: 'storage', item: '贮存条件', src: 'GB 7718-2025 4.8', run: function (f) { return f.storage ? { status: 'pass', msg: '기재됨' } : { status: 'fix', msg: '贮存条件 누락(4.8)', fix: '贮存条件：-18℃以下冷冻保存' }; } },
       { id: 'origin', item: '原产国(地区)', src: 'GB 7718-2025 8.4', run: function (f) { return f.origin ? { status: 'pass', msg: '기재됨. 분장국이 다르면 병기(8.4)' } : { status: 'fix', msg: '原产国(地区) 누락(8.4)', fix: '原产国：韩国' }; } },
-      { id: 'importer', item: '进口商/代理商·在华注册编号', src: 'GB 7718-2025 8.3·8.7', run: function (f) {
+      { id: 'importer', item: '进口商/代理商·在华注册编号', src: 'GB 7718-2025 8.3·8.4', run: function (f) {
         if (!f.importer) return { status: 'fix', msg: '进口商 또는 代理商의 名称·地址·联系方式 필요(8.3)', fix: '进口商：… 地址：… 电话：…' };
         return f.manufacturer ? { status: 'pass', msg: '境外生产企业 在华注册编号(GACC) 포함. 生产许可证编号·产品标准代号는 수입식품 생략 가능(8.7)' } : { status: 'check', msg: '境外生产企业在华注册编号(GACC 등록번호) 표기 확인(8.3)' }; } },
       { id: 'nutrition', item: '营养标签', src: 'GB 7718-2025 4.13', run: function (f) { return f.nutrition ? { status: 'pass', msg: '표시 있음. 항목·형식은 GB 28050 기준(4.13)' } : { status: 'check', msg: '营养标签은 GB 28050(또는 GB 13432)에 따름(4.13). 해당 여부와 항목은 GB 28050에서 확인' }; } },

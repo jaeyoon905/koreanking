@@ -273,6 +273,7 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .pkg > table th { width: 30%; font-weight: 700; font-size: 13px; border-right: 1px solid #111; white-space: nowrap; }
 .pkg.jp > table th { width: 24%; }
 .pkg .sep { color: var(--primary); padding: 0 2px; }
+.pkg .th-fda { display: inline-block; border: 1.5px solid #111; border-radius: 4px; padding: 0 4px; margin-right: 4px; font-weight: 700; }
 .pkg-al { margin: 0; padding: 6px 8px; border-bottom: 1px solid #111; }
 .pkg-nut { margin: 8px; border: 2px solid #111; }
 .pkg-nut .pn-h { background: #111; color: #fff; font-weight: 800; font-size: 15px; padding: 4px 8px; display: flex; justify-content: space-between; align-items: baseline; }
@@ -291,6 +292,12 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .bubble b { display: block; font-size: 16px; }
 .bubble p { margin: 2px 0 8px; font-size: 14px; color: var(--ink-2); }
 .bubble .ref { max-width: none; white-space: normal; }
+.cite { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13px; }
+.cite-k { font-weight: 700; color: var(--ink-muted); }
+.cite a.ref { text-decoration: none; } .cite a.cite-a { font-family: var(--font); font-size: 13px; font-weight: 700; } .cite a.ref:hover { background: #d6e6fb; }
+.cite details { flex-basis: 100%; } .cite summary { color: var(--ink-muted); font-size: 13px; }
+.cite blockquote { margin: 6px 0; padding: 8px 12px; background: var(--tile); border-radius: 8px; font-size: 13px; color: var(--ink); }
+.cite details p { margin: 2px 0; font-size: 13px; }
 @media (max-width: 1100px) { .tagview { grid-template-columns: 360px 1fr; } .tagview > section:last-child { grid-column: 1 / -1; } }
 @media (max-width: 800px) { .tagview { grid-template-columns: 1fr; } }
 
