@@ -54,7 +54,7 @@ b, strong { font-weight: 700; }
 .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; padding: 24px; margin: 0 0 16px; }
 .panel { background: var(--primary-soft); border-radius: 16px; padding: 24px; margin: 0 0 16px; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
 .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 16px; }
 .sec-head h3 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
 .sec-head a { font-size: 14px; color: var(--ink-muted); }
@@ -214,7 +214,10 @@ tr.qk-sub td { background: var(--canvas); border-top: 0; }
 tr.qk-sub .log { margin: 4px 0 0; } tr.qk-sub .log li { border: 0; padding: 3px 0; }
 .card.result h3 { display: flex; justify-content: space-between; align-items: baseline; }
 .card.result h3 .more { font-size: 14px; font-weight: 400; color: var(--ink-muted); }
-.card.result table { font-size: 14px; } .card.result th, .card.result td { padding: 8px 12px; }
+.card.result table { display: block; overflow-x: auto; white-space: nowrap; font-size: 14px; }   /* 좁은 카드: 표는 카드 안에서만 가로 스크롤 */
+.card.result th, .card.result td { padding: 6px 8px; font-size: 13px; }
+.card.result label, .card.result select, .card.result input:not([type=checkbox]):not([type=radio]) { width: 100%; }
+.card.result .row { flex-direction: column; align-items: stretch; }
 .card h3 button.ghost { float: right; height: 32px; font-size: 14px; padding: 0 12px; margin-top: -4px; }
 #pub-card table th { width: 22%; }
 
