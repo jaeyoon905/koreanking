@@ -148,7 +148,16 @@ def extract(s: S) -> S:
     if t in SENSITIVE and not s.get('masked'):
         return {'extracted': {}, 'log': [f'extract: {t} 은 계좌·단가 가린 뒤(--masked) 처리. LLM에 보내지 않음']}
     r = llm(extract_prompt(t), s['path'])
-    return {'extracted': r, 'log': [f'extract → {len(r)}칸']}
+    if r:
+        return {'extracted': r, 'log': [f'extract(AI) → {len(r)}칸']}
+    # 키가 없거나 AI 가 비면 로컬 OCR(인쇄 서류). 손글씨는 비어서 사람 입력으로 넘어간다
+    try:
+        import ocr_extract as OCR
+        o = OCR.extract(s['path'], t)
+        r = {f['k']: f['v'] for f in o.get('fields', [])}
+        return {'extracted': r, 'log': [f"extract(OCR {o.get('method')}) → {len(r)}칸" + (' · ' + o['note'] if o.get('note') else '')]}
+    except Exception as e:
+        return {'extracted': {}, 'log': [f'extract: AI 키 없음, OCR 실패({type(e).__name__}) → 사람 입력']}
 
 
 # ---------- 검증부 ----------
