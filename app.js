@@ -830,7 +830,7 @@
         '<h4>클레임 종류별로 꺼낼 기록 (제조일 ' + lot.mfg + ')</h4><table><tr><th>클레임</th><th>먼저 볼 기록</th><th>원료(배) 추적</th></tr>' +
         LC.claimMap.map(function (c) { return '<tr><td>' + c.kind + '</td><td>' + esc(c.records.split('{mfg}').join(lot.mfg)) + '</td><td>' + (c.raw ? '필요 · 위 원어 로트 ' + raws.length + '건' : '불필요') + '</td></tr>'; }).join('') +
         '</table><p class="muted">원본 일지는 공장 서류함에서.</p>' +
-        (API ? '<p><a href="' + API + '/lot/' + encodeURIComponent(lot.lot) + '/qr.png" target="_blank" aria-label="QR 라벨 열기">QR 라벨 (PNG)</a> <span class="muted">포장·박스에 붙이면 공개 페이지로 연결</span> · <a href="/api/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download aria-label="바이어 패키지 받기">바이어 패키지 zip</a> <span class="muted">규격서·LOT 정보·인증 목록</span></p>' : '<p class="muted">QR 라벨·바이어 패키지 zip 은 서버 모드에서 가능</p>') +
+        (API ? '<p><a href="/api/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download aria-label="바이어 패키지 받기">바이어 패키지 zip</a> <span class="muted">규격서·LOT 정보·인증 목록</span></p>' : '<p class="muted">바이어 패키지 zip 은 서버 모드에서 가능</p>') +
         '<div class="row"><label>클레임 종류 <select id="claim-kind">' + LC.claimMap.map(function (c) { return '<option>' + esc(c.kind) + '</option>'; }).join('') + '</select></label><button id="claim-go">대응 보고서 만들기</button></div></div><div id="claim-out"></div>';
     }
     out.innerHTML = html;
@@ -1108,7 +1108,7 @@
     if (c.doc_type === '영양성적서') out.push(a('#product', '품목 영양 환산표(나라별)', ' data-out-prod="' + i + '"'));
     if (c.doc_type === '포장일지') (typeof LC.lotRows === 'function' ? LC.lotRows(o) : []).slice(0, 3).forEach(function (r) {
       out.push(a('#lot/' + encodeURIComponent(r.lot), 'LOT ' + r.lot + ' 조회·클레임 보고서'));
-      if (API) out.push(a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(r.lot), '바이어 패키지 zip', ' download') + a(API + '/lot/' + encodeURIComponent(r.lot) + '/qr.png', 'QR 라벨', ' target="_blank"'));
+      if (API) out.push(a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(r.lot), '바이어 패키지 zip', ' download'));
     });
     if (c.doc_type === '라벨' && o.name) out.push(a('#label', '라벨 판정 → 수정안 만들기', ' data-out-label="' + i + '"'));
     if (c.doc_type === '고시문') out.push(a('#dash', '대시보드: 개정 → 영향 라벨'));
@@ -1294,7 +1294,7 @@
     var bc = $('#bundle-card') || $('#qk-results'); if (bc) setTimeout(function () { bc.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
     toast('승인 ' + done + '건 반영' + (skipped ? ' · 건너뜀 ' + skipped + '건(가림 미확인·종류 미확인)' : '') + ' → ' + intakeSummary());
   }
-  // 바이어별 서류 묶음: 바이어가 보낸 양식·문의마다 "보낼 것" 한 줄 (규격서 PDF·엑셀, 답장, 라벨 문안, 로트 패키지·QR, 선적 서류)
+  // 바이어별 서류 묶음: 바이어가 보낸 양식·문의마다 "보낼 것" 한 줄 (규격서 PDF·엑셀, 답장, 라벨 문안, 로트 패키지, 선적 서류)
   function bundleBuyers() {
     var map = {};
     Object.keys(state.specForms || {}).forEach(function (k) { var f = state.specForms[k], m = /[_\-\s](LB|WF|SR|LEG|CL)(?=[_\-\s.]|$)/i.exec(String(f.form_name || '')); map[k] = map[k] || { buyer: k, product: null }; map[k].form = f; if (m) map[k].product = m[1].toUpperCase(); });
@@ -1364,7 +1364,7 @@
       if (b.form) g('규격서', [btn('data-bd-pdf="' + i + '"', 'PDF')].concat(b.form.form_b64 ? [btn('data-bd-xlsx="' + i + '"', '바이어 엑셀에 채움')] : []));
       if (b.reply) g('답장', [btn('data-bd-reply="' + i + '"', '초안 .txt' + (b.reply.deadline ? ' <small>기한 ' + esc(b.reply.deadline) + '</small>' : ''))]);
       if (state.lastFix && state.lastFix.fields) g('라벨', [btn('data-bd-label="' + i + '"', '고친 문안 PDF <small>' + esc(state.lastFix.country) + '</small>')]);
-      if (b.lot && API) g('로트 ' + esc(b.lot.lot), [a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(b.lot.lot), '바이어 패키지 zip', ' download'), a(API + '/lot/' + encodeURIComponent(b.lot.lot) + '/qr.png', 'QR 라벨', ' target="_blank"')]);
+      if (b.lot && API) g('로트 ' + esc(b.lot.lot), [a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(b.lot.lot), '바이어 패키지 zip', ' download')]);
       if (state.shipments.length && API) { var no = state.shipments[state.shipments.length - 1].no; g('선적 ' + esc(no), [a(API + '/shipdocs/pl?no=' + encodeURIComponent(no), '패킹리스트 초안', ' download'), a(API + '/shipdocs/mdl?no=' + encodeURIComponent(no), '제조일자 리스트', ' download'), a(API + '/shipdocs/cert?no=' + encodeURIComponent(no), '위생증명서 신청값', ' download')]); }
       var rds = requestedDocs(b), okDocs = rds.filter(function (d) { return d.ok; });
       var req = rds.length ? '<div class="bd-g bd-req"><dt>요청 서류</dt><dd>' + rds.map(function (d, j) { return d.ok ? btn('data-bd-doc="' + i + ':' + j + '"', d.title) : '<span class="bd-miss">' + esc(d.title) + ' <small>자료 필요</small></span>'; }).join('') + (okDocs.length ? btn('data-bd-docs="' + i + '"', '요청 서류 전부 zip', 'small ghost accent') : '') + '</dd></div>' : '';

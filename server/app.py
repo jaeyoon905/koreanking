@@ -489,7 +489,7 @@ class H(BaseHTTPRequestHandler):
         if not self.authed(): return self.deny()
         if self.path == '/api/extract':
             return self.send_json(200, extract(self.body()))
-        if self.path == '/api/package':   # 이 거래에 보낼 서류를 zip 하나로: PDF(HTML 렌더)·채운 엑셀·답장 txt·로트 패키지·QR·선적 서류
+        if self.path == '/api/package':   # 이 거래에 보낼 서류를 zip 하나로: PDF(HTML 렌더)·채운 엑셀·답장 txt·로트 패키지·선적 서류
             b = self.body(); items = b.get('items') or []; name = re.sub(r'[\\/:*?"<>|]+', '_', str(b.get('name') or '서류패키지'))
             if not items: return self.send_json(400, {'error': 'items 없음'})
             import zipfile, io
@@ -521,7 +521,7 @@ class H(BaseHTTPRequestHandler):
                                 bio = io.BytesIO(); wb.save(bio); z.writestr(nm + '.xlsx', bio.getvalue()); made.append(nm + '.xlsx')
                             elif t == 'lot' and SD and it.get('lot'):
                                 z.write(SD.buyer_package(st, it['lot']), '로트패키지_' + it['lot'] + '.zip'); made.append('로트패키지_' + it['lot'] + '.zip')
-                                if QR:
+                                if QR and it.get('qr'):   # QR 은 요청할 때만 (기본 꺼짐, 2026-11-01 재윤)
                                     l = next((x for x in st.get('ledger', []) if x.get('lot') == it['lot']), None)
                                     if l:
                                         qp = ROOT / 'agent' / 'qr' / (it['lot'] + '.png'); qp.parent.mkdir(exist_ok=True); QR.label_png(l, str(it.get('url') or ('http://localhost:%s/lot/%s' % (PORT, urllib.parse.quote(it['lot'])))), qp); z.write(qp, 'QR_' + it['lot'] + '.png'); made.append('QR_' + it['lot'] + '.png')
