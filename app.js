@@ -616,7 +616,7 @@
         a.className = 'pk-card done'; a.href = c[2];
         a.innerHTML = '<div class="pk-thumb"><div class="pk-scale">' + c[3] + '</div></div><div class="pk-meta"><b>' + c[0] + '</b><span>' + esc(c[1]) + '</span></div><span class="pk-ok">✓</span>';
         els[n].replaceWith(a); n++; $('#pk-count').textContent = n + ' / ' + cards.length;
-      }, 120);
+      }, 100);   // 9장 0.9초
     };
     if (arg === 'go') $('#pk-go').click();
   };
