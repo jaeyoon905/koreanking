@@ -334,11 +334,11 @@
   function labelOverlay(country, fields, res) {
     var by = {}, extra = [], k = 0;
     res.forEach(function (x) { if (x.status === 'pass') return; x.mk = ++k; var f = OV_RULE[x.id]; if (f) (by[f] = by[f] || []).push(x); else extra.push(x); });
-    var kb = LABEL_KEY_BY[country] || {}, th = function (f) { var fk = kb[f[0]]; return fk ? esc(fk) + '<br><small class="muted">' + f[1] + '</small>' : f[1]; };   // 칸 이름은 도착국 말로, 한국어는 담당자용 작은 글씨
+    var kb = LABEL_KEY_BY[country] || {}, th = function (f) { var fk = kb[f[0]]; return fk ? esc(fk) : f[1]; };   // 칸 이름은 도착국 말로, 한국어는 담당자용 작은 글씨
     var rows = OV_FIELDS.filter(function (f) { return (fields && fields[f[0]]) || by[f[0]]; }).map(function (f) {
       var v = (fields && fields[f[0]]) || '', iss = by[f[0]];
       if (!iss) return '<tr><th>' + th(f) + '</th><td>' + esc(v) + '</td></tr>';
-      return '<tr class="ov-hit"><th>' + th(f) + '</th><td>' + (v ? '<del>' + esc(v) + '</del>' : '<del class="ov-none">(없음 / none)</del>') +
+      return '<tr class="ov-hit"><th>' + th(f) + '</th><td>' + (v ? '<del>' + esc(v) + '</del>' : '<del class="ov-none">(none)</del>') +
         iss.map(function (x) { return '<div class="ov-fix ' + (x.status === 'fix' ? 'bad' : 'warn') + '"><span class="mk">' + x.mk + '</span><ins>' + esc(x.fix || x.msg) + '</ins><span class="ov-ref">' + esc(x.item) + ' · ' + refCell(country, x, x.src || LC.rules[country].short) + '</span></div>'; }).join('') + '</td></tr>';
     }).join('');
     return '<div class="ov"><div class="pkg ov-pkg"><table>' + rows + '</table></div>' +
@@ -668,8 +668,8 @@
     var f = state.specForms[buyer] || {}, p = (lot && LC.products && LC.products[lot.product]) || P(), miss = ' style="background:#fff3bf"';
     var mp = f.mapping || {}, ours = oursValues(p, lot, buyer);
     var code = (String(f.spec || '').match(/商品コード\s*([\w\-－]+)/) || [])[1] || '';
-    var val = { '会社名': buyer, '作成日': LC.TODAY, '韓国商品名': p.name_en, '日本商品名': p.name_ja || '', '商品コード': code, '工場': 'A사', '規格': p.pack,
-      '賞味期限': p.shelf_months + '개월 (' + Math.round(p.shelf_months / 12) + '年間)', '単位': 'ケース', '形態': p.note || '' };
+    var val = { '会社名': buyer, '作成日': LC.TODAY, '韓国商品名': p.name_en, '日本商品名': p.name_ja || '', '商品コード': code, '工場': (p.factory && p.factory.name_en) || 'A Co.', '規格': p.pack,
+      '賞味期限': p.shelf_months + 'か月（' + Math.round(p.shelf_months / 12) + '年間）', '単位': 'ケース', '形態': p.note || (/-18/.test(String(p.storage || '')) ? '冷凍' : '') };
     if (lot) { val['LOT'] = lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : ''); val['製造日'] = lot.mfg; val['賞味期限'] = lot.expiry; }
     var gf = function (x) { return typeof x === 'string' ? x : x.name + (x.g != null ? ' ' + x.g + 'g' : '') + (x.pct != null ? ' (' + x.pct + '%)' : ''); };
     var lang = formLang(f), raw = {}; (f.fields || Object.keys(val)).forEach(function (k) { var v = mp[k] && ours[mp[k]] ? ours[mp[k]] : val[k]; if (v) raw[k] = String(v); });
@@ -1422,12 +1422,16 @@
       var rds = requestedDocs(b), okDocs = rds.filter(function (d) { return d.ok; });
       rds.forEach(function (d, j) { cards.push(d.ok ? pkCard('data-bd-doc="' + i + ':' + j + '"', esc(d.title), '바이어가 물은 것 · ' + esc(d.topic), reqDocHtml(d.topic, d.lang, p, lot, b.buyer, d.rows)) : pkNeed(esc(d.title), '자료 필요 · ' + esc(d.topic))); });
       var count = cards.length - (rds.length - okDocs.length);
+      var askList = b.reply && b.reply.answers && b.reply.answers.length ? '<div class="bd-asklist"><b>바이어가 요청한 것과 보낼 서류</b><ol>' + b.reply.answers.map(function (x) {
+        var t = x['주제'] || x.topic, st = x['상태'] || x.status || '', q = x['질문'] || x.question || t, d = rds.filter(function (r) { return r.topic === t; })[0];
+        var out = d ? (d.ok ? d.title : d.title + ' (자료 필요)') : (t === '가격' ? '영업 담당 별도 회신' : '답장 본문에 포함');
+        return '<li><span class="q">' + esc(String(q).slice(0, 70)) + '</span> <span class="d">' + esc(out) + '</span>' + (st ? ' <small class="b ' + (st === '근거 있음' ? 'ok' : 'warn') + '">' + esc(st) + '</small>' : '') + '</li>'; }).join('') + '</ol></div>' : '';
       var asked = b.reply && b.reply.answers ? b.reply.answers.map(function (x) { return x['주제'] || x.topic; }).filter(function (v, j, arr) { return v && arr.indexOf(v) === j; }) : [];
       var open = only ? true : i === 0;
       return '<article class="bundle' + (open ? '' : ' fold') + '">' +
         '<header class="bd-head"><div class="bd-who"><b>' + esc(b.buyer) + '</b><span>' + esc(p.code + ' ' + p.name_ko) + (lot ? ', 로트 ' + esc(lot.lot) : ', 로트 없음') + '</span>' + (asked.length ? '<span class="bd-ask">문의 항목: ' + esc(asked.join(', ')) + '</span>' : '') + '</div>' +
         '<div class="bd-act"><button class="bd-zip" data-bd-zip="' + i + '"><span>이 거래 서류 한 번에 받기</span><small>zip, ' + count + '건</small></button>' + (okDocs.length ? '<button class="ghost small" data-bd-docs="' + i + '">요청 서류만 zip (' + okDocs.length + ')</button>' : '') + '<button class="ghost small bd-more" data-bd-more="' + i + '" aria-expanded="' + open + '">' + (open ? '서류 접기' : '서류 ' + count + '장 보기') + '</button></div></header>' +
-        '<div class="bd-body"><div class="pack">' + cards.join('') + '</div></div></article>';
+        '<div class="bd-body">' + askList + '<div class="pack">' + cards.join('') + '</div></div></article>';
     });
     var cards = cardList.filter(function (_, i) { return !only || only.indexOf(i) >= 0; }).join('');
     if (only) return cards;
