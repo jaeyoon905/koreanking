@@ -1,6 +1,6 @@
 # 라벨코스트 서버. 표준 라이브러리 + sqlite3 + anthropic(선택). 실행: labelcoast 폴더에서 python -X utf8 server/app.py
 # 역할: 상태 저장(state), 서류 추출(/api/extract: 키 있으면 LLM, 없으면 fixtures), 처리 기록, 바이어용 LOT 공개 면, 식약처 API 프록시, 정적 파일.
-import base64, datetime, json, os, pathlib, re, secrets, shutil, sqlite3, subprocess, sys, tempfile, threading, urllib.parse, urllib.request
+import base64, datetime, json, os, pathlib, re, secrets, shutil, sqlite3, subprocess, sys, tempfile, threading, time, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -45,6 +45,84 @@ def db():
 
 
 def now(): return datetime.datetime.now().isoformat(timespec='seconds')
+
+
+# ---------- 규정 출처 감시: 각국 공식 페이지를 받아 글자 해시를 비교. 바뀌면 "변경 감지"만 알리고 해석은 하지 않는다(고시문을 올려 AI 추출 → 사람 승인) ----------
+REG_SOURCES = [
+    {'country': 'JP', 'name': '消費者庁 食品表示企画(식품표시 종합)', 'url': 'https://www.caa.go.jp/policies/policy/food_labeling/'},
+    {'country': 'JP', 'name': '消費者庁 食品表示法(법령·기준 개정)', 'url': 'https://www.caa.go.jp/policies/policy/food_labeling/food_labeling_act/'},
+    {'country': 'HK', 'name': '食物安全中心 食物規例/指引', 'url': 'https://www.cfs.gov.hk/tc_chi/food_leg/food_leg.html'},
+    {'country': 'TW', 'name': '衛福部食藥署 法規資訊', 'url': 'https://www.fda.gov.tw/TC/lawContent.aspx?cid=183'},
+    {'country': 'TH', 'name': 'อย. กองอาหาร(태국 FDA 식품국)', 'url': 'https://food.fda.moph.go.th/'},
+    {'country': 'KR', 'name': '식약처 제·개정 고시 (수입·국내 표시)', 'url': 'https://www.mfds.go.kr/brd/m_207/list.do'},
+    {'country': 'CN', 'name': '国家卫生健康委 食品安全标准(자동 접근 차단 → 수동 확인)', 'url': 'https://www.nhc.gov.cn/sps/', 'manual': True},
+]
+REG_LOCK = threading.Lock()
+
+
+def _page_items(url):
+    """공지·법령 제목(링크 글) 목록. 방문자 수·배너 순서 같은 잡음에 흔들리지 않게 제목 집합으로 비교한다"""
+    import html as _h
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (labelcoast regwatch)'})
+    raw = urllib.request.urlopen(req, timeout=25).read().decode('utf-8', errors='replace')
+    raw = re.sub(r'<(script|style|noscript)[^>]*>.*?</\\1>', ' ', raw, flags=re.S | re.I)
+    items = []
+    for m in re.finditer(r'<a\b[^>]*>(.*?)</a>', raw, flags=re.S | re.I):
+        t = re.sub(r'\s+', ' ', _h.unescape(re.sub(r'<[^>]+>', ' ', m.group(1)))).strip()
+        if len(t) >= 8 and not re.fullmatch(r'[\d\W]+', t) and '="' not in t and '<' not in t and 'class=' not in t and 'http' not in t.lower(): items.append(t[:120])   # 깨진 태그·속성 문자열은 제외
+    seen = set(); uniq = [x for x in items if not (x in seen or seen.add(x))]
+    return uniq
+
+
+def regwatch_check(force=False):
+    """모든 출처를 점검해 DB(regwatch 표)에 기록. 새 제목이 생기면 '변경 감지'. 반환: 출처별 상태 목록"""
+    import hashlib
+    out = []
+    with REG_LOCK, db() as c:
+        c.execute('create table if not exists regwatch(url text primary key, country text, name text, hash text, head text, checked_at text, changed_at text, note text)')
+        for s in REG_SOURCES:
+            row = c.execute('select hash, head, changed_at, note from regwatch where url=?', (s['url'],)).fetchone()
+            prev_hash, prev_head, changed_at, prev_note = (row['hash'], row['head'], row['changed_at'], row['note']) if row else (None, None, None, '')
+            status, note, head, h = 'ok', '', prev_head, prev_hash
+            if s.get('manual'):
+                status, note = 'manual', '자동 접근이 막힌 사이트. 링크를 열어 직접 확인'
+            else:
+                try:
+                    items = _page_items(s['url']); head = json.dumps(items, ensure_ascii=False)[:20000]; h = hashlib.sha256(head.encode('utf-8')).hexdigest()
+                    prev_items = set(json.loads(prev_head)) if prev_head and prev_head.startswith('[') else set()
+                    new_items = [x for x in items if x not in prev_items] if prev_items else []
+                    if prev_items and new_items:
+                        status, changed_at = 'changed', now(); note = '새 제목 ' + str(len(new_items)) + '건: ' + ' / '.join(new_items[:3])
+                    elif changed_at and not (prev_note or '').startswith('확인함'):
+                        status, note = 'changed', prev_note or '변경 감지(확인 전)'
+                    elif not prev_items: status, note = 'new', '기준선 저장(제목 ' + str(len(items)) + '건)'
+                    else: note = '제목 ' + str(len(items)) + '건 · 새 것 없음'
+                except Exception as e:
+                    status, note = 'error', '점검 실패: %s' % type(e).__name__
+            c.execute('insert into regwatch(url,country,name,hash,head,checked_at,changed_at,note) values(?,?,?,?,?,?,?,?) on conflict(url) do update set hash=excluded.hash, head=excluded.head, checked_at=excluded.checked_at, changed_at=excluded.changed_at, note=excluded.note',
+                      (s['url'], s['country'], s['name'], h, head, now(), changed_at if status == 'changed' else (None if status in ('ok', 'new') else changed_at), note))
+            out.append({'country': s['country'], 'name': s['name'], 'url': s['url'], 'status': status, 'checked_at': now(), 'changed_at': changed_at if status == 'changed' else None, 'note': note})
+    return out
+
+
+def regwatch_status():
+    with db() as c:
+        c.execute('create table if not exists regwatch(url text primary key, country text, name text, hash text, head text, checked_at text, changed_at text, note text)')
+        rows = {r['url']: r for r in c.execute('select * from regwatch').fetchall()}
+    return [{'country': s['country'], 'name': s['name'], 'url': s['url'], 'status': ('manual' if s.get('manual') else ('changed' if rows.get(s['url']) and rows[s['url']]['changed_at'] else ('ok' if rows.get(s['url']) else 'never'))),
+             'checked_at': rows[s['url']]['checked_at'] if rows.get(s['url']) else None, 'changed_at': rows[s['url']]['changed_at'] if rows.get(s['url']) else None, 'note': rows[s['url']]['note'] if rows.get(s['url']) else ''} for s in REG_SOURCES]
+
+
+def regwatch_ack(url):
+    with REG_LOCK, db() as c:
+        c.execute('update regwatch set changed_at=null, note=? where url=?', ('확인함 ' + now(), url))
+
+
+def regwatch_loop():   # 서버가 떠 있는 동안 하루 한 번 자동 점검
+    while True:
+        try: regwatch_check()
+        except Exception as e: print('[regwatch]', type(e).__name__)
+        time.sleep(86400)
 
 
 def get_state():
@@ -231,6 +309,12 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.authed(): return self.deny()
         p, _, qs = self.path.partition('?')
+        if p == '/api/regwatch/status':   # 마지막 점검 결과(재점검 없음)
+            return self.send_json(200, {'sources': regwatch_status()})
+        if p == '/api/regwatch/check':    # 지금 점검
+            return self.send_json(200, {'sources': regwatch_check()})
+        if p.startswith('/api/regwatch/ack'):
+            q = urllib.parse.parse_qs(qs); regwatch_ack(q.get('url', [''])[0]); return self.send_json(200, {'ok': True})
         if p == '/api/health':
             return self.send_json(200, {'ok': True, 'llm': bool(os.environ.get('ANTHROPIC_API_KEY')), 'mfds': bool(MFDS_KEY), 'auth': bool(PASSWORD), 'today': datetime.date.today().isoformat()})
         if p == '/login':
@@ -444,4 +528,5 @@ def daily_backup():  # 하루 1개. 이미 있으면 생략
 if __name__ == '__main__':
     daily_backup()
     print(f'labelcoast server http://localhost:{PORT}  (llm={bool(os.environ.get("ANTHROPIC_API_KEY"))}, mfds={bool(MFDS_KEY)}, auth={bool(PASSWORD)})')
+    threading.Thread(target=regwatch_loop, daemon=True).start()   # 규정 출처 매일 점검
     ThreadingHTTPServer(('0.0.0.0', PORT), H).serve_forever()

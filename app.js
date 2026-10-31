@@ -70,7 +70,7 @@
     return health.ok ? '서버' + (health.llm ? ' · AI' : '') : '오프라인';
   }
   function bootServer() {
-    api('/health').then(function (h) { health = h; if (h && h.today) LC.TODAY = h.today; return api('/state'); })
+    api('/health').then(function (h) { health = h; if (h && h.today) LC.TODAY = h.today; api('/regwatch/status').then(function (r) { state.regwatch = (r && r.sources) || []; if ($('#rw-card') || location.hash === '#home' || !location.hash) route(); }).catch(function () {}); return api('/state'); })
       .then(function (s) { var seeded = seeds(); SAVED.forEach(function (k) { if (s && s[k] != null) state[k] = s[k]; else if (!localStorage.getItem('lc.' + k)) state[k] = seeded[k]; }); mergeExtraProducts(); setProduct(state.productCode); route(); })
       .catch(function () { health = { ok: false }; route(); });
   }
@@ -155,6 +155,7 @@
     if (pend) out.push({ cls: 'warn', text: '승인 기다리는 서류 ' + pend + '건', href: '#intake', go: '서류 넣기' });
     var soon = state.registry.filter(function (r) { return r.expiry && daysTo(r.expiry) <= 90; }).sort(function (a, b) { return daysTo(a.expiry) - daysTo(b.expiry); });
     if (soon.length) out.push({ cls: daysTo(soon[0].expiry) <= 30 ? 'bad' : 'warn', text: '만료 임박 ' + soon.length + '건 · ' + soon[0].name + ' D-' + daysTo(soon[0].expiry), href: '#dash', go: '대시보드' });
+    (state.regwatch || []).filter(function (r) { return r.status === 'changed'; }).forEach(function (r) { out.push({ cls: 'bad', text: '규정 출처 변경 감지 · ' + r.country + ' ' + r.name + ' (' + String(r.changed_at || '').slice(0, 10) + ')', href: '#dash', go: '대시보드' }); });
     allRevisions().forEach(function (v) {
       var d = daysTo(v.effective); if (d < 0 || d > 180 || !LC.rules[v.country]) return;
       var hits = affectedLabels(v), fix = hits.reduce(function (t, h) { return t + (h.s ? h.s.fix : 0); }, 0);
@@ -623,6 +624,17 @@
     var stat = function (n, label, cls, href) { return '<a class="stat ' + cls + '" href="' + href + '"><span class="k">' + label + '</span><span class="v">' + n + '</span></a>'; };
     return '<div class="stats">' + stat(soon, '만료 임박', soon ? 'warn' : 'ok', '#dash') + stat(rev, '개정 대응', rev ? 'warn' : 'ok', '#dash') + stat(need, '확인 필요', need ? 'warn' : 'ok', '#dash') + '</div>';
   }
+  // 규정 출처 점검 카드: 각국 공식 페이지 변경 감지(해석 없음). 바뀐 출처는 링크를 열어 고시문을 받아 "서류 넣기"에 올린다
+  function regwatchCard() {
+    var rows = state.regwatch || [];
+    var st = { ok: ['변경 없음', 'ok'], changed: ['변경 감지', 'bad'], new: ['기준선 저장', 'ok'], never: ['아직 점검 전', 'warn'], manual: ['수동 확인', 'warn'], error: ['점검 실패', 'warn'] };
+    var body = rows.length ? '<table><tr><th>국</th><th>출처(공식)</th><th>상태</th><th>마지막 점검</th><th>비고</th></tr>' + rows.map(function (r) { var x = st[r.status] || [r.status, '']; return '<tr class="' + (r.status === 'changed' ? 'st-bad' : '') + '"><td>' + esc(r.country) + '</td><td><a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td><span class="b ' + x[1] + '">' + x[0] + (r.changed_at ? ' ' + esc(String(r.changed_at).slice(0, 10)) : '') + '</span>' + (r.status === 'changed' ? ' <button class="small ghost" data-rw-ack="' + esc(r.url) + '">확인함</button>' : '') + '</td><td class="muted">' + esc(String(r.checked_at || '').slice(0, 16)) + '</td><td class="muted">' + fold(r.note || '', 60) + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">서버가 켜져 있으면 하루 한 번 자동 점검합니다. "지금 점검"을 누르면 바로 확인합니다.</p>';
+    return '<div class="card" id="rw-card"><h3>규정 출처 점검 <span class="muted">(공식 페이지 변경 감지 · 하루 1회 자동 · 해석은 고시문 올려서)</span></h3>' + (API ? '<div class="row"><button id="rw-check">지금 점검</button><span class="muted">변경 감지 → 링크 열어 고시문 받기 → 서류 넣기에 올리면 바뀐 조항·영향 라벨이 나옵니다</span></div>' : '') + body + '</div>';
+  }
+  function bindRegwatch() {
+    var b = $('#rw-check'); if (b) b.onclick = function () { b.disabled = true; b.textContent = '점검 중…(10~30초)'; api('/regwatch/check').then(function (r) { state.regwatch = (r && r.sources) || []; route(); toast('규정 출처 점검 끝 · 변경 ' + state.regwatch.filter(function (x) { return x.status === 'changed'; }).length + '건'); }).catch(function (e) { toast('점검 실패: ' + e); b.disabled = false; b.textContent = '지금 점검'; }); };
+    document.querySelectorAll('[data-rw-ack]').forEach(function (el) { el.onclick = function () { api('/regwatch/ack?url=' + encodeURIComponent(el.dataset.rwAck)).then(function () { return api('/regwatch/status'); }).then(function (r) { state.regwatch = (r && r.sources) || []; route(); }); }; });
+  }
   screens.dash = function () {
     var sorted = state.registry.slice().sort(function (a, b) { var da = a.expiry ? daysTo(a.expiry) : 1e9, db = b.expiry ? daysTo(b.expiry) : 1e9; return da - db; });   // 급한 것 위, 만료일 없는 행은 아래
     var rows = sorted.map(function (r) {
@@ -635,7 +647,7 @@
     }).join('');
     return '<h2>대시보드</h2>' + dashStats() +
       '<div class="card"><h3>등록·인증 레지스트리 (오늘 ' + LC.TODAY + ')</h3><table><tr><th>층</th><th>종류</th><th>번호</th><th>발급</th><th>만료</th><th>D-day</th><th>국가</th><th>비고</th></tr>' + rows + '</table></div>' +
-      '<div class="card"><h3>고시 개정 → 영향받는 라벨</h3><table><tr><th>국</th><th>고시</th><th>시행일</th><th>재검토 라벨</th><th>비고</th></tr>' + rev + '</table></div>' +
+      regwatchCard() + '<div class="card"><h3>고시 개정 → 영향받는 라벨</h3><table><tr><th>국</th><th>고시</th><th>시행일</th><th>재검토 라벨</th><th>비고</th></tr>' + rev + '</table></div>' +
       '<div class="card" id="pub-card"><h3>식약처 공공데이터 조회</h3>' +
       (API ? '<div class="row"><button id="pub-go" aria-label="식약처 조회">조회</button><span class="muted">업소 인허가(I2500) · HACCP(I0610) · 회수(I0490) · 인증서 대조</span></div><div id="pub-out">' + pubView(state.publicData) + '</div>' : '<p class="muted">서버 모드(run.bat)에서 조회. 오프라인에서는 저장된 결과만</p>' + pubView(state.publicData)) + '</div>';
   };
@@ -652,6 +664,7 @@
       row('출처·시각', esc([c.source, rc.source].filter(Boolean).join(' · ')) + ' · ' + esc(d.at) + (d.cached ? ' · 캐시' : '')) + '</table>';
   }
   screens.dash.bind = function () {
+    bindRegwatch();
     var b = $('#pub-go'); if (!b) return;
     b.onclick = function () {
       var out = $('#pub-out'); out.innerHTML = '<p class="muted">조회 중… (식약처 서버 응답 3~10초)</p>'; b.disabled = true;
