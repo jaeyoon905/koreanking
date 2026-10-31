@@ -57,9 +57,21 @@
   }
   mergeExtraProducts();
   // 토스트: 승인 결과 같은 짧은 알림. 3초 뒤 사라짐
+  // 되돌릴 수 없는 동작 전 확인(UI-UX 체크: confirmation-dialogs). 브라우저 confirm 대신 같은 모양의 dialog
+  function confirmDialog(title, body, okText) {
+    return new Promise(function (resolve) {
+      var old = $('#confirm-dlg'); if (old) old.remove();
+      var d = document.createElement('dialog'); d.id = 'confirm-dlg'; d.className = 'card';
+      d.innerHTML = '<h3>' + esc(title) + '</h3><p>' + esc(body) + '</p><div class="row"><button id="cf-ok">' + esc(okText || '진행') + '</button><button class="ghost" id="cf-no">취소</button></div>';
+      document.body.appendChild(d); d.showModal();
+      var done = function (ok) { try { d.close(); } catch (e) {} d.remove(); resolve(ok); };
+      $('#cf-ok').onclick = function () { done(true); }; $('#cf-no').onclick = function () { done(false); }; d.oncancel = function () { done(false); };
+      setTimeout(function () { var b = $('#cf-no'); if (b) b.focus(); }, 0);
+    });
+  }
   function toast(msg) {
     var t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
-    t.textContent = msg; t.className = 'show'; clearTimeout(toast.timer); toast.timer = setTimeout(function () { t.className = ''; }, 3000);
+    t.setAttribute('aria-live', 'polite'); t.textContent = msg; t.className = 'show'; clearTimeout(toast.timer); toast.timer = setTimeout(function () { t.className = ''; }, 3000);
   }
   // 빈 원장 안내 (선적·LOT·내보내기 공용)
   function shipped(l) { return !!(l.ship && !/미선적/.test(l.ship)); }   // 시드의 '미선적 (재고)' 문자열은 선적 아님
@@ -222,7 +234,7 @@
       var keys = Object.keys(fixed).filter(function (k) { return String(fixed[k] || '') !== String(fields[k] || ''); });
       var why = {}; (r.changes || []).forEach(function (c) { if (c && c.k) why[c.k] = c.why || ''; });
       var v = s2.fix ? ['bad', '고친 뒤에도 수정 ' + s2.fix + '항목 남음'] : s2.check ? ['warn', '고친 라벨: 수정 0 · 확인 ' + s2.check + '항목 (자료 확인 뒤 발행)'] : ['ok', '고친 라벨 통과 · ' + s2.pass + '항목 충족'];
-      out.innerHTML = '<div class="card" id="lbl-fixcard"><h3>고친 라벨 <span class="muted">' + keys.length + '칸 바뀜 · 같은 규칙으로 다시 판정함 · 보내기 전 담당자 확인</span></h3>' +
+      out.innerHTML = '<div class="card" id="lbl-fixcard"><h3>고친 라벨 <span class="muted">' + keys.length + '칸을 고쳐 같은 규칙으로 다시 판정했습니다. 보내기 전 담당자가 확인합니다.</span></h3>' +
         '<div class="verdict ' + v[0] + '">' + v[1] + '<span class="v-sub">전: 수정 ' + s0.fix + ' · 확인 ' + s0.check + ' → 후: 수정 ' + s2.fix + ' · 확인 ' + s2.check + '</span></div>' +
         (keys.length ? '<table><tr><th>칸</th><th>받은 라벨</th><th>고친 문구</th><th>왜</th></tr>' + keys.map(function (k) { return '<tr><td><b>' + esc(LABEL_KEY_KO[k] || k) + '</b><br><span class="muted">' + esc((LABEL_KEY_BY[country] || {})[k] || '') + '</span></td><td>' + fold(fields[k] || '', 80) + '</td><td>' + fold(fixed[k] || '', 80) + '</td><td class="muted">' + esc(why[k] || '') + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">바뀐 칸 없음</p>') +
         ((r.changes || []).some(function (c) { return /자료 필요/.test(String(c && (c.after || c.why))); }) ? '<p class="alert">자료가 없어 못 고친 칸이 있습니다. 표의 "이유"를 보고 자료를 넣으세요.</p>' : '') +
@@ -325,7 +337,7 @@
       '<table><tr><th>항목</th><th>판정</th><th>근거</th><th>현재</th><th>고칠 것</th></tr>' +
       res.map(function (x) { return '<tr class="' + (x.status === 'fix' ? 'st-bad' : x.status === 'check' ? 'st-check' : '') + '"><td><b>' + esc(x.item) + '</b></td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td>' + refCell(country, x, ref(x)) + '</td><td class="muted">' + fold(x.msg, 40) + '</td><td class="fixto">' + fold(x.fix || '', 40) + '</td></tr>'; }).join('') +
       '</table></div>' +
-      '<div class="actions"><details class="no-print"><summary>읽은 값</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details><button class="lg" id="lbl-pdf">수정 요청서 PDF</button>' +
+      '<div class="actions"><details class="no-print"><summary>읽은 값</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details><button class="ghost" id="lbl-pdf">수정 요청서 PDF</button>' +
       (API && (s.fix || s.check) ? '<button class="lg" id="lbl-fix" aria-label="지적된 칸을 고친 라벨 전체를 만들고 다시 판정">고친 라벨 만들기 · 재판정</button>' : '') + '</div><div id="lbl-fixout"></div>';
     $('#lbl-out').innerHTML = html;
     state.lastLabel = { country: country, made: meta.made, file: meta.file, summary: s };
@@ -1137,8 +1149,8 @@
   }
   screens.intake.bind = function () {
     bindDrop('in', function (files) { Array.prototype.forEach.call(files, addFile); });
-    $('#in-empty').onclick = function () { state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderIntake(); };
-    $('#in-seed').onclick = function () { resetAll(); intakeCards = []; renderIntake(); };
+    $('#in-empty').onclick = function () { confirmDialog('모두 비우기', '로트·입고·선적·서류 기록을 전부 지웁니다. 되돌릴 수 없습니다. 먼저 내보내기에서 백업을 받아 두세요.', '지우기').then(function (ok) { if (!ok) return; state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderIntake(); toast('모두 비웠습니다'); }); };
+    $('#in-seed').onclick = function () { confirmDialog('예시 데이터로 되돌리기', '지금 기록을 예시 데이터로 바꿉니다. 올린 양식·답장·로트는 사라집니다.', '되돌리기').then(function (ok) { if (!ok) return; resetAll(); intakeCards = []; renderIntake(); }); };
     renderIntake();
   };
 
@@ -1252,7 +1264,7 @@
       if (state.shipments.length && API) { var no = state.shipments[state.shipments.length - 1].no; items.push(a(API + '/shipdocs/pl?no=' + encodeURIComponent(no), '패킹리스트', ' download class="btn small ghost"'), a(API + '/shipdocs/mdl?no=' + encodeURIComponent(no), '제조일자 리스트', ' download class="btn small ghost"')); }
       var asked = b.reply && b.reply.answers ? b.reply.answers.map(function (x) { return x['주제'] || x.topic; }).filter(function (v, j, arr) { return v && arr.indexOf(v) === j; }).join('·') : '';
       var rds = requestedDocs(b), rdHtml = rds.length ? '<div class="outs"><b>바이어가 물은 것 → 서류</b> ' + rds.map(function (d, j) { return d.ok ? btn('data-bd-doc="' + i + ':' + j + '"', d.title, 'small ghost') : '<span class="b warn">' + esc(d.title) + ' · 자료 필요</span>'; }).join(' ') + (rds.some(function (d) { return d.ok; }) ? ' ' + btn('data-bd-docs="' + i + '"', '요청 서류 전부 zip', 'small ghost') : '') + '</div>' : '';
-      return '<tr><td><b>' + esc(b.buyer) + '</b><br><span class="muted">' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ' · 로트 ' + esc(b.lot.lot) : ' · 로트 없음') + (asked ? ' · 문의: ' + esc(asked) : '') + '</span></td><td class="outs">' + items.join(' ') + rdHtml + '</td></tr>';
+      return '<tr><td><b>' + esc(b.buyer) + '</b><br><span class="muted">' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ', 로트 ' + esc(b.lot.lot) : ', 로트 없음') + (asked ? '<br>문의 항목: ' + esc(asked.replace(/·/g, ', ')) : '') + '</span></td><td class="outs">' + items.join(' ') + rdHtml + '</td></tr>';
     }).join('');
     return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류</h3><p class="muted">파란 버튼 하나로 한 벌이 나오고, 낱개도 받을 수 있습니다. 보내기 전 검수창을 거칩니다.</p><table><tr><th>바이어 · 품목</th><th>보낼 것</th></tr>' + rows + '</table></div>';
   }
@@ -1289,7 +1301,7 @@
   function resultCards() {
     if (!state.ledger.length) return '';
     var ymd = LC.TODAY.replace(/-/g, '');
-    var card = function (href, title, body) { return '<div class="card result"><h3>' + title + (href ? ' <a class="more" href="' + href + '">자세히 ›</a>' : '') + '</h3>' + body + '</div>'; };
+    var card = function (href, title, body) { return '<div class="card result"><h3>' + title + (href ? ' <a class="more" href="' + href + '">자세히 보기</a>' : '') + '</h3>' + body + '</div>'; };
     var lots = state.ledger.slice(-5).reverse();
     var ledger = card('#ship', '로트 원장 · ' + state.ledger.length + '건',
       '<table><tr><th>LOT</th><th>코드</th><th>제조일</th><th class="num">C/T</th><th>선적</th></tr>' + lots.map(function (l) { return '<tr><td><a href="#lot/' + l.lot + '">' + l.lot + '</a></td><td>' + esc(l.company_code || '') + '</td><td>' + l.mfg + '</td><td class="num">' + l.qty_ct + '</td><td>' + esc((l.ship || '미선적').split(' / ')[0]) + '</td></tr>'; }).join('') + '</table>' +
@@ -1358,7 +1370,7 @@
     if ($('#qk-all9')) $('#qk-all9').onclick = function () { addGroup(0); };
     if ($('#qk-jun')) $('#qk-jun').onclick = function (e) { e.preventDefault(); addGroup(1); };
     if ($('#qk-imp')) $('#qk-imp').onclick = function (e) { e.preventDefault(); addGroup(2); };
-    if ($('#qk-empty')) $('#qk-empty').onclick = function () { state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderQuick(); toast('빈 원장'); };
+    if ($('#qk-empty')) $('#qk-empty').onclick = function () { confirmDialog('빈 상태로 시작', '지금 들어 있는 로트·입고·선적·서류 기록을 전부 지웁니다. 되돌릴 수 없습니다.', '지우고 시작').then(function (ok) { if (!ok) return; state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderQuick(); toast('빈 원장'); }); };
     renderQuick();
   };
 
