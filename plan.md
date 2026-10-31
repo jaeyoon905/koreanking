@@ -222,6 +222,11 @@
 - **코드 변경:** `data.js` LEG·CL 품목(시연용, demo:true), `fixtures.js` 미리 읽은 값은 원본 파일명 앞머리에만
 - [x] 완료
 
+### F16. 샘플이 끝까지 돌게 (재윤: "넣으면 수출에 필요한 파일이 나와야")
+- **파일:** `app.js`(intakeCard·quickRow·outputsFor·bindOutputs·pendingLabel), `apply.js`(A 영양성적서 → productNutrition, LC.lotRows)
+- **할 일:** 여러 파일 동시 업로드 때 읽는 동안 "AI가 읽는 중" 표시·승인 잠금(전에는 '종류 미확인'으로 보여 빈 값 승인됨). 승인된 카드마다 "나온 것" 링크: 채운 규격서→PDF, 답장 초안 .txt, LOT 조회·바이어 패키지 zip·QR, 라벨 판정→수정안, 품목 영양 환산표. 영양성적서 승인 시 품목 영양값(100g) 채움(state.productNutrition, 새로고침 유지).
+- [x] 완료 (0bf6a4c)
+
 ---
 
 ## TJ 작업 (Opus, `htjplan`)
