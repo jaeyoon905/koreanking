@@ -231,9 +231,10 @@
       var keyOf = function (k) { var kk = KEY_KO[k] || k, v = String(fixed[k] || ''); return v.indexOf(kk.split(' ')[0]) === 0 ? '' : kk; };   // 값에 칸 이름이 이미 있으면(此日期前最佳 …) 중복 표기 안 함
       var labelHtml = '<div class="sheet"><h3>Label text (corrected draft) · ' + esc(LC.rules[country].name) + ' · ' + esc(meta.file || '') + '</h3><p class="muted">규칙 판정 뒤 고친 문안 · ' + LC.TODAY + '</p><table>' + labelRows.map(function (k) { return '<tr><th>' + esc(keyOf(k)) + '</th><td>' + esc(fixed[k]) + '</td></tr>'; }).join('') + '</table></div>';
       var labelTxt = labelRows.map(function (k) { var kk = keyOf(k); return (kk ? kk + ': ' : '') + fixed[k]; }).join('\n');
-      $('#lbl-fixpdf').onclick = function () { downloadPdf('라벨수정안_' + (meta.file || country) + '_' + country, $('#lbl-fixcard').outerHTML); };
-      $('#lbl-fixlabel').onclick = function () { downloadPdf('라벨문안_' + (meta.file || country) + '_' + country, labelHtml); };
-      $('#lbl-fixtxt').onclick = function () { download('라벨문안_' + (meta.file || country) + '_' + country + '.txt', labelTxt, 'text/plain;charset=utf-8'); };
+      var lctx = { product: P(), fixCount: s2.fix, checkCount: s2.check, aiFixed: keys.length };
+      $('#lbl-fixpdf').onclick = function () { sendGate('라벨 수정안 PDF', meta.file || country, lctx).then(function (ok) { if (ok) downloadPdf('라벨수정안_' + (meta.file || country) + '_' + country, $('#lbl-fixcard').outerHTML); }); };
+      $('#lbl-fixlabel').onclick = function () { sendGate('라벨 문안 PDF', meta.file || country, lctx).then(function (ok) { if (ok) downloadPdf('라벨문안_' + (meta.file || country) + '_' + country, labelHtml); }); };
+      $('#lbl-fixtxt').onclick = function () { sendGate('라벨 문안 txt', meta.file || country, lctx).then(function (ok) { if (ok) download('라벨문안_' + (meta.file || country) + '_' + country + '.txt', labelTxt, 'text/plain;charset=utf-8'); }); };
     }).catch(function (e) { out.innerHTML = '<p class="alert">수정안 실패: ' + esc(e) + '</p>'; });
   }
   // 날짜 설정 → 라벨 칸에 반영. 나라별 관용 표기(기본값, 확인 가능): 일본 YYYY.MM.DD, 홍콩·태국 DD/MM/YYYY, 대만 YYYY.MM.DD, 중국 年月日
@@ -460,8 +461,8 @@
     var f0 = state.specBuyer && state.specForms[state.specBuyer];
     if (f0) translateMissing(formLang(f0), buyerFormSheet.lastRaw || {}).then(function (ch) { if (ch) route(); });
     var ready = function () { return f0 ? translateMissing(formLang(f0), buyerFormSheet.lastRaw || {}).then(function (ch) { if (ch) { route(); } }) : Promise.resolve(); };
-    var pb = $('#sp-pdf'); if (pb) pb.onclick = function () { ready().then(function () { downloadPdf(nm, (f0 ? buyerFormSheet(state.specBuyer, cur) : $('.sheet').outerHTML)); }); };
-    var xb = $('#sp-xlsx'); if (xb) xb.onclick = function () { ready().then(function () { downloadFilledXlsx(state.specBuyer, cur); }); };
+    var pb = $('#sp-pdf'); if (pb) pb.onclick = function () { ready().then(function () { var html = f0 ? buyerFormSheet(state.specBuyer, cur) : $('.sheet').outerHTML; return sendGate('규격서 PDF', nm, f0 ? specCtx(state.specBuyer, cur) : { product: P() }).then(function (ok) { if (ok) downloadPdf(nm, html); }); }); };
+    var xb = $('#sp-xlsx'); if (xb) xb.onclick = function () { ready().then(function () { buyerFormSheet(state.specBuyer, cur); return sendGate('바이어 엑셀 채움', nm, specCtx(state.specBuyer, cur)).then(function (ok) { if (ok) downloadFilledXlsx(state.specBuyer, cur); }); }); };
     bindBundles();
   };
 
@@ -980,8 +981,8 @@
     var bs = bundleBuyers();
     var withProduct = function (b, fn) { var prev = state.productCode; setProduct(b.product); try { fn(); } finally { setProduct(prev); } };
     var prep = function (b) { var raw; withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); raw = buyerFormSheet.lastRaw; }); return translateMissing(formLang(state.specForms[b.buyer]), raw || {}); };
-    document.querySelectorAll('[data-bd-pdf]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdPdf]; prep(b).then(function () { withProduct(b, function () { downloadPdf('규격서_' + b.buyer + '_' + b.product + (b.lot ? '_' + b.lot.lot : ''), buyerFormSheet(b.buyer, b.lot)); }); }); }; });
-    document.querySelectorAll('[data-bd-xlsx]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdXlsx]; prep(b).then(function () { withProduct(b, function () { downloadFilledXlsx(b.buyer, b.lot); }); }); }; });
+    document.querySelectorAll('[data-bd-pdf]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdPdf]; prep(b).then(function () { var html, ctx; withProduct(b, function () { html = buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); return sendGate('규격서 PDF', b.buyer + ' · ' + b.product, ctx).then(function (ok) { if (ok) downloadPdf('규격서_' + b.buyer + '_' + b.product + (b.lot ? '_' + b.lot.lot : ''), html); }); }); }; });
+    document.querySelectorAll('[data-bd-xlsx]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdXlsx]; prep(b).then(function () { var ctx; withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); return sendGate('바이어 엑셀 채움', b.buyer, ctx).then(function (ok) { if (ok) withProduct(b, function () { downloadFilledXlsx(b.buyer, b.lot); }); }); }); }; });
     document.querySelectorAll('[data-bd-zip]').forEach(function (el) { el.onclick = function () {
       var b = bs[+el.dataset.bdZip]; el.disabled = true; el.textContent = '패키지 만드는 중…';
       var go = function () {
@@ -998,7 +999,7 @@
           .then(function (r) { if (!r.ok) throw new Error('패키지 실패 ' + r.status); return r.blob(); })
           .then(function (bl) { download('서류패키지_' + b.buyer + '_' + b.product + '.zip', bl, 'application/zip'); });
       };
-      (b.form ? prep(b) : Promise.resolve()).then(go).catch(function (e) { toast(String(e)); }).then(function () { el.disabled = false; el.textContent = '이 거래 서류 한 번에 받기 (zip)'; });
+      (b.form ? prep(b) : Promise.resolve()).then(function () { var ctx = { product: LC.products[b.product] || P() }; if (b.form) withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); if (state.lastFix) { ctx.fixCount = (state.lastFix.after || {}).fix || 0; ctx.checkCount = (state.lastFix.after || {}).check || 0; ctx.aiFixed = Object.keys(state.lastFix.fields || {}).length ? undefined : undefined; } return sendGate('거래 서류 패키지', b.buyer + ' · ' + b.product, ctx); }).then(function (ok) { if (ok) return go(); }).catch(function (e) { toast(String(e)); }).then(function () { el.disabled = false; el.textContent = '이 거래 서류 한 번에 받기 (zip)'; });
     }; });
     document.querySelectorAll('[data-bd-reply]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdReply]; download('답장초안_' + b.buyer + '.txt', String(b.reply.reply_draft || ''), 'text/plain;charset=utf-8'); }; });
     document.querySelectorAll('[data-bd-label]').forEach(function (el) { el.onclick = function () { var fx = state.lastFix, rows = Object.keys(fx.fields).filter(function (k) { return fx.fields[k] && k !== 'country'; }); downloadPdf('라벨문안_' + fx.country + '_' + (fx.file || ''), '<div class="sheet"><h3>라벨 문안 (수정안) · ' + esc(fx.country) + '</h3><table>' + rows.map(function (k) { return '<tr><th>' + esc(k) + '</th><td>' + esc(fx.fields[k]) + '</td></tr>'; }).join('') + '</table></div>'); }; });
@@ -1081,6 +1082,21 @@
 
   // ---------- 집계: 본문 계산은 stats.js ----------
   var STAT_CSV = {};   // 섹션 이름 → CSV 문자열 (렌더 때 채움)
+  // 쌓인 거래 데이터로 아는 것: 바이어가 많이 묻는 항목, 자료가 없어 못 답한 항목(보강 우선순위), 양식에서 못 채운 칸, 발행 이력, 준비도
+  function insightsCard() {
+    var topics = {}, lacking = {}, total = 0, answered = 0;
+    (state.replies || []).forEach(function (r) { (r.answers || []).forEach(function (a) { var t = a['주제'] || a.topic, st = a['상태'] || a.status; if (!t) return; topics[t] = (topics[t] || 0) + 1; total++; if (st === '근거 있음') answered++; else if (st === '자료 없음') lacking[t] = (lacking[t] || 0) + 1; }); });
+    var gaps = {}; Object.keys(state.specForms || {}).forEach(function (b) { var mp = state.specForms[b].mapping || {}; Object.keys(mp).forEach(function (k) { if (!mp[k]) gaps[k] = (gaps[k] || 0) + 1; }); });
+    var top = function (o, n) { return Object.keys(o).sort(function (a, b) { return o[b] - o[a]; }).slice(0, n); };
+    var issued = state.docs.filter(function (d) { return d.doc_type === '발행'; }), approved = state.docs.filter(function (d) { return d.doc_type !== '발행' && !/^반려/.test(String(d.result)); });
+    var ready = total ? Math.round(answered * 100 / total) : null;
+    var tbl = function (o, keys, h1, h2) { return keys.length ? '<table><tr><th>' + h1 + '</th><th class="num">' + h2 + '</th></tr>' + keys.map(function (k) { return '<tr><td>' + esc(k) + '</td><td class="num">' + o[k] + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">아직 없음</p>'; };
+    return '<div class="card"><h3>쌓인 데이터로 아는 것 <span class="muted">(수출 데이터의 2차 가치)</span></h3>' +
+      '<div class="stats">' + '<div class="stat ' + (ready == null ? '' : ready >= 80 ? 'ok' : 'warn') + '"><span class="k">다음 거래 준비도</span><span class="v">' + (ready == null ? '-' : ready + '%') + '<small>바이어 질문 중 우리 데이터로 바로 답한 비율</small></span></div>' +
+      '<div class="stat"><span class="k">처리한 서류</span><span class="v">' + approved.length + '<small>건</small></span></div><div class="stat"><span class="k">발행(검수 통과)</span><span class="v">' + issued.length + '<small>건</small></span></div></div>' +
+      '<div class="cols"><div><h4>바이어가 많이 묻는 것</h4>' + tbl(topics, top(topics, 6), '항목', '회') + '</div><div><h4>자료가 없어 못 답한 것 → 보강 우선순위</h4>' + tbl(lacking, top(lacking, 6), '항목', '회') + '</div><div><h4>양식에서 못 채운 칸</h4>' + tbl(gaps, top(gaps, 6), '칸', '양식 수') + '</div></div>' +
+      '<p class="muted">문의·양식·발행이 쌓일수록 정확해집니다. 못 답한 항목을 품목대장·성적서로 채우면 준비도가 올라갑니다.</p></div>';
+  }
   screens.stats = function () {
     if (typeof LC.stats !== 'function') return '<h2>집계</h2><p class="muted">stats.js 없음</p>';
     if (!state.ledger.length) return '<h2>집계</h2>' + emptyLedger();
@@ -1095,7 +1111,7 @@
     var buyers = '<table><tr><th>바이어</th><th class="num">선적</th><th class="num">C/T</th><th class="num">kg</th><th>마지막</th><th class="num">평균 간격(일)</th></tr>' + st.buyers.map(function (b) { return '<tr><td>' + esc(b.buyer) + '</td><td class="num">' + b.shipments + '</td><td class="num">' + fmt(b.ct) + '</td><td class="num">' + fmt(b.kg) + '</td><td>' + fmt(b.last) + '</td><td class="num">' + fmt(b.avg_gap_days) + '</td></tr>'; }).join('') + '</table>';
     var lt = st.lead_times, lead = '<table><tr><th></th><th class="num">평균(일)</th><th class="num">최대(일)</th></tr><tr><td>입고 → 제조</td><td class="num">' + fmt(lt.raw_to_mfg.avg) + '</td><td class="num">' + fmt(lt.raw_to_mfg.max) + '</td></tr><tr><td>제조 → 선적</td><td class="num">' + fmt(lt.mfg_to_ship.avg) + '</td><td class="num">' + fmt(lt.mfg_to_ship.max) + '</td></tr></table>';
     var dc = st.docs, docs = '<table><tr><th>서류 종류</th><th class="num">건수</th></tr>' + Object.keys(dc.by_type || {}).map(function (k) { return '<tr><td>' + esc(k) + '</td><td class="num">' + dc.by_type[k] + '</td></tr>'; }).join('') + '</table><p class="muted">반려 ' + (dc.rejected || 0) + '건 · 마지막 처리 ' + fmt(dc.last) + '</p>';
-    return '<h2>집계</h2><p class="sub">원장에서 바로 계산합니다.</p><div class="cols">' +
+    return '<h2>집계</h2><p class="sub">원장에서 바로 계산합니다.</p>' + insightsCard() + '<div class="cols">' +
       cardOf('monthly', '월별 입고·생산·선적', monthly, LC.stats.toCSV(st.monthly)) + cardOf('inventory', '재고 (생산 − 선적)', inv, LC.stats.toCSV(st.inventory)) +
       cardOf('yield', '입고분별 수율', yld, LC.stats.toCSV(st.yield.rows)) + cardOf('buyers', '바이어별 선적', buyers, LC.stats.toCSV(st.buyers)) +
       cardOf('lead', '리드타임', lead, LC.stats.toCSV(lt.lots)) + cardOf('docs', '처리 기록', docs, LC.stats.toCSV(Object.keys(dc.by_type || {}).map(function (k) { return { doc_type: k, count: dc.by_type[k] }; }))) + '</div>' +
@@ -1114,6 +1130,45 @@
   function csvText(rows, cols) {
     var q = function (v) { if (Array.isArray(v)) v = v.join('; '); v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     return '\ufeff' + [cols.join(',')].concat(rows.map(function (r) { return cols.map(function (c) { return q(r[c]); }).join(','); })).join('\r\n');
+  }
+  // ---------- 안전장치: 보내기 전 검수 게이트 ----------
+  // 규칙 미통과(수정 항목)가 남아 있으면 차단. AI 초안(번역·짝짓기·수정안)·임의값·만료 임박·개정 영향은 담당자 확인 체크 뒤에만 발행. 발행은 처리 기록에 남는다
+  function gateIssues(ctx) {
+    var block = [], warn = [], p = ctx.product || P();
+    if (ctx.fixCount) block.push('라벨 규칙 미통과 ' + ctx.fixCount + '항목 — 고친 뒤에만 보낼 수 있음');
+    if (ctx.checkCount) warn.push('라벨 확인 필요 ' + ctx.checkCount + '항목 (자료 확인 뒤 보내기)');
+    if (ctx.txCount) warn.push('AI 번역 칸 ' + ctx.txCount + '개 (양식 언어로 번역한 초안)');
+    if (ctx.mapCount) warn.push('AI가 짝지은 칸 ' + ctx.mapCount + '개 (승인됨)');
+    if (ctx.aiFixed) warn.push('AI가 고친 라벨 칸 ' + ctx.aiFixed + '개 (규칙 재판정 통과)');
+    if (ctx.missing) warn.push('비어 있는 칸 ' + ctx.missing + '개 (노란 칸 · 바이어와 확인)');
+    if (p && /임의|확인 필요|성적서 없음/.test(String(p.nutrition_source || ''))) warn.push('영양값 출처: ' + p.nutrition_source);
+    if (p && p.demo) warn.push('시연용 품목(' + p.code + ') — 배합·규격 회사 확인 전');
+    state.registry.forEach(function (r) { if (r.expiry && daysTo(r.expiry) <= 30) warn.push('인증·등록 만료 임박: ' + r.name + ' D-' + daysTo(r.expiry)); });
+    allRevisions().forEach(function (v) { var d = daysTo(v.effective); if (d >= 0 && d <= 180 && LC.rules[v.country] && affectedLabels(v).length) warn.push('규정 개정 D-' + d + ': ' + v.title + ' (영향 라벨 ' + affectedLabels(v).length + '건)'); });
+    return { block: block, warn: warn };
+  }
+  function sendGate(kind, name, ctx) {
+    var is = gateIssues(ctx || {});
+    return new Promise(function (resolve) {
+      var old = $('#gate'); if (old) old.remove();
+      var dlg = document.createElement('dialog'); dlg.id = 'gate'; dlg.className = 'card';
+      var li = function (arr, cls) { return arr.map(function (t) { return '<li><span class="b ' + cls + '">' + (cls === 'bad' ? '차단' : '확인') + '</span> ' + esc(t) + '</li>'; }).join(''); };
+      dlg.innerHTML = '<h3>보내기 전 검수 · ' + esc(kind) + '</h3><p class="muted">' + esc(name) + '</p>' +
+        (is.block.length || is.warn.length ? '<ul class="log">' + li(is.block, 'bad') + li(is.warn, 'warn') + '</ul>' : '<p class="alert ok">걸리는 항목 없음 · 규칙 통과 · AI 초안 없음</p>') +
+        (is.block.length ? '<p class="alert bad">규칙 미통과 항목이 있어 발행할 수 없습니다. 라벨 화면에서 수정안을 만들고 다시 판정하세요.</p><div class="row"><button class="ghost" id="gate-no">닫기</button></div>'
+          : (is.warn.length ? '<label class="chk"><input type="checkbox" id="gate-ok"> 담당자 확인: 위 항목을 확인했고, 보내기 전 최종 검토를 합니다</label>' : '') + '<div class="row"><button id="gate-go"' + (is.warn.length ? ' disabled' : '') + '>발행하고 받기</button><button class="ghost" id="gate-no">취소</button></div>') +
+        '<p class="muted">발행은 처리 기록에 남습니다(파일·일시·확인 항목). AI는 읽기·번역·초안만, 판정은 규칙, 최종 확인은 사람.</p>';
+      document.body.appendChild(dlg); dlg.showModal();
+      var done = function (ok) { try { dlg.close(); } catch (e) {} dlg.remove(); if (ok) { var summary = '발행 · ' + kind + (is.warn.length ? ' · 확인 ' + is.warn.length + '건' : ' · 걸림 없음'); state.docs.push({ file: name, doc_type: '발행', at: LC.TODAY, result: summary }); save(); if (API) api('/docs', 'POST', { file: name, doc_type: '발행', mode: kind, decision: '발행', result: summary, fields: is.warn.map(function (t) { return { k: 'confirm', v: t }; }) }).catch(function () {}); } resolve(ok); };
+      var ok = $('#gate-ok'); if (ok) ok.onchange = function () { $('#gate-go').disabled = !ok.checked; };
+      var go = $('#gate-go'); if (go) go.onclick = function () { done(true); };
+      $('#gate-no').onclick = function () { done(false); };
+    });
+  }
+  function specCtx(buyer, lot) {
+    var f = (buyer && state.specForms[buyer]) || {}, raw = buyerFormSheet.lastRaw || {}, vals = buyerFormSheet.lastValues || {}, mp = f.mapping || {};
+    var tx = Object.keys(raw).filter(function (k) { return vals[k] !== raw[k]; }).length, missing = (f.fields || []).filter(function (k) { return !vals[k] && ['重点管理', '配合', '調味液', '包装資材'].indexOf(k) < 0; }).length;
+    return { product: lot && LC.products[lot.product] || P(), txCount: tx, mapCount: Object.keys(mp).filter(function (k) { return mp[k]; }).length, missing: missing };
   }
   // 서버에서 PDF 로 만들어 내려받기(휴대폰·공개 페이지에서도 됨). 서버 없으면 인쇄창
   function downloadPdf(name, html) {
