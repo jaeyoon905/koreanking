@@ -423,7 +423,11 @@ class H(BaseHTTPRequestHandler):
     def do_PUT(self):
         if not self.authed(): return self.deny()
         if self.path == '/api/state':
-            return self.send_json(200, {'ok': True, 'updated': put_state(self.body())})
+            new = self.body(); old = get_state()   # 병합 저장: 옛 화면(캐시)이 모르는 키(replies·tx 등)를 지우지 못하게 없는 키는 유지
+            if isinstance(new, dict) and isinstance(old, dict):
+                for k, v in old.items():
+                    if k not in new: new[k] = v
+            return self.send_json(200, {'ok': True, 'updated': put_state(new)})
         self.send_json(404, {'error': 'no route'})
 
     def do_POST(self):
