@@ -456,6 +456,14 @@
     state.registry.forEach(function (r) { if (!r.expiry) return; var d = daysTo(r.expiry); cnt[d <= r.lead || d <= 30 ? 'bad' : d <= 90 ? 'warn' : 'ok']++; });
     return cnt;
   }
+  // 상단 숫자 3개: 만료 임박(90일 이내) / 개정 대응(시행 전 개정 중 영향 라벨 있는 건) / 확인 필요(번호·만료일 확인이 남은 등록)
+  function dashStats() {
+    var soon = state.registry.filter(function (r) { return r.expiry && daysTo(r.expiry) <= 90; }).length;
+    var rev = LC.revisions.filter(function (v) { return daysTo(v.effective) >= 0 && LC.rules[v.country] && affectedLabels(v).length; }).length;
+    var need = state.registry.filter(function (r) { return /확인/.test(String(r.no) + ' ' + String(r.note)) && r.kind !== '참고'; }).length;
+    var stat = function (n, label, cls, href) { return '<a class="stat ' + cls + '" href="' + href + '"><b>' + n + '</b><span>' + label + '</span></a>'; };
+    return '<div class="stats">' + stat(soon, '만료 임박', soon ? 'warn' : 'ok', '#dash') + stat(rev, '개정 대응', rev ? 'warn' : 'ok', '#dash') + stat(need, '확인 필요', need ? 'warn' : 'ok', '#dash') + '</div>';
+  }
   screens.dash = function () {
     var cnt = dashCounts();
     var sorted = state.registry.slice().sort(function (a, b) { var da = a.expiry ? daysTo(a.expiry) : 1e9, db = b.expiry ? daysTo(b.expiry) : 1e9; return da - db; });   // 급한 것 위, 만료일 없는 행은 아래
@@ -467,7 +475,7 @@
       var d = daysTo(v.effective);
       return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + revisionLabels(v) + '</td><td class="muted">' + esc(v.note) + '</td></tr>';
     }).join('');
-    return '<h2>대시보드</h2>' +
+    return '<h2>대시보드</h2>' + dashStats() +
       '<div class="badges"><span class="b bad">30일 이내 ' + cnt.bad + '</span><span class="b warn">90일 이내 ' + cnt.warn + '</span><span class="b ok">여유 ' + cnt.ok + '</span></div>' +
       '<div class="card"><h3>등록·인증 레지스트리 (오늘 ' + LC.TODAY + ')</h3><table><tr><th>층</th><th>종류</th><th>번호</th><th>발급</th><th>만료</th><th>D-day</th><th>국가</th><th>비고</th></tr>' + rows + '</table></div>' +
       '<div class="card"><h3>고시 개정 → 영향받는 라벨</h3><table><tr><th>국</th><th>고시</th><th>시행일</th><th>재검토 라벨</th><th>비고</th></tr>' + rev + '</table></div>' +
