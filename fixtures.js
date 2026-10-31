@@ -203,6 +203,67 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
         { k: 'country', label: '도착국', v: 'JP', src: '輸入者' },
         { k: 'made', label: '라벨 기준 연도', v: '2026', src: '제품 사진 촬영 시점' },
         { k: 'source', label: '파일', v: '추가_제품사진 (U사 LB 실물)', src: '-' }
+      ] },
+
+    // ===== 시연용 가상 6월 선적 세트 (4월 자료 구조 복제. 실제 서류 아님) =====
+    { id: '7-1b', match: /7-1b|입고검사서_6월/i, doc_type: '입고검사서', sensitive: false, source: '7-1b.원료입고검사서_6월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+      fields: [
+        { k: 'species', label: '원료명', v: '붉은대게 (Chionoecetes japonicus)', src: 'p1 원료명' },
+        { k: 'fishing_period', label: '조업일자', v: '2026-06-02 ~ 06-06', src: 'p1 조업일자' },
+        { k: 'received', label: '입고일', v: '2026-06-06', src: 'p1 입고일' },
+        { k: 'vessel', label: '공급자(어선)', v: '구○호', src: 'p1 공급자' },
+        { k: 'landing', label: '원산지', v: '국내산 (동해 연근해)', src: 'p1 원산지' },
+        { k: 'boxes_in', label: '입고 상자', v: 520, src: 'p1 3.원료판정 입고량' },
+        { k: 'boxes_ok', label: '판정 상자', v: 480, src: 'p1 3.원료판정 판정수량' },
+        { k: 'deduct', label: '공제 상자', v: 40, src: 'p1 비고' },
+        { k: 'total_kg', label: '총중량 kg', v: 14400, src: 'p1 3.원료판정 총중량 (30kg×480)' },
+        { k: 'core_temp', label: '중심온도 기준', v: '10℃ 이하 (5회 측정 양호)', src: 'p1 1.입고 검수 기준' },
+        { k: 'black', label: '흑변 공제', v: '18상자', src: 'p1 비고' }
+      ] },
+    { id: '7-2b', match: /7-2b|가공일지_6월/i, doc_type: '가공일지', sensitive: false, source: '7-2b.가공일지_6월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+      fields: [
+        { k: 'date', label: '날짜', v: '2026-06-08', src: 'p1 상단' },
+        { k: 'raw_sources', label: '다리 작업 원료 약어(순서대로)', v: ['구', '구', '대', '구', '화', '구'], src: 'p1 금일 작업 · 다리' },
+        { k: 'products_made', label: '만든 품목', v: ['LB', 'WF'], src: 'p1 금일 작업 열 제목' },
+        { k: 'headcount', label: '공정별 인원·시간', v: '채육 7 · 선별 60 · 계량 32 · 입상 36 · 포장 70 (시간×인)', src: 'p1 작업시간(H×인)' },
+        { k: 'notes', label: '특이사항', v: '결근 1명', src: 'p1 하단 특이사항' }
+      ] },
+    { id: '7-3b', match: /7-3b|포장 일지_6월|포장일지_6월/i, doc_type: '포장일지', sensitive: false, source: '7-3b.포장 일지_6월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+      fields: [
+        { k: 'date', label: '날짜', v: '2026-06-12', src: 'p1 상단' },
+        { k: 'rows', label: '포장 행 (U사)', v: [
+          { buyer: 'U사', product: 'LB', ct: 160, mfg: '2026-06-08', expiry: '2028-06-01', lot_code: 'BK' },
+          { buyer: 'U사', product: 'LB', ct: 40, mfg: '2026-06-09', expiry: '2028-06-01', lot_code: 'BL' },
+          { buyer: 'U사', product: 'WF', ct: 90, mfg: '2026-06-08', expiry: '2028-06-01', lot_code: 'BK' }
+        ], src: 'p1 제품 포장 현황 표 (규격 12kg = 1kg×12p, 진공 포장)' },
+        { k: 'lot_rule', label: '로트 규칙', v: '생산일 기준 글자 코드 (담당자 확인)', src: '추가질문 답변 1·2' }
+      ] },
+    { id: '5-2b', match: /5-2b|UE-2607/i, doc_type: '패킹리스트', sensitive: true, source: '5-2b.패킹리스트_UE-2607.png (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+      fields: [
+        { k: 'invoice_no', label: '선적번호', v: 'UE-2607', src: '우상단 INVOICE NO' },
+        { k: 'date', label: '날짜', v: '2026-07-02', src: '우상단 DATE' },
+        { k: 'departure', label: '출항', v: '2026-07-03', src: 'DEPARTURE DATE' },
+        { k: 'vessel', label: '선박', v: 'HONOR BRIGHT 2623E', src: 'VESSEL/FLIGHT' },
+        { k: 'route', label: '구간', v: '부산 → 사카이미나토', src: 'FROM / TO' },
+        { k: 'buyer', label: '바이어', v: 'U사', src: 'CONSIGNEE' },
+        { k: 'items', label: '품목', v: [
+          { desc: 'LEG(L)', ct: 60, kg: 720 }, { desc: 'BROKEN(LB)', ct: 200, kg: 2400 }, { desc: 'WHITE FLAKE', ct: 90, kg: 1080 }
+        ], src: '본문 표 (규격 12kg = 1kg×12)' },
+        { k: 'total_ct', label: '합계 C/T', v: 350, src: 'G-TOTAL' },
+        { k: 'total_kg', label: '합계 kg', v: 4200, src: 'G-TOTAL' },
+        { k: 'hs', label: 'HS', v: '1605.10', src: '좌하단' },
+        { k: 'note', label: '비고', v: '연결 로트는 선적 구성 추정(검증부)을 보고 사람이 정함', src: '-' }
+      ] },
+    { id: '6b', match: /6b|위생증명서_7월/i, doc_type: '위생증명서', sensitive: false, source: '6b.위생증명서_7월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+      fields: [
+        { k: 'issuer', label: '발급', v: '국립수산물품질관리원 부산지원', src: '상단 기관명 · 하단 서명' },
+        { k: 'date', label: '발행일', v: '2026-07-03', src: 'Date' },
+        { k: 'applicant', label: '신청인', v: 'A사', src: 'Applicant' },
+        { k: 'commodity', label: '품명', v: 'SNOW CRAB SALAD MEAT', src: 'Commodity' },
+        { k: 'quantity_ct', label: '수량 C/T', v: 350, src: 'Quantity' },
+        { k: 'quantity_kg', label: '수량 kg', v: 4200, src: 'Quantity' },
+        { k: 'form', label: '양식', v: '바이어 요청, 비협약국 양식', src: '추가질문 답변 3' },
+        { k: 'shipment_no', label: '해당 선적', v: 'UE-2607', src: '수량·날짜로 대응' }
       ] }
   ];
 

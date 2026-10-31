@@ -12,9 +12,17 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   function prevDay(iso) { var d = new Date(iso); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); }
   function num(v) { var n = parseFloat(String(v).replace(/,/g, '')); return isNaN(n) ? null : n; }
   function abbrOf(raw) { return raw && raw.vessel ? raw.vessel.charAt(0) : ''; }
-  function rawByAbbr(s, a) { // 약어 → 입고분. 실측(kg>0) 우선
+  function daysBetween(a, b) { return Math.abs((new Date(a) - new Date(b)) / 86400000); }
+  var NEAR = 45; // 약어 ↔ 입고분 연결 허용 범위(일). 같은 배가 몇 달 뒤 또 들어오면 다른 입고분
+  function rawByAbbr(s, a, ref) { // 약어 → 입고분. ref(제조일) 기준 45일 안의 것만, 실측(kg>0) 우선, 가까운 날짜 우선
     var hit = null;
-    s.raw.forEach(function (r) { if (abbrOf(r) === a && (!hit || (!hit.kg && r.kg))) hit = r; });
+    s.raw.forEach(function (r) {
+      if (abbrOf(r) !== a) return;
+      if (ref && r.received && daysBetween(r.received, ref) > NEAR) return;
+      if (!hit) { hit = r; return; }
+      if (!hit.kg && r.kg) { hit = r; return; }
+      if (!!hit.kg === !!r.kg && ref && daysBetween(r.received, ref) < daysBetween(hit.received, ref)) hit = r;
+    });
     return hit;
   }
   function ensure(s) { // app.js 가 안 만든 키 방어
@@ -25,13 +33,16 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   function linkRaw(s, lot) {
     var abbrs = s.processLog[lot.mfg];
     if (abbrs) {
-      var ids = []; abbrs.forEach(function (a) { var r = rawByAbbr(s, a); if (r && ids.indexOf(r.id) < 0) ids.push(r.id); });
-      if (ids.length) { lot.raw = ids; return; }
+      var ids = []; abbrs.forEach(function (a) { var r = rawByAbbr(s, a, lot.mfg); if (r && ids.indexOf(r.id) < 0) ids.push(r.id); });
+      if (ids.length) { lot.raw = ids; lot.raw_by = '가공일지 약어'; return; }
     }
-    if (lot.raw && lot.raw.length) return;
+    // 가공일지가 없으면 추정: 제조일 이전 45일 안의 입고분 중 실측(kg>0) 우선, 가장 최근. 나중에 서류가 더 들어오면 다시 계산된다
     var best = null;
-    s.raw.forEach(function (r) { if (r.received <= lot.mfg && (!best || r.received > best.received)) best = r; });
-    lot.raw = best ? [best.id] : [];
+    s.raw.forEach(function (r) {
+      if (!r.received || r.received > lot.mfg || daysBetween(r.received, lot.mfg) > NEAR) return;
+      if (!best || (!best.kg && r.kg) || (!!best.kg === !!r.kg && r.received > best.received)) best = r;
+    });
+    lot.raw = best ? [best.id] : []; lot.raw_by = best ? '추정(제조일 이전 최근 입고)' : '';
   }
   function relinkAll(s) { s.ledger.forEach(function (l) { linkRaw(s, l); }); }
   function shipLabel(o) { return o.invoice_no + ' / ' + o.departure + ' ' + (o.route ? o.route.replace(/\s*→\s*/, '→') : (o.from || '') + '→' + (o.to || '')); }
@@ -68,7 +79,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   A['입고검사서'] = function (o, s) {
     var id = o.id || 'R-' + ymd(o.received) + '-01', a = (o.vessel || '').charAt(0);
     // 같은 약어의 "약어만 확인" 자리표시 입고분이 있으면 이 실측으로 대체
-    var ph = s.raw.filter(function (r) { return abbrOf(r) === a && !r.kg && /약어만/.test(r.note || ''); });
+    var ph = s.raw.filter(function (r) { return abbrOf(r) === a && !r.kg && /약어만/.test(r.note || '') && (!r.received || !o.received || daysBetween(r.received, o.received) <= NEAR); });
     ph.forEach(function (p) { s.raw.splice(s.raw.indexOf(p), 1); s.ledger.forEach(function (l) { l.raw = (l.raw || []).map(function (x) { return x === p.id ? id : x; }); }); });
     var added = upsert(s.raw, 'id', id, { id: id, species: o.species, caught: o.fishing_period, vessel: o.vessel, landing: o.landing, received: o.received,
       kg: num(o.total_kg) || 0, boxes_in: o.boxes_in, boxes_ok: o.boxes_ok, note: '원료입고검사서. 공제 ' + (o.deduct || '-') + '상자. 가공일지 약어 "' + a + '"' + (o.note ? '. ' + o.note : '') });
@@ -80,7 +91,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   R['가공일지'] = function (o, s) {
     var seen = [];
     return (o.raw_sources || []).filter(function (a) { return seen.indexOf(a) < 0 && seen.push(a); }).map(function (a) {
-      var hit = rawByAbbr(s, a);
+      var hit = rawByAbbr(s, a, o.date);
       return { item: '약어 "' + a + '" → 입고분', status: hit && hit.kg ? 'ok' : 'check', note: hit && hit.kg ? hit.id + ' (' + hit.vessel + ')' : '입고검사서 없음. 선박명 첫 글자로만 추정' };
     });
   };
@@ -89,7 +100,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
     (o.raw_sources || []).forEach(function (a) { if (seen.indexOf(a) < 0) seen.push(a); });
     s.processLog[o.date] = seen;
     seen.forEach(function (a) {
-      if (rawByAbbr(s, a)) return;
+      if (rawByAbbr(s, a, o.date)) return;
       var id; do { id = 'R-' + ymd(prevDay(o.date)) + '-' + (i < 10 ? '0' : '') + i; i++; } while (find(s.raw, 'id', id));
       s.raw.push({ id: id, species: '붉은대게', caught: '', vessel: a + '○호 (약어 "' + a + '")', landing: '동해 연근해', received: prevDay(o.date), kg: 0, note: '가공일지 약어만 확인. 입고검사서 미수령' }); n++;
     });
