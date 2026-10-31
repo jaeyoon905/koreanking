@@ -36,7 +36,7 @@ LC.renderImport = function (state) {
   var CLS = { '있음': 'ok', '확인': 'warn', '없음': 'bad' };
   var tr = function (cells) { return '<tr>' + cells.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>'; };
   var fold = function (x, n) { x = String(x == null ? '' : x); n = n || 40; return x.length <= n ? esc(x) : '<details class="fold"><summary>' + esc(x.slice(0, n)) + '…</summary>' + esc(x) + '</details>'; };
-  return '<h2>수입 체크</h2><p class="sub">수입 선적 서류가 다 왔는지 봅니다.' + (live ? '' : ' <span class="muted">(승인한 수입 서류가 없어 시드 표시)</span>') + '</p>' +
+  return '<h2>수입 체크</h2><p class="sub">수입 선적 서류가 다 왔는지 봅니다.' + (live ? '' : ' <span class="muted">(아직 승인한 수입 서류가 없어 예시로 보여 줘요)</span>') + '</p>' +
     list.map(function (s) {
       s.checklist = s.checklist || []; s.items = s.items || []; s.notes = s.notes || [];
       var req = s.checklist.filter(function (c) { return c.required; });
@@ -44,7 +44,7 @@ LC.renderImport = function (state) {
       req.forEach(function (c) { cnt[c.status] = (cnt[c.status] || 0) + 1; });
       var worst = cnt['없음'] ? 'bad' : cnt['확인'] ? 'warn' : 'ok';
       var overview = [['수입 건', s.no], ['인보이스일', s.date], ['수출자', s.exporter], ['수입자', s.importer], ['구간', s.route], ['선박', s.vessel], ['출항', s.etd], ['도착', s.eta], ['조건', s.incoterms], ['컨테이너', s.containers], ['수량', s.total]];
-      return '<div class="card"><h3>선적 개요 — ' + esc(s.no) + '</h3><table>' + overview.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>' +
+      return '<div class="card"><h3>선적 개요 · ' + esc(s.no) + '</h3><table>' + overview.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>' +
         '<div class="card"><h3>품목</h3><table><tr><th>품목</th><th>C/T</th><th>수량</th><th>제조소</th></tr>' +
         s.items.map(function (i) { return tr([esc(i.desc), i.ct, i.kg ? i.kg + ' kg' : i.packs ? i.packs.toLocaleString() + ' 팩' : '-', esc(i.packer || '-')]); }).join('') + '</table></div>' +
         '<div class="card"><h3>서류 체크리스트</h3><p><span class="b ' + worst + '">필수 ' + req.length + '건 중 있음 ' + cnt['있음'] + ', 확인 ' + cnt['확인'] + ', 없음 ' + cnt['없음'] + '</span></p>' +

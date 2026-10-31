@@ -189,6 +189,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 .pipeline.mini { margin: 8px 0; } .pipeline.mini .stage { min-height: auto; padding: 8px 12px; }
 .pipeline.mini .stage > h4 { margin: 0; font-size: 14px; }
 .pipeline.mini .stage:not(.now):not(.done):not(.locked) > h4 { color: var(--ink-subtle); }
+.pipeline.trace { margin: 0 0 20px; } .pipeline.trace .stage { min-height: auto; } .pipeline.trace .stage p { margin: 0; font-size: 14px; }
 .ic-title { cursor: pointer; user-select: none; } .ic-title .caret { display: inline-block; width: 1em; color: var(--ink-muted); }
 .card.ic.closed { padding: 14px 24px; margin-bottom: 8px; } .card.ic.closed h3 { margin: 0; }
 .drop { border: 2px dashed var(--primary); border-radius: 16px; padding: 28px; text-align: center; background: var(--primary-soft); display: flex; flex-direction: column; gap: 8px; align-items: center; margin-bottom: 16px; font-size: 17px; font-weight: 700; }

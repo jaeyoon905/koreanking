@@ -364,7 +364,7 @@
     var sections = ['重点管理', '配合', '調味液', '包装資材'], basic = (f.fields || Object.keys(val)).filter(function (k) { return sections.indexOf(k) < 0; });
     if (lot) basic = basic.concat(['LOT', '製造日']);
     var hit = Object.keys(mp).filter(function (k) { return mp[k] && ours[mp[k]]; }).length;
-    return '<div class="sheet"><h3>' + esc(f.form_title || '商品規格書') + ' — ' + esc(buyer) + '</h3><p class="muted">' + esc(buyer) + ' 양식 칸 순서 그대로 · 노란 칸은 우리 데이터에 없는 값' + (f.mapping ? ' · AI가 짝지은 칸 ' + hit + '/' + Object.keys(mp).length + ' (승인됨)' : '') + ' · 발행일 ' + LC.TODAY + '</p><table>' +
+    return '<div class="sheet"><h3>' + esc(f.form_title || '商品規格書') + ' · ' + esc(buyer) + '</h3><p class="muted">' + esc(buyer) + ' 양식 칸 순서 그대로 · 노란 칸은 우리 데이터에 없는 값' + (f.mapping ? ' · AI가 짝지은 칸 ' + hit + '/' + Object.keys(mp).length + ' (승인됨)' : '') + ' · 발행일 ' + LC.TODAY + '</p><table>' +
       basic.map(td).join('') + list('重点管理', f.qc) + list('配合', f.recipe) + list('調味液', f.seasoning) + list('包装資材', f.packaging) + '</table></div>';
   }
   function formSelect(id) {
@@ -384,7 +384,7 @@
       '<div class="card"><div class="row">' + productSelect('sh-prod') + '<label>제조일 <input type="date" id="sh-mfg" value="2026-10-14"></label><label>수량(C/T) <input type="number" id="sh-qty" value="100"></label><label>중량(kg) <input type="number" id="sh-kg" value="1000"></label>' +
       '<label>위생증명서 번호 <input id="sh-cert" value="해당 없음" placeholder="요구하는 바이어만 번호 입력"></label><label>도착국 <select id="sh-country"><option>TW</option><option>JP</option><option>HK</option><option>TH</option><option>CN</option></select></label>' +
       '<label>바이어 <input id="sh-buyer" list="buyer-list" value="' + (LC.buyers && LC.buyers.length ? '일본 바이어 ' + LC.buyers[0].code : '대만 바이어 F사') + '"><datalist id="buyer-list">' + (LC.buyers || []).map(function (b) { return '<option value="' + (b.country === 'JP' ? '일본' : b.country) + ' 바이어 ' + esc(b.code) + '">' + esc(b.port + ' · ' + b.spec_form + ' · 증명서 ' + b.cert) + '</option>'; }).join('') + '</datalist></label><label>선적 <input id="sh-ship" value="2026-10-20 부산→기륭"></label></div><div class="rawbox"><b>원어 입고 로트</b><br>' + raw + '</div><button id="sh-add">원장에 추가 + 로트 규격서</button></div>' +
-      '<div id="sh-out"></div><h3>선적 목록</h3>' + shipmentCards() + '<h3>로트 원장</h3><div id="sh-ledger"></div><button class="ghost" id="sh-reset">시드로 초기화</button>';
+      '<div id="sh-out"></div><h3>선적 목록</h3>' + shipmentCards() + '<h3>로트 원장</h3><div id="sh-ledger"></div><button class="ghost" id="sh-reset">예시 데이터로 되돌리기</button>';
   };
   function shipmentCards() {  // state.shipments(패킹리스트 승인 또는 시드) → 선적별 카드
     if (!state.shipments.length) return '<p class="muted">선적 없음 · 서류 넣기에서 패킹리스트를 승인하면 생김</p>';
@@ -455,12 +455,13 @@
     var p = (LC.products && LC.products[lot.product]) || LC.product;
     var buyer = [['제품', p.name_en], ['LOT', lot.lot + (lot.company_code ? ' / ' + lot.company_code : '')], ['제조일', lot.mfg], ['소비기한', lot.expiry], ['수량', lot.qty_ct + ' C/T / ' + lot.kg + ' kg'], ['보존', p.storage], ['위생증명서', lot.cert || '해당 없음'], ['규격서', '로트 규격서 발송 ' + (lot.spec_sent || '-')], ['제조자 인증·등록', certList().join(' · ')]];
     var pub = API ? location.origin + '/lot/' + encodeURIComponent(lot.lot) : '';
-    var html = '<div class="card face-buyer"><h3>바이어 면 — ' + lot.lot + '</h3><table>' + buyer.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table><p class="muted">서류로 이미 보낸 정보만.</p>' +
+    var html = '<div class="card face-buyer"><h3>바이어 면 · ' + lot.lot + '</h3><table>' + buyer.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table><p class="muted">서류로 이미 보낸 정보만.</p>' +
       (pub ? '<p class="muted">바이어 공개 주소: <a href="' + esc(pub) + '" target="_blank">' + esc(pub) + '</a></p>' : '') + '</div>';
     if (inside) {
       var raws = state.raw.filter(function (r) { return lot.raw.indexOf(r.id) >= 0; });
       var siblings = state.ledger.filter(function (l) { return l.lot !== lot.lot && l.raw.some(function (r) { return lot.raw.indexOf(r) >= 0; }); });
-      html += '<div class="card face-inside"><h3>회사 면 — 원어 로트 · 출고처' + (lot.raw_by ? ' <small class="muted">연결 근거: ' + esc(lot.raw_by) + '</small>' : '') + '</h3><table><tr><th>원어 로트</th><th>어획일</th><th>선박</th><th>위판장</th><th>입고</th><th>kg</th></tr>' + raws.map(function (r) { return '<tr><td><a href="#lot/' + r.id + '">' + r.id + '</a></td><td>' + r.caught + '</td><td>' + esc(r.vessel) + '</td><td>' + esc(r.landing) + '</td><td>' + r.received + '</td><td>' + r.kg + '</td></tr>'; }).join('') + '</table>' +
+      var step = function (t, b) { return '<div class="stage done"><h4>' + t + '</h4><p class="muted">' + b + '</p></div>'; };
+      html += '<div class="card face-inside"><div class="pipeline trace" aria-label="추적 단계">' + step('원어 입고', raws.length ? raws.map(function (r) { return esc(r.id) + ' · ' + esc(r.vessel) + ' · ' + r.received; }).join('<br>') : '연결 없음') + step('가공·제조', lot.mfg + ' · ' + lot.qty_ct + ' C/T') + step('포장', esc(lot.lot) + (lot.company_code ? ' · 코드 ' + esc(lot.company_code) : '') + ' · 소비기한 ' + lot.expiry) + step('선적', shipped(lot) ? esc(lot.ship) + ' · ' + esc(lot.buyer) : '미선적 (재고)') + '</div><h3>회사 면 · 원어 로트와 출고처' + (lot.raw_by ? ' <small class="muted">연결 근거: ' + esc(lot.raw_by) + '</small>' : '') + '</h3><table><tr><th>원어 로트</th><th>어획일</th><th>선박</th><th>위판장</th><th>입고</th><th>kg</th></tr>' + raws.map(function (r) { return '<tr><td><a href="#lot/' + r.id + '">' + r.id + '</a></td><td>' + r.caught + '</td><td>' + esc(r.vessel) + '</td><td>' + esc(r.landing) + '</td><td>' + r.received + '</td><td>' + r.kg + '</td></tr>'; }).join('') + '</table>' +
         '<p><b>출고처</b> ' + esc(lot.buyer) + ' · ' + esc(lot.ship) + ' · ' + lot.country + '</p><p><b>같은 원어가 들어간 다른 로트</b> ' + (siblings.length ? siblings.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + '</a> (' + l.country + ' ' + esc(l.buyer) + ')'; }).join(', ') : '없음') + '</p>' +
         '<h4>클레임 종류별로 꺼낼 기록 (제조일 ' + lot.mfg + ')</h4><table><tr><th>클레임</th><th>먼저 볼 기록</th><th>원료(배) 추적</th></tr>' +
         LC.claimMap.map(function (c) { return '<tr><td>' + c.kind + '</td><td>' + esc(c.records.split('{mfg}').join(lot.mfg)) + '</td><td>' + (c.raw ? '필요 · 위 원어 로트 ' + raws.length + '건' : '불필요') + '</td></tr>'; }).join('') +
@@ -491,7 +492,7 @@
     var rawDates = raws.map(function (r) { return r.received; }).filter(function (d, i, a) { return a.indexOf(d) === i; }).join(', ');
     var ko = '귀사에서 문의하신 LOT ' + lot.lot + (lot.company_code ? '(' + lot.company_code + ')' : '') + ' 건에 대해 알려드립니다. 해당 로트는 ' + lot.mfg + ' 생산분이며' + (c.raw && rawDates ? ' 원료 입고일은 ' + rawDates + '입니다' : '') + '. 당사는 다음 기록을 확인했습니다: ' + recs + '. 확인 결과와 조치 내용은 정리되는 대로 다시 안내드리겠습니다.';
     var ja = 'お問い合わせのLOT ' + lot.lot + (lot.company_code ? '(' + lot.company_code + ')' : '') + ' についてご連絡いたします。当該ロットは ' + lot.mfg + ' 製造分で' + (c.raw && rawDates ? '、原料入荷日は ' + rawDates + ' です' : 'す') + '。弊社では次の記録を確認いたしました: ' + recs + '。確認結果と対応内容は、整い次第あらためてご案内いたします。';
-    return '<div class="card sheet"><h3>클레임 대응 기록 — LOT ' + esc(lot.lot) + (lot.company_code ? ' (' + esc(lot.company_code) + ')' : '') + '</h3><p class="muted">작성일 ' + LC.TODAY + ' · 작성 A사 품질·무역 담당</p>' +
+    return '<div class="card sheet"><h3>클레임 대응 기록 · LOT ' + esc(lot.lot) + (lot.company_code ? ' (' + esc(lot.company_code) + ')' : '') + '</h3><p class="muted">작성일 ' + LC.TODAY + ' · 작성 A사 품질·무역 담당</p>' +
       '<h4>1. 제품·로트</h4><table>' + row('품목', p.name_ko + ' (' + p.code + ')') + row('제조일', lot.mfg) + row('소비기한', lot.expiry) + row('수량', lot.qty_ct + ' C/T / ' + lot.kg + ' kg') + row('선적', lot.ship || '미선적') + row('증명서', lot.cert || '해당 없음') + '</table>' +
       '<h4>2. 클레임 종류와 먼저 볼 기록</h4><table>' + row('종류', kind) + row('기록', recs) + '</table>' +
       '<h4>3. 원료</h4>' + rawTbl +
@@ -592,7 +593,7 @@
     return esc(v);
   }
   var DIFF = { ok: ['통과', 'ok'], add: ['추가', 'warn'], check: ['확인', 'warn'], bad: ['불일치', 'bad'] };
-  var MODE = { llm: ['추출: AI(Claude)', 'ok'], fixture: ['추출: 미리 읽어 둔 값 · API 키 연결 시 실시간', 'warn'], none: ['종류 미확인 · 수동 입력', 'bad'], manual: ['직접 입력', 'ok'] };
+  var MODE = { llm: ['AI 읽음', 'ok'], fixture: ['예시 서류 값', 'warn'], none: ['직접 입력 필요', 'bad'], manual: ['직접 입력', 'ok'] };
   // 카드 = {name, doc_type, mode, sensitive, blocked, fields, fixture, b64, masked, done, result}. fixture(오프라인)·서버 응답 둘 다 이 모양으로 맞춘다
   function cardFromFixture(f, name) { return { name: name, doc_type: f ? f.doc_type : '', mode: f ? 'fixture' : 'none', sensitive: !!(f && f.sensitive), fields: f ? f.fields : [], fixture: f }; }
   function cardFromServer(name, r, b64) { var f = matchFixture(name); return { name: name, doc_type: r.doc_type || (f && f.doc_type) || '', mode: r.mode || 'none', sensitive: !!(r.blocked || (f && f.sensitive)), blocked: !!r.blocked, fields: r.fields || [], fixture: f, b64: b64 }; }
@@ -760,7 +761,7 @@
       '<div class="card"><div id="in-guide">' + docGuide() + '</div>' + dropZone('in') + '<p class="summary-bar" id="in-sum">' + intakeSummary() + '</p></div>' +
       '<div class="card"><h3>서류함</h3><div id="in-docbox">' + docBox() + '</div></div>' +
       '<div id="in-cards"></div><h3>처리 기록</h3><div id="in-docs"></div>' +
-      '<div class="row"><button class="ghost small" id="in-empty" aria-label="원장을 비움">빈 원장</button><button class="ghost small" id="in-seed" aria-label="예시 데이터로 되돌리기">예시 데이터로 되돌리기</button></div>';
+      '<div class="row"><button class="ghost small" id="in-empty" aria-label="기록 모두 비우기">모두 비우기</button><button class="ghost small" id="in-seed" aria-label="예시 데이터로 되돌리기">예시 데이터로 되돌리기</button></div>';
   };
   function renderIntake() {
     $('#in-cards').innerHTML = intakeCards.map(intakeCard).join('');
@@ -887,7 +888,7 @@
     var g = function (i) { return fx.filter(FX_GROUPS[i][1]).length; };
     return '<h2>한 번에 처리</h2><p class="sub">서류를 넣고, 확인하고, 승인하세요.</p>' +
       '<h3 class="step">1. 서류 넣기</h3><div class="card"><div id="qk-guide">' + docGuide() + '</div>' + dropZone('qk') +
-      (fx.length ? '<div class="row"><button id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기 (4월 서류 ' + g(0) + '종 · 사진 2장은 1종)</button><a href="#" id="qk-jun" class="muted">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="원장 비우기">빈 원장으로 시작</button></div>' +
+      (fx.length ? '<div class="row"><button id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기 (4월 서류 ' + g(0) + '종 · 사진 2장은 1종)</button><a href="#" id="qk-jun" class="muted">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="기록 비우고 시작">빈 상태로 시작</button></div>' +
       '<details class="docbox-wrap"><summary>서류함 (' + fx.length + ')</summary><div id="qk-docbox">' + docBox() + '</div></details>' : '') + '</div>' +
       '<h3 class="step">2. 확인</h3><div class="card" id="qk-table"></div>' +
       '<div id="qk-results">' + resultCards() + '</div>';
