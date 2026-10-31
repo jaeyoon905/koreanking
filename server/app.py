@@ -1,6 +1,6 @@
 # 라벨코스트 서버. 표준 라이브러리 + sqlite3 + anthropic(선택). 실행: labelcoast 폴더에서 python -X utf8 server/app.py
 # 역할: 상태 저장(state), 서류 추출(/api/extract: 키 있으면 LLM, 없으면 fixtures), 처리 기록, 바이어용 LOT 공개 면, 식약처 API 프록시, 정적 파일.
-import base64, datetime, json, os, pathlib, secrets, shutil, sqlite3, subprocess, sys, tempfile, threading, urllib.parse, urllib.request
+import base64, datetime, json, os, pathlib, re, secrets, shutil, sqlite3, subprocess, sys, tempfile, threading, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -325,6 +325,37 @@ class H(BaseHTTPRequestHandler):
         if not self.authed(): return self.deny()
         if self.path == '/api/extract':
             return self.send_json(200, extract(self.body()))
+        if self.path == '/api/pdf':   # 화면 조각(HTML) → PDF 파일. 인쇄창 없이 바로 내려받기(휴대폰 포함)
+            b = self.body(); html = str(b.get('html') or ''); name = re.sub(r'[\\/:*?"<>|]+', '_', str(b.get('name') or 'document')) or 'document'
+            if not html.strip(): return self.send_json(400, {'error': 'html 없음'})
+            css = (ROOT / 'style.css').read_text('utf-8', errors='replace') if (ROOT / 'style.css').exists() else ''
+            doc = ('<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>' + css + '\n@page{size:A4;margin:14mm}body{background:#fff;padding:0;margin:0}.no-print,.actions,nav,header{display:none!important}table{page-break-inside:auto}tr{page-break-inside:avoid}</style></head><body><main class="print-only">' + html + '</main></body></html>')
+            out = ROOT / 'agent' / 'out'; out.mkdir(exist_ok=True); fp = out / (name if name.lower().endswith('.pdf') else name + '.pdf')
+            try:
+                from playwright.sync_api import sync_playwright
+                with sync_playwright() as pw:
+                    br = pw.chromium.launch(channel='chrome', headless=True); pg = br.new_page(); pg.set_content(doc, wait_until='load'); pg.emulate_media(media='print'); pg.pdf(path=str(fp), format='A4', print_background=True); br.close()
+            except Exception as e: return self.send_json(500, {'error': 'PDF 생성 실패: %s' % type(e).__name__})
+            return self.send_file(fp, 'application/pdf', download=True)
+        if self.path == '/api/formfill':   # 바이어가 보낸 엑셀 양식(b64)에 값을 채워 그대로 돌려준다. 칸 이름이 있는 셀의 오른쪽 셀에 쓴다
+            b = self.body(); vals = b.get('values') or {}; name = re.sub(r'[\\/:*?"<>|]+', '_', str(b.get('name') or 'form.xlsx'))
+            if not b.get('b64'): return self.send_json(400, {'error': '양식 파일 없음'})
+            try:
+                import openpyxl, io
+                wb = openpyxl.load_workbook(io.BytesIO(base64.b64decode(b['b64']))); filled = 0
+                norm = lambda s: re.sub(r'\s+', '', str(s or '')).strip().lower()
+                keys = {norm(k): v for k, v in vals.items() if v not in (None, '')}
+                for ws in wb.worksheets:
+                    for row in ws.iter_rows():
+                        for c in row:
+                            k = norm(c.value)
+                            if k and k in keys:
+                                tgt = ws.cell(row=c.row, column=c.column + 1)
+                                if tgt.value in (None, ''): tgt.value = str(keys[k]); filled += 1
+                out = ROOT / 'agent' / 'out'; out.mkdir(exist_ok=True); fp = out / ('채움_' + (name if name.lower().endswith('.xlsx') else name + '.xlsx')); wb.save(fp)
+            except Exception as e: return self.send_json(500, {'error': '엑셀 채우기 실패: %s' % type(e).__name__})
+            self.log_message('formfill %d cells', filled)
+            return self.send_file(fp, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', download=True)
         if self.path == '/api/label/fix':   # 라벨 수정안: 지적된 칸만 AI가 고침. 다시 판정은 화면의 규칙이 한다
             b = self.body()
             if not os.environ.get('ANTHROPIC_API_KEY'): return self.send_json(200, {'fields': b.get('fields') or {}, 'changes': [], 'note': 'API 키 없음'})

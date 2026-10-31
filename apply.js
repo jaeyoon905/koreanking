@@ -299,7 +299,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
     return [{ item: '라벨 원재료 첨가물 ↔ 규격서 배합·조미액', status: miss.length ? 'check' : 'ok', note: miss.length ? '라벨에만 있음: ' + miss.join(', ') + ' → 바이어에 확인' : '라벨 첨가물이 모두 규격서에 있음' }];
   };
   A['규격서양식'] = function (o, s) {
-    s.specForms[o.buyer] = { fields: o.fields, recipe: o.recipe, seasoning: o.seasoning, qc: o.qc, packaging: o.packaging, spec: o.spec, form_title: o.form_title, mapping: o.mapping || null };
+    s.specForms[o.buyer] = { fields: o.fields, recipe: o.recipe, seasoning: o.seasoning, qc: o.qc, packaging: o.packaging, spec: o.spec, form_title: o.form_title, mapping: o.mapping || null, form_b64: o.form_b64 || null, form_name: o.form_name || null };
     var mp = o.mapping || {}, hit = Object.keys(mp).filter(function (k) { return mp[k]; }).length;
     return o.buyer + ' 규격서 양식 저장 (칸 ' + (o.fields || []).length + '개' + (o.mapping ? ', 우리 데이터와 짝 ' + hit + '칸, 빈칸 ' + (Object.keys(mp).length - hit) : ', 배합·조미액·중점관리·포장자재') + ')';
   };

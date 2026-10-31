@@ -217,9 +217,15 @@
         '<div class="verdict ' + v[0] + '">' + v[1] + '<span class="v-sub">전: 수정 ' + s0.fix + ' · 확인 ' + s0.check + ' → 후: 수정 ' + s2.fix + ' · 확인 ' + s2.check + '</span></div>' +
         (keys.length ? '<table><tr><th>칸</th><th>현재</th><th>수정안</th><th>이유</th></tr>' + keys.map(function (k) { return '<tr><td><b>' + esc(k) + '</b></td><td>' + fold(fields[k] || '', 80) + '</td><td>' + fold(fixed[k] || '', 80) + '</td><td class="muted">' + esc(why[k] || '') + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">바뀐 칸 없음</p>') +
         ((r.changes || []).some(function (c) { return /자료 필요/.test(String(c && (c.after || c.why))); }) ? '<p class="alert">자료가 없어 못 고친 칸이 있습니다. 표의 "이유"를 보고 자료를 넣으세요.</p>' : '') +
-        '<div class="actions"><button class="lg" id="lbl-fixpdf">수정안 PDF</button></div></div>';
+        '<div class="actions"><button class="lg" id="lbl-fixpdf">수정안 PDF 받기</button><button id="lbl-fixlabel">라벨 문안만 받기 (PDF)</button><button class="ghost" id="lbl-fixtxt">라벨 문안 .txt</button></div></div>';
       state.lastFix = { country: country, file: meta.file, before: s0, after: s2, fields: fixed }; save();
-      $('#lbl-fixpdf').onclick = function () { window.print(); };
+      var KEY_KO = { name: '명칭', ingredients: '원재료명', net: '내용량', mfg: '제조일', expiry: '유통(소비)기한', storage: '보존방법', origin: '원산지', importer: '수입자', manufacturer: '제조자', allergen: '알레르겐', nutrition: '영양성분', pack: '포장 식별표시', lot_format: 'LOT 표기', country: '나라' };
+      var labelRows = Object.keys(fixed).filter(function (k) { return fixed[k] && k !== 'country'; });
+      var labelHtml = '<div class="sheet"><h3>라벨 문안 (수정안) · ' + esc(LC.rules[country].name) + ' · ' + esc(meta.file || '') + '</h3><p class="muted">규칙 판정 뒤 고친 문안 · ' + LC.TODAY + '</p><table>' + labelRows.map(function (k) { return '<tr><th>' + esc(KEY_KO[k] || k) + '</th><td>' + esc(fixed[k]) + '</td></tr>'; }).join('') + '</table></div>';
+      var labelTxt = labelRows.map(function (k) { return (KEY_KO[k] || k) + ': ' + fixed[k]; }).join('\n');
+      $('#lbl-fixpdf').onclick = function () { downloadPdf('라벨수정안_' + (meta.file || country) + '_' + country, $('#lbl-fixcard').outerHTML); };
+      $('#lbl-fixlabel').onclick = function () { downloadPdf('라벨문안_' + (meta.file || country) + '_' + country, labelHtml); };
+      $('#lbl-fixtxt').onclick = function () { download('라벨문안_' + (meta.file || country) + '_' + country + '.txt', labelTxt, 'text/plain;charset=utf-8'); };
     }).catch(function (e) { out.innerHTML = '<p class="alert">수정안 실패: ' + esc(e) + '</p>'; });
   }
   function labelArg(arg) { var a = String(arg || '').split('/'); return { key: LC.sampleLabels[a[0]] ? a[0] : null, country: LC.rules[a[1]] ? a[1] : null }; }
@@ -264,7 +270,7 @@
       (API && (s.fix || s.check) ? '<button class="lg" id="lbl-fix" aria-label="지적된 칸을 고친 수정안 만들기">수정안 만들기</button>' : '') + '</div><div id="lbl-fixout"></div>';
     $('#lbl-out').innerHTML = html;
     state.lastLabel = { country: country, made: meta.made, file: meta.file, summary: s };
-    $('#lbl-pdf').onclick = function () { window.print(); };
+    $('#lbl-pdf').onclick = function () { var el = $('#lbl-out').cloneNode(true); el.querySelectorAll('.actions, .no-print, #lbl-fixout').forEach(function (x) { x.remove(); }); downloadPdf('라벨판정_' + (meta.file || country) + '_' + country, '<h2>라벨 판정 · ' + esc(r.name) + '</h2>' + el.innerHTML); };
     var fb = $('#lbl-fix'); if (fb) fb.onclick = function () { fb.disabled = true; fb.textContent = '수정안 만드는 중…'; labelFix(country, fields, res, meta).then(function () { fb.disabled = false; fb.textContent = '수정안 만들기'; }); };
     document.querySelectorAll('[data-ctry]').forEach(function (b) { b.classList.toggle('on', b.dataset.ctry === country); });
   }
@@ -374,6 +380,7 @@
     if (lot) { val['LOT'] = lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : ''); val['製造日'] = lot.mfg; val['賞味期限'] = lot.expiry; }
     var gf = function (x) { return typeof x === 'string' ? x : x.name + (x.g != null ? ' ' + x.g + 'g' : '') + (x.pct != null ? ' (' + x.pct + '%)' : ''); };
     var td = function (k) { var v = mp[k] && ours[mp[k]] ? ours[mp[k]] : val[k]; return '<tr><th>' + esc(k) + '</th><td' + (v ? '' : miss) + '>' + esc(v || '') + '</td></tr>'; };
+    buyerFormSheet.lastValues = {}; (f.fields || Object.keys(val)).forEach(function (k) { var v = mp[k] && ours[mp[k]] ? ours[mp[k]] : val[k]; if (v) buyerFormSheet.lastValues[k] = v; });
     var list = function (title, arr) { if ((f.fields || []).indexOf(title) < 0 && !(arr && arr.length)) return ''; return '<tr><th colspan="2">' + title + '</th></tr>' + (arr && arr.length ? arr.map(function (x, i) { return '<tr><td>' + (i + 1) + '</td><td>' + esc(gf(x)) + '</td></tr>'; }).join('') : '<tr><td colspan="2"' + miss + '></td></tr>'); };
     var sections = ['重点管理', '配合', '調味液', '包装資材'], basic = (f.fields || Object.keys(val)).filter(function (k) { return sections.indexOf(k) < 0; });
     if (lot) basic = basic.concat(['LOT', '製造日']);
@@ -381,6 +388,7 @@
     return '<div class="sheet"><h3>' + esc(f.form_title || '商品規格書') + ' · ' + esc(buyer) + '</h3><p class="muted">' + esc(buyer) + ' 양식 칸 순서 그대로 · 노란 칸은 우리 데이터에 없는 값' + (f.mapping ? ' · AI가 짝지은 칸 ' + hit + '/' + Object.keys(mp).length + ' (승인됨)' : '') + ' · 발행일 ' + LC.TODAY + '</p><table>' +
       basic.map(td).join('') + list('重点管理', f.qc) + list('配合', f.recipe) + list('調味液', f.seasoning) + list('包装資材', f.packaging) + '</table></div>';
   }
+  function buyerFormValues(buyer, lot) { buyerFormSheet(buyer, lot); return buyerFormSheet.lastValues || {}; }   // 칸 이름 → 값 (엑셀 채우기용)
   function formSelect(id) {
     var ks = Object.keys(state.specForms || {}); if (!ks.length) return '';
     return '<label>양식 <select id="' + id + '"><option value="">기본</option>' + ks.map(function (k) { return '<option value="' + esc(k) + '"' + (k === state.specBuyer ? ' selected' : '') + '>' + esc(k) + ' ' + esc(state.specForms[k].form_title || '規格書') + '</option>'; }).join('') + '</select></label>';
@@ -392,9 +400,14 @@
     var lots = specLots(), cur = specLot();
     var lotSel = lots.length ? '<label>로트 <select id="sp-lot"><option value=""' + (cur ? '' : ' selected') + '>없음(품목 규격서)</option>' + lots.map(function (l) { return '<option value="' + esc(l.lot) + '"' + (cur && cur.lot === l.lot ? ' selected' : '') + '>' + esc(l.lot) + (l.company_code ? ' (' + esc(l.company_code) + ')' : '') + ' · ' + esc(l.mfg) + '</option>'; }).join('') + '</select></label>' : '';
     return '<h2>규격서</h2><p class="sub">품목·양식·로트를 고르고 인쇄하세요. 로트를 고르면 Lot No.·제조일·소비기한 칸이 채워집니다.</p>' +
-      '<div class="row">' + productSelect('sp-prod') + formSelect('sp-form') + lotSel + '</div><button onclick="window.print()">PDF로 저장(인쇄)</button>' + sheetFor(cur);
+      '<div class="row">' + productSelect('sp-prod') + formSelect('sp-form') + lotSel + '</div><div class="row"><button id="sp-pdf">PDF 받기</button>' + (state.specBuyer && state.specForms[state.specBuyer] && state.specForms[state.specBuyer].form_b64 ? '<button id="sp-xlsx">바이어 엑셀 양식에 채워 받기</button>' : '') + '<button class="ghost" onclick="window.print()">인쇄</button></div>' + sheetFor(cur);
   };
-  screens.spec.bind = function () { bindProductSelect('sp-prod'); var el = $('#sp-form'); if (el) el.onchange = function () { state.specBuyer = el.value; route(); }; var ls = $('#sp-lot'); if (ls) ls.onchange = function () { state.specLot = ls.value; route(); }; };
+  screens.spec.bind = function () {
+    bindProductSelect('sp-prod'); var el = $('#sp-form'); if (el) el.onchange = function () { state.specBuyer = el.value; route(); }; var ls = $('#sp-lot'); if (ls) ls.onchange = function () { state.specLot = ls.value; route(); };
+    var cur = specLot(), nm = '규격서_' + (state.specBuyer || '기본') + '_' + P().code + (cur ? '_' + cur.lot : '');
+    var pb = $('#sp-pdf'); if (pb) pb.onclick = function () { downloadPdf(nm, $('.sheet').outerHTML); };
+    var xb = $('#sp-xlsx'); if (xb) xb.onclick = function () { downloadFilledXlsx(state.specBuyer, cur); };
+  };
 
   screens.ship = function () {
     var raw = state.raw.map(function (r) { return '<label class="chk"><input type="checkbox" name="raw" value="' + r.id + '"> ' + r.id + ' · ' + r.species + ' 어획 ' + r.caught + ' ' + r.landing + ' ' + r.kg + 'kg' + (r.note ? ' <small class="muted">' + esc(r.note) + '</small>' : '') + '</label>'; }).join('');
@@ -492,7 +505,7 @@
     if (cg) cg.onclick = function () {
       var kind = $('#claim-kind').value;
       $('#claim-out').innerHTML = claimReport(lot, kind);
-      $('#claim-print').onclick = function () { window.print(); };
+      $('#claim-print').onclick = function () { var sh = document.querySelector('#claim-out'); if (sh && sh.innerHTML) downloadPdf('클레임대응보고서_' + (lot && lot.lot || ''), sh.innerHTML); else window.print(); };
       state.docs.push({ at: LC.TODAY, file: '클레임 보고서 ' + lot.lot, doc_type: '클레임대응', result: kind }); save();
     };
   }
@@ -623,6 +636,7 @@
   }
   function applyCard(c) {
     var o = fieldsObj(c);
+    if (o && c.doc_type === '규격서양식' && c.b64 && /\.xlsx?$/i.test(c.name)) { o.form_b64 = c.b64; o.form_name = c.name; }   // 원본 엑셀을 함께 저장 → 나중에 값 채워 돌려준다
     if (o && typeof LC.applyDoc === 'function') return LC.applyDoc(c.doc_type, o, state) || '반영';
     return c.fixture && c.fixture.apply ? c.fixture.apply(state) || '반영' : '반영(apply 없음)';
   }
@@ -983,6 +997,23 @@
   function csvText(rows, cols) {
     var q = function (v) { if (Array.isArray(v)) v = v.join('; '); v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     return '\ufeff' + [cols.join(',')].concat(rows.map(function (r) { return cols.map(function (c) { return q(r[c]); }).join(','); })).join('\r\n');
+  }
+  // 서버에서 PDF 로 만들어 내려받기(휴대폰·공개 페이지에서도 됨). 서버 없으면 인쇄창
+  function downloadPdf(name, html) {
+    if (!API) { window.print(); return Promise.resolve(); }
+    toast('PDF 만드는 중…');
+    return fetch(API + '/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, html: html }) })
+      .then(function (r) { if (!r.ok) throw new Error('PDF 실패 ' + r.status); return r.blob(); })
+      .then(function (bl) { download(name.replace(/\.pdf$/i, '') + '.pdf', bl, 'application/pdf'); })
+      .catch(function (e) { toast(String(e)); window.print(); });
+  }
+  function downloadFilledXlsx(buyer, lot) {
+    var f = state.specForms[buyer] || {}; if (!f.form_b64) { toast('원본 엑셀이 없는 양식입니다'); return; }
+    toast('엑셀 채우는 중…');
+    fetch(API + '/formfill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.form_name || (buyer + '.xlsx'), b64: f.form_b64, values: buyerFormValues(buyer, lot) }) })
+      .then(function (r) { if (!r.ok) throw new Error('엑셀 실패 ' + r.status); return r.blob(); })
+      .then(function (bl) { download('채움_' + (f.form_name || buyer + '.xlsx'), bl, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); })
+      .catch(function (e) { toast(String(e)); });
   }
   function download(name, text, type) {
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: type || 'text/csv;charset=utf-8' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
