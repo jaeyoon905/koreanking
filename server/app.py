@@ -106,6 +106,16 @@ def extract(body):
             fields = [{'k': k, 'label': k, 'v': v, 'src': src.get(k, '')} for k, v in r.items()]
             if t == '규격서양식' and r.get('fields'):   # 새 바이어 양식: 칸 ↔ 우리 데이터 짝짓기(AI 제안). 승인 뒤 규격서 화면이 이 짝으로 채운다
                 fields.append({'k': 'mapping', 'label': '칸 ↔ 우리 데이터 (AI 제안, 승인 전 확인)', 'v': graph.map_fields(r['fields']), 'src': 'AI'})
+            if t == '메일' and r.get('questions'):   # 바이어 문의: 근거 찾기는 코드(answer_evidence), 답장 문장만 AI. 승인 전 사람이 카드에서 본다
+                st = get_state()
+                if SD:
+                    for k, v in (SD.load_state() or {}).items(): st.setdefault(k, v)
+                ans = graph.answer_evidence(r, st)
+                fields.append({'k': 'answers', 'label': '질문별 근거 (코드가 찾음)', 'v': [{'질문': x['q'][:60], '주제': x['topic'], '상태': x['status'], '출처': x['source']} for x in ans], 'src': 'ledger·registry·products'})
+                txt = graph.reply_draft(r, ans)
+                if txt:
+                    od = ROOT / 'agent' / 'out'; od.mkdir(exist_ok=True); fp = od / ('reply_%s.md' % datetime.date.today().isoformat()); fp.write_text(txt, 'utf-8')
+                    fields.append({'k': 'reply_draft', 'label': '답장 초안 (AI · 값은 근거 그대로 · 보내기 전 사람이 확인)', 'v': txt, 'src': str(fp.relative_to(ROOT))})
             if t == '고시문' and r.get('country'):   # 개정 고시문: 규칙 파일 수정안(AI 초안). 파일로만 남기고 코드에 자동 적용하지 않는다
                 pr = graph.rule_patch({'extracted': r}).get('proposals') or []
                 if pr:

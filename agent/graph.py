@@ -26,7 +26,7 @@ SCHEMAS = {
     '포장일지':    ['date', 'rows'],                             # rows: [{buyer, product, ct, mfg, expiry, lot_code}]
     '위생증명서':  ['issuer', 'serial', 'date', 'applicant', 'commodity', 'quantity', 'form'],
     'HACCP인증서': ['cert_no', 'holder', 'valid_from', 'valid_to', 'category', 'ccp', 'issuer'],
-    '메일':        ['from', 'date', 'subject', 'request', 'deadline'],
+    '메일':        ['from', 'date', 'subject', 'lang', 'product', 'questions', 'deadline'],   # questions: 질문 문장 배열. 주제 분류·근거 찾기는 코드(answer_evidence)
     '고시문':      ['country', 'title', 'effective', 'changed_articles', 'affects'],   # 개발부 입력
     # 수입 서류 (수입부 import.js 키와 맞춤)
     '수입인보이스': ['invoice_no', 'date', 'exporter', 'importer', 'from', 'to', 'vessel', 'items', 'total_ct', 'incoterms'],
@@ -39,7 +39,8 @@ NAME_HINTS = [('Declaration', '수입신고서'), ('선하증권', 'BL'), ('KMTC
               ('영양', '영양성적서'), ('성적서', '영양성적서'), ('規格書', '규격서양식'), ('규격서', '규격서양식'), ('Specification', '규격서양식'), ('Spec', '규격서양식'), ('spec', '규격서양식'), ('仕様書', '바이어지시'),
               ('表示案', '바이어지시'), ('패킹', '패킹리스트'), ('인보이스', '패킹리스트'), ('입고', '입고검사서'), ('가공일지', '가공일지'),
               ('포장', '포장일지'), ('위생증명', '위생증명서'), ('HACCP', 'HACCP인증서'), ('라벨', '라벨'), ('제품사진', '라벨'), ('메일', '메일'),
-              ('고시', '고시문'), ('告示', '고시문'), ('基準', '고시문'), ('公告', '고시문'), ('解读', '고시문'), ('改正', '고시문'), ('通则', '고시문')]
+              ('고시', '고시문'), ('告示', '고시문'), ('基準', '고시문'), ('公告', '고시문'), ('解读', '고시문'), ('改正', '고시문'), ('通则', '고시문'),
+              ('메일', '메일'), ('mail', '메일'), ('問い合わせ', '메일'), ('inquiry', '메일'), ('질의', '메일'), ('문의', '메일')]
 SENSITIVE = {'패킹리스트', '메일', '수입인보이스'}  # 계좌·단가가 섞일 수 있는 종류. masked=True 아니면 LLM 금지
 
 # 손글씨·고정 양식 전용 힌트. 추출 프롬프트 뒤에 붙는다. 실제 회사 양식(2026-04 서류) 기준
@@ -63,6 +64,8 @@ FORM_HINTS = {
     '고시문':     ('정부가 낸 식품표시 규정 개정 고시·공고·해설(중국 GB 공告·解读, 일본 消費者庁 告示, 홍콩·대만·태국 공고 등). country 는 ISO 두 글자(CN·JP·HK·TW·TH), '
                   'title 은 규정 이름+번호, effective 는 시행일 YYYY-MM-DD(유예기간 끝나는 날이 따로 있으면 note 에). changed_articles 는 [{article: 조항 번호·이름, before: 전, after: 후}] 로 바뀐 조항만. '
                   'affects 는 라벨에서 고쳐야 할 표시 항목 이름 목록(예: 保质期到期日, 致敏物质, 数字标签). 문서에 없는 내용은 만들지 말고 null.'),
+    '메일':       ('바이어가 보낸 문의 메일. from 은 회사·부서만(사람 이름 금지), lang 은 본문 언어 코드(ja·en·zh·ko), product 는 언급된 우리 품목 코드(LB·WF·SR 등, 없으면 null), '
+                  'questions 는 질문 문장을 원문 그대로 하나씩 배열(번호 제거), deadline 은 회신 기한 YYYY-MM-DD. 단가·금액 숫자가 보여도 뽑지 않는다.'),
     '수입신고서': ('일본 정부 "Declaration for the import into the Republic of Korea of Food from Japan". Consignment Code, Declaration Number(NS…KR…), '
                   '제품명·포장 수·순중량, 승선지(embarked at)·승선일·선박, 제조소(establishment 이름·주소), 체크박스 3개 중 어느 것인지(prefecture_flag: "2011-03-11 이전" / "17개 도현 외" / "17개 도현 내, 검사함"), '
                   '시료 채취일(sampled)·분석일(analyzed)·검사기관(lab)·보고서 번호(report_no), 발급 기관·일자(issued). 한 장에 제품 하나다.'),
@@ -231,6 +234,74 @@ def draft(s: S) -> S:  # 확인(check) 항목의 질의문·일본어 문구 초
     txt = llm('다음 확인 항목마다 (a) 바이어·검사기관에 보낼 질의문 2~3문장(한국어), (b) 라벨에 쓸 일본어 표시 문구 초안을 써라. 법령 해석은 확정하지 말고 질문으로 써라.\n'
               + json.dumps(checks, ensure_ascii=False), want='text')
     return {'drafts': [txt] if txt else [], 'log': ['draft: 초안 작성']}
+
+
+# ---------- 바이어 문의 답변: 근거 찾기는 코드, 문장은 AI ----------
+TOPIC_RULES = [  # 먼저 맞는 것이 이긴다
+    ('가격', r'単価|価格|price|价格|단가|가격|見積|quotation'),
+    ('소비기한', r'賞味期限|消費期限|shelf|保质期|소비기한|유통기한'),   # '製造日から何か月' 같은 문장이 로트로 새지 않게 로트보다 먼저
+    ('로트', r'ロット|\blot\b|批次|로트|漁船|入荷|生产日期|원료 입고|製造日'),
+    ('영양', r'栄養|nutrition|营养|열량|kcal|エネルギー|영양'),
+    ('알레르겐', r'アレル|allerg|过敏|알레르'),
+    ('보존', r'保存|storage|贮存|보관|保管'),
+    ('인증', r'HACCP|認証|certif|证书|인증|FDA|GACC|登録|registration'),
+    ('공정', r'工程|process|工艺|공정|製造方法'),
+    ('원산지', r'原産|origin|产地|원산지'),
+    ('원재료', r'原材料|ingredient|配料|원재료|添加物|additive'),
+    ('포장', r'包装|pack|荷姿|規格|규격|spec'),
+]
+
+
+def _topic(q: str) -> str:
+    for t, pat in TOPIC_RULES:
+        if re.search(pat, q, re.I): return t
+    return '기타'
+
+
+def answer_evidence(e: dict, st: dict) -> list:
+    """질문마다 우리 데이터에서 근거를 찾는다(코드). value 가 None 이면 자료 없음. 가격은 영업 판단이라 AI 에 넘기지 않는다."""
+    prods = st.get('products') or {}; code = (e.get('product') or '').upper()
+    p = prods.get(code) or (prods.get('LB') if 'LB' in prods else (next(iter(prods.values())) if prods else {}))
+    ledger, raw, reg, ns = st.get('ledger') or [], st.get('raw') or [], st.get('registry') or [], st.get('nutritionSources') or []
+    out = []
+    for q in e.get('questions') or []:
+        q = str(q); t = _topic(q); v = None; src = ''
+        if t == '영양':
+            v = {'per_100g': p.get('nutrition100'), 'source': p.get('nutrition_source'), 'reports': [x for x in ns if '성적서' in str(x.get('buyer', ''))][:2]}; src = 'products.nutrition100 · nutritionSources'
+            if not p.get('nutrition100'): v = None
+        elif t == '알레르겐': v = p.get('allergens') or None; src = 'products.allergens'
+        elif t == '소비기한': v = {'months': p.get('shelf_months'), 'storage': p.get('storage')} if p.get('shelf_months') else None; src = 'products.shelf_months·storage'
+        elif t == '보존': v = p.get('storage'); src = 'products.storage'
+        elif t == '공정': v = p.get('process'); src = 'products.process'
+        elif t == '원산지': v = '韓国産 / 한국산'; src = '고정값'
+        elif t == '원재료': v = p.get('ingredients'); src = 'products.ingredients'
+        elif t == '포장': v = {'net': p.get('net'), 'pack': p.get('pack')}; src = 'products.net·pack'
+        elif t == '인증':
+            keys = [k for k in ('HACCP', 'FDA', 'GACC') if re.search(k, q, re.I)] or ['HACCP']
+            rows = [r for r in reg if any(re.search(k, str(r.get('name', '')) + str(r.get('kind', '')), re.I) for k in keys)]
+            v = [{'name': r.get('name'), 'no': r.get('no'), 'issuer': r.get('issuer'), 'expiry': r.get('expiry')} for r in rows] or None; src = 'registry'
+        elif t == '로트':
+            m = re.search(r'\b([A-Z]{1,2})\b(?=\W*[)）]|\s|$)', q); lc = m.group(1) if m else None
+            md = re.search(r'(\d{1,2})月(\d{1,2})日|(\d{4})-(\d{2})-(\d{2})', q)
+            hits = [l for l in ledger if (lc and l.get('company_code') == lc) or (md and str(l.get('mfg', '')).endswith('-%02d-%02d' % ((int(md.group(1)), int(md.group(2))) if md.group(1) else (int(md.group(4)), int(md.group(5))))))]
+            if code: hits = [l for l in hits if l.get('product') == code] or hits
+            v = []
+            for l in hits[:3]:
+                lr = l.get('raw') or []; lr = lr if isinstance(lr, list) else [lr]; rl = [r for r in raw if r.get('id') in lr]   # raw = 입고분 id 목록, raw_by 는 연결 방법 설명
+                v.append({'lot': l.get('lot'), 'company_code': l.get('company_code'), 'mfg': l.get('mfg'), 'expiry': l.get('expiry'), 'raw': [{'id': r.get('id'), 'vessel': r.get('vessel'), 'received': r.get('received') or r.get('date')} for r in rl]})
+            v = v or None; src = 'ledger · raw'
+        status = '영업 판단' if t == '가격' else ('근거 있음' if v else '자료 없음')
+        out.append({'q': q, 'topic': t, 'status': status, 'source': src if v else '', 'value': None if t == '가격' else v})
+    return out
+
+
+def reply_draft(e: dict, answers: list) -> str:
+    """답장 초안(메일 언어). 값은 answers 의 value 만 쓰고 바꾸지 않는다. 사람 이름 없음. 끝에 한국어 내부 메모."""
+    if not answers: return ''
+    lang = (e.get('lang') or 'ja')
+    return llm('바이어 문의에 대한 답장 초안을 써라. 언어: ' + lang + '. 규칙: (1) status 가 "근거 있음" 인 질문만 value 의 숫자·문자를 그대로 인용해 답한다(값 변형·추정 금지, 출처 이름은 쓰지 않는다). '
+               '(2) "자료 없음" 은 "확인 후 회신" 한 문장. (3) "영업 판단" 은 영업 담당이 별도 회신한다는 한 문장. (4) 사람 이름은 쓰지 않고 회사·부서로만. (5) 맨 끝에 한국어로 "[내부 메모]" 를 달고 빠진 자료와 영업 회신 필요 항목을 적는다.\n'
+               '문의: ' + json.dumps({k: e.get(k) for k in ('from', 'subject', 'date', 'deadline', 'product')}, ensure_ascii=False) + '\n질문과 근거: ' + json.dumps(answers, ensure_ascii=False), want='text')
 
 
 # ---------- 개발부: 코드는 제안만, 적용은 사람 ----------

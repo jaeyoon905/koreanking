@@ -100,6 +100,22 @@ def redact(path_in, path_out=None, boxes=None):
     src = pathlib.Path(path_in); OUT_DIR.mkdir(exist_ok=True)
     out = pathlib.Path(path_out) if path_out else OUT_DIR / (src.stem + '_redacted' + src.suffix)
     found, note = [], '이름은 패턴으로 못 잡는다. 추출 단계에서 비식별'
+    if src.suffix.lower() in ('.txt', '.md', '.eml'):   # 메일 본문: 계좌 문맥 줄·통화+숫자·긴 숫자열을 글자로 가린다
+        lines = src.read_text('utf-8', errors='replace').split('\n'); out_lines = []; ctx_next = False
+        for ln in lines:
+            t = ln
+            if CTX.search(t) or ctx_next:
+                t2 = re.sub(r'\d', '■', t)
+                if t2 != t: found.append({'kind': '계좌 문맥', 'text_masked': _mask(t.strip()[:20])})
+                ctx_next = bool(CTX.search(ln)); t = t2
+            for m in list(MONEY.finditer(t)): found.append({'kind': '금액', 'text_masked': _mask(m.group(0))})
+            t = MONEY.sub('■■■', t)
+            if not PHONE.search(t):
+                for m in list(ACCT.finditer(t)): found.append({'kind': '긴 숫자열', 'text_masked': _mask(m.group(0))})
+                t = ACCT.sub('■■■■', t)
+            out_lines.append(t)
+        out.write_text('\n'.join(out_lines), 'utf-8')
+        return {'out': str(out), 'found': found, 'method': 'text', 'safe_for_llm': True, 'note': '금액·계좌 패턴은 가렸다. 단가 질문 문장 자체는 남는다(값이 아님)'}
     if src.suffix.lower() == '.pdf':
         doc = pymupdf.open(src)
         has_text = any(p.get_text().strip() for p in doc)

@@ -42,6 +42,12 @@ def static_checks():
     try: ok, nrows, msg = json.loads(r.stdout)
     except Exception as e: ok, nrows, msg = False, 0, (r.stderr or str(e))[-200:]
     check('A 고시문 승인 → revisions 추가 + 검증부 행', ok and nrows >= 1, msg)
+    r = run([sys.executable, '-X', 'utf8', '-c', "import sys,json; sys.path.insert(0,'agent'); import graph as g, shipdocs as SD; st=SD.load_state();"
+             "e={'product':'LB','questions':['100gあたりの栄養成分を教えてください','4月10日製造ロット（貴社コード AJ）の原料入荷日と漁船名','単価見直し']};"
+             "a=g.answer_evidence(e, st); print(json.dumps([[x['topic'],x['status']] for x in a], ensure_ascii=False))"])
+    try: got = json.loads(r.stdout.strip().splitlines()[-1])
+    except Exception as e: got = (r.stderr or str(e))[-200:]
+    check('A 문의 근거 찾기(영양 근거 있음·로트 AJ 근거 있음·가격 영업 판단)', got == [['영양', '근거 있음'], ['로트', '근거 있음'], ['가격', '영업 판단']], got)
     banned = [x[::-1] for x in ['웅세', '호성삼', '노에우', '다모토', '이레산', 'IHSOYENAK', 'NEROYG', 'yraicifeneB', '0-851']]  # 뒤집어 보관(소스 자체가 검사에 걸리지 않게)
     for f in ['app.js', 'data.js', 'fixtures.js', 'apply.js', 'import.js', 'index.html', 'style.css']:
         p = ROOT / f

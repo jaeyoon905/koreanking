@@ -60,7 +60,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
     return ingredientsOf(label.ingredients).filter(function (a) { return txt.indexOf(a) < 0; });
   }
 
-  LC.docTypes = ['입고검사서', '가공일지', '포장일지', '패킹리스트', '위생증명서', 'HACCP인증서', '영양성적서', '규격서양식', '라벨', '고시문', '수입인보이스', 'BL', '수입신고서', '운송장'];
+  LC.docTypes = ['입고검사서', '가공일지', '포장일지', '패킹리스트', '위생증명서', 'HACCP인증서', '영양성적서', '규격서양식', '라벨', '고시문', '메일', '수입인보이스', 'BL', '수입신고서', '운송장'];
 
   LC.fieldsToObj = function (fields) {
     if (!fields || !Array.isArray(fields)) return fields || {};
@@ -221,6 +221,18 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   A['영양성적서'] = function (o, s) {
     upsert(s.nutritionSources, 'buyer', reportKey(o), { buyer: reportKey(o), product: o.product, kcal: num(o.kcal), protein: num(o.protein), fat: num(o.fat), carb: num(o.carb), salt_g: saltOf(o), basis: '실측', src: (o.issuer || '성적서') + ' ' + (o.report_no || '') + ' ' + (o.date || '') });
     return '영양값 출처 1건 기록 (' + reportKey(o) + ', 식염 ' + saltOf(o) + 'g 환산)';
+  };
+
+  // ---------- 바이어 문의 메일 ----------
+  R['메일'] = function (o, s) {
+    var ans = Array.isArray(o.answers) ? o.answers : [];
+    if (!ans.length) return [{ item: '문의 ' + (o.subject || ''), status: 'check', note: '질문을 못 읽음 → 직접 입력' }];
+    return ans.map(function (x) { var st = x['상태'] || x.status; return { item: (x['주제'] || x.topic) + ' · ' + (x['질문'] || x.q), status: st === '근거 있음' ? 'ok' : 'check', note: st === '근거 있음' ? '근거: ' + (x['출처'] || x.source) : st === '영업 판단' ? '영업 담당 별도 회신' : '우리 데이터에 없음 → 확인 후 회신' }; })
+      .concat([{ item: '답장 초안', status: o.reply_draft ? 'add' : 'check', note: o.reply_draft ? (o.lang || '') + ' 초안 있음 · 보내기 전 사람이 확인' : '초안 없음(키 없음)' }]);
+  };
+  A['메일'] = function (o, s) {
+    var ans = Array.isArray(o.answers) ? o.answers : [], ok = ans.filter(function (x) { return (x['상태'] || x.status) === '근거 있음'; }).length;
+    return '문의 "' + (o.subject || '') + '" 질문 ' + ans.length + '개 중 근거 있음 ' + ok + '개' + (o.reply_draft ? ' · 답장 초안 저장(agent/out)' : '') + (o.deadline ? ' · 기한 ' + o.deadline : '');
   };
 
   // ---------- 개정 고시문 ----------
