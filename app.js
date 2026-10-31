@@ -1056,6 +1056,8 @@
     var g = groupOf(name), sub = NAV_SUB[g];
     $('#nav').innerHTML = '<div class="nav-main">' + NAV_MAIN.map(function (x) { return navLink(x, x[0] === g); }).join('') + ' <span class="muted" id="mode">' + esc(modeBadge()) + ' · ' + LC.TODAY + '</span></div>' +
       (sub ? '<div class="nav-sub">' + sub.map(function (x) { return navLink(x, x[0] === name); }).join('') + '</div>' : '');
+    var gName = (NAV_MAIN.filter(function (x) { return x[0] === g; })[0] || [])[1], sName = sub && (sub.filter(function (x) { return x[0] === name; })[0] || [])[1];
+    document.title = [sName, gName, '라벨코스트'].filter(function (t, i, a) { return t && a.indexOf(t) === i; }).join(' | ');   // 정부24처럼: 화면 | 묶음 | 라벨코스트
     $('#main').innerHTML = screens[name](arg);
     if (screens[name].bind) screens[name].bind(arg);
   }
