@@ -170,12 +170,21 @@
   screens.home = function () {
     var items = todos(), recent = state.ledger.slice(-3).reverse();
     var k0 = LC.sampleLabels.HK ? 'HK' : Object.keys(LC.sampleLabels)[0], l0 = LC.sampleLabels[k0], s0 = summarize(judge(l0.country, l0.fields)), go0 = '#label/' + k0 + '/' + l0.country;
-    return '<div class="home"><div>' +
+    var nLaw = LC.laws ? Object.keys(LC.laws).length : 0;
+    return '<div class="formula" aria-label="한국 라벨 1장과 종이 일지로 5개국 라벨과 수출 서류 9종">' +
+        '<div class="f-in"><b>한국 라벨 1장</b><span>품목 원본</span></div><span class="f-op">+</span><div class="f-in"><b>종이 일지·서류</b><span>사진·PDF</span></div><span class="f-op f-arrow">→</span>' +
+        '<a class="f-out" href="#tags/go"><b>5개국 라벨</b><span>일본·중국·홍콩·대만·태국</span></a><span class="f-op">+</span><a class="f-out" href="#pack"><b>수출 서류 9종</b><span>규격서·패킹리스트·수정 요청서…</span></a></div>' +
+      '<div class="big-nums">' +
+        '<div><span class="bn-v">50~100<small>만원</small></span><span class="bn-k">라벨 1장 외부 컨설팅 비용</span><span class="bn-s">업계 설명 · 쿡앤셰프뉴스 2026-06-10</span></div>' +
+        '<div><span class="bn-v">20~30<small>분</small> → 즉시</span><span class="bn-k">규격서 1건 작성 시간</span><span class="bn-s">A사 실제 업무 기준</span></div>' +
+        '<div><span class="bn-v">' + nLaw + '<small>개</small></span><span class="bn-k">판정 근거 조항 · 모두 원문 링크</span><span class="bn-s"><a href="#laws">규정 근거 보기 ›</a></span></div>' +
+      '</div>' +
+      '<div class="home"><div>' +
       '<p class="hero">수출 라벨 규정 위반을<br><em>선적 전에</em> 잡습니다</p>' +
       '<p class="hero-sub">홍콩 · 대만 · 태국 · 일본 · 중국 규칙으로 항목별 판정, 공장 LOT 기록까지 한 줄로.</p>' +
       '<div class="search"><input id="home-q" list="lot-list" placeholder="LOT 번호나 회사 코드로 찾기 (예: 20260410-LB)" aria-label="LOT 찾기"><button id="home-go" aria-label="LOT 조회">찾기</button></div>' + lotDatalist() +
       '<div class="panel feature"><a class="lead-tile" href="' + go0 + '"><span class="lt-k">라벨 판정 · ' + esc(LC.rules[l0.country].name) + ' 라벨</span><span class="lt-v">' + (s0.fix ? '수정 ' + s0.fix + '항목' : '통과') + '</span><span class="lt-d">확인 ' + s0.check + ' · 통과 ' + s0.pass + ' · ' + esc(l0.file) + '</span></a>' +
-      '<div class="list">' + listRow('#tags/go', '', '나라별 라벨', '한국 → 중국·일본') + listRow('#quick', '', '한 번에 처리', '서류 → 판정 → 기록') + listRow('#lot', '', 'LOT 조회', '원어 입고까지') + listRow('#intake', '', '서류 넣기', '사진·PDF 읽기') + '</div></div>' +
+      '<div class="list">' + listRow('#pack/go', '', '수출 꾸러미', '서류 9종 한 번에') + listRow('#tags/go', '', '나라별 라벨', '한국 → 5개국') + listRow('#quick', '', '한 번에 처리', '서류 → 판정 → 기록') + listRow('#lot', '', 'LOT 조회', '원어 입고까지') + listRow('#intake', '', '서류 넣기', '사진·PDF 읽기') + '</div></div>' +
       '</div><div class="card"><div class="sec-head"><h3>오늘 할 일</h3><span class="muted">' + LC.TODAY + '</span></div>' +
       (items.length ? '<div class="list">' + items.map(function (t) { var badge = t.href === '#intake' ? '<span class="tag">대기</span>' : '<span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '수정' : '확인') + '</span>'; return listRow(t.href, badge, esc(t.text), t.go); }).join('') + '</div>' : '<p class="muted">오늘 할 일 없음</p>') +
       '<p class="muted home-recent">' + (recent.length ? '최근 LOT ' + recent.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + '</a>'; }).join(' · ') : 'LOT 없음') + monthLine() + '</p>' +
@@ -285,6 +294,21 @@
     if (kc.length < 2) return '';
     return '<p class="alert bad">같은 제품인데 바이어별 열량이 <b>' + kc.map(esc).join(' · ') + ' kcal</b>로 달라요.' + (own ? ' 자사 성적서는 다른 제품(' + esc(own.kcal) + ' kcal)이에요.' : '') + '</p>';
   }
+  // ---------- 라벨 위에서 보기: 받은 라벨 칸에 틀린 곳을 빨간 취소선, 고칠 문구를 초록으로 (전 → 후) ----------
+  var OV_FIELDS = [['name', '품명'], ['fda', '등록번호'], ['ingredients', '원재료'], ['allergen', '알레르겐'], ['net', '내용량'], ['mfg', '제조일'], ['expiry', '날짜 문구'], ['storage', '보관'], ['origin', '원산지'], ['importer', '수입자'], ['manufacturer', '제조자'], ['nutrition', '영양표시']];
+  var OV_RULE = { nutrition: 'nutrition', allergen: 'allergen', additive: 'ingredients', ingredients: 'ingredients', pct: 'ingredients', expiry: 'expiry', dates: 'expiry', maker: 'manufacturer', importer: 'importer', kanji: 'origin', basic: 'name', fda: 'fda', net: 'net', storage: 'storage', origin: 'origin', cn_label: 'name', claims: 'name' };
+  function labelOverlay(country, fields, res) {
+    var by = {}, extra = [], k = 0;
+    res.forEach(function (x) { if (x.status === 'pass') return; x.mk = ++k; var f = OV_RULE[x.id]; if (f) (by[f] = by[f] || []).push(x); else extra.push(x); });
+    var rows = OV_FIELDS.filter(function (f) { return (fields && fields[f[0]]) || by[f[0]]; }).map(function (f) {
+      var v = (fields && fields[f[0]]) || '', iss = by[f[0]];
+      if (!iss) return '<tr><th>' + f[1] + '</th><td>' + esc(v) + '</td></tr>';
+      return '<tr class="ov-hit"><th>' + f[1] + '</th><td>' + (v ? '<del>' + esc(v) + '</del>' : '<del class="ov-none">(없음)</del>') +
+        iss.map(function (x) { return '<div class="ov-fix ' + (x.status === 'fix' ? 'bad' : 'warn') + '"><span class="mk">' + x.mk + '</span><ins>' + esc(x.fix || x.msg) + '</ins><span class="ov-ref">' + esc(x.item) + ' · ' + refCell(country, x, x.src || LC.rules[country].short) + '</span></div>'; }).join('') + '</td></tr>';
+    }).join('');
+    return '<div class="ov"><div class="pkg ov-pkg"><table>' + rows + '</table></div>' +
+      (extra.length ? '<div class="ov-extra"><b>라벨 밖에서 확인할 것</b>' + extra.map(function (x) { return '<div class="ov-fix ' + (x.status === 'fix' ? 'bad' : 'warn') + '"><span class="mk">' + x.mk + '</span><ins>' + esc(x.item + ' · ' + (x.fix || x.msg)) + '</ins> ' + refCell(country, x, x.src || LC.rules[country].short) + '</div>'; }).join('') + '</div>' : '') + '</div>';
+  }
   function renderJudge(country, fields, meta) {
     var res = judge(country, fields); var s = summarize(res); var r = LC.rules[country];
     var rev = allRevisions().filter(function (v) { return v.country === country && meta.made && meta.made < v.effective; });
@@ -294,9 +318,11 @@
     var html = '<div class="verdict ' + v[0] + '">' + v[1] + '<span class="v-sub">' + esc(r.name) + ' ' + esc(r.short || '') + ' 기준 · 라벨 기준일 ' + fmtDate(meta.made) + '</span></div>' +
       '<div class="stats">' + stat('bad', '수정', s.fix) + stat('warn', '확인', s.check) + stat('ok', '통과', s.pass) + '</div>' +
       (rev.length ? '<p class="alert">고시 개정 이후 라벨이에요: ' + rev.map(function (x) { return esc(x.title) + ' (시행 ' + x.effective + ')'; }).join(', ') + '</p>' : '') + nutritionAlert() +
+      '<div class="chips no-print view-tabs"><button class="chip on" data-view="ov">라벨 위에서 보기</button><button class="chip" data-view="tbl">표로 보기</button></div>' +
+      '<div id="lbl-ov">' + labelOverlay(country, fields, res) + '</div><div id="lbl-tbl" hidden>' +
       '<table><tr><th>항목</th><th>판정</th><th>근거</th><th>현재</th><th>고칠 것</th></tr>' +
       res.map(function (x) { return '<tr class="' + (x.status === 'fix' ? 'st-bad' : x.status === 'check' ? 'st-check' : '') + '"><td><b>' + esc(x.item) + '</b></td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td>' + refCell(country, x, ref(x)) + '</td><td class="muted">' + fold(x.msg, 40) + '</td><td class="fixto">' + fold(x.fix || '', 40) + '</td></tr>'; }).join('') +
-      '</table>' +
+      '</table></div>' +
       '<div class="actions"><details class="no-print"><summary>읽은 값</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details><button class="lg" id="lbl-pdf">수정 요청서 PDF</button>' +
       (API && (s.fix || s.check) ? '<button class="lg" id="lbl-fix" aria-label="지적된 칸을 고친 수정안 만들기">수정안 만들기</button>' : '') + '</div><div id="lbl-fixout"></div>';
     $('#lbl-out').innerHTML = html;
@@ -304,6 +330,7 @@
     $('#lbl-pdf').onclick = function () { var el = $('#lbl-out').cloneNode(true); el.querySelectorAll('.actions, .no-print, #lbl-fixout').forEach(function (x) { x.remove(); }); downloadPdf('라벨판정_' + (meta.file || country) + '_' + country, '<h2>라벨 판정 · ' + esc(r.name) + '</h2>' + el.innerHTML); };
     var fb = $('#lbl-fix'); if (fb) fb.onclick = function () { fb.disabled = true; fb.textContent = '수정안 만드는 중…'; labelFix(country, fields, res, meta).then(function () { fb.disabled = false; fb.textContent = '수정안 만들기'; }); };
     document.querySelectorAll('[data-ctry]').forEach(function (b) { b.classList.toggle('on', b.dataset.ctry === country); });
+    document.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { document.querySelectorAll('[data-view]').forEach(function (o) { o.classList.toggle('on', o === b); }); $('#lbl-ov').hidden = b.dataset.view !== 'ov'; $('#lbl-tbl').hidden = b.dataset.view !== 'tbl'; }; });
   }
   screens.label.bind = function (arg) {
     var sampleSel = $('#lbl-sample'), la = labelArg(arg);
@@ -496,6 +523,34 @@
     root.onmouseover = function (e) { var t = e.target.closest('#tg-why .bubble, #tg-main [data-mk]'); hl(t ? t.dataset.mk : null); };
     root.onmouseleave = function () { hl(null); };
     render();
+  };
+
+  // ---------- 수출 꾸러미: 결과물을 표가 아니라 실제 서류 미리보기 카드로. 버튼 하나에 하나씩 채워짐 ----------
+  screens.pack = function () {
+    return '<h2>수출 꾸러미</h2><p class="sub">한국 라벨 1장과 받은 서류로 만드는 수출 서류예요. 카드를 누르면 그 서류 화면으로 가요.</p>' +
+      '<div class="pack-bar"><button class="lg" id="pk-go">꾸러미 만들기</button><span class="pk-count" id="pk-count">0 / 9</span><span class="muted" id="pk-time"></span></div><div class="pack" id="pk"></div>';
+  };
+  screens.pack.bind = function (arg) {
+    var p = P(), lot = state.ledger[state.ledger.length - 1], sh = state.shipments[state.shipments.length - 1];
+    var hk = LC.sampleLabels.HK ? judge('HK', LC.sampleLabels.HK.fields).filter(function (x) { return x.status !== 'pass'; }) : [];
+    var doc = function (title, rows) { return '<div class="doc-mini"><h4>' + title + '</h4><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>'; };
+    var cards = TAG_CTRY.map(function (c) { return [c[1] + ' 라벨', c[2], '#tags/' + c[0], c[3](p)]; }).concat([
+      ['규격서', '바이어 양식', '#spec', specSheet(lot)],
+      ['수정 요청서', '홍콩 라벨 · ' + hk.length + '곳', '#label', doc('라벨 수정 요청서 · 홍콩', hk.map(function (x) { return [x.item, x.fix || x.msg]; }))],
+      ['패킹리스트', sh ? sh.no : '선적 없음', '#ship', doc('PACKING LIST' + (sh ? ' · ' + sh.no : ''), sh ? sh.items.slice(0, 6).map(function (i) { return [i.desc, i.ct + ' C/T · ' + i.kg + ' kg']; }).concat([['TOTAL', sh.total_ct + ' C/T · ' + sh.total_kg + ' kg']]) : [])],
+      ['위생증명서 신청값', '수품원', '#ship', doc('위생증명서 신청 정보', sh ? [['수출자', p.factory ? p.factory.name : ''], ['수입자', sh.buyer], ['선박', sh.vessel], ['구간', sh.route], ['HS', sh.hs || ''], ['수량', sh.total_ct + ' C/T / ' + sh.total_kg + ' kg']] : [])]
+    ]);
+    $('#pk').innerHTML = cards.map(function (c, i) { return '<a class="pk-card" href="' + c[2] + '" style="--i:' + i + '"><div class="pk-thumb"><div class="pk-scale">' + c[3] + '</div></div><div class="pk-meta"><b>' + c[0] + '</b><span>' + esc(c[1]) + '</span></div><span class="pk-ok">✓</span></a>'; }).join('');
+    $('#pk-count').textContent = '0 / ' + cards.length;
+    $('#pk-go').onclick = function () {
+      var els = Array.prototype.slice.call(document.querySelectorAll('.pk-card')), n = 0;
+      els.forEach(function (el) { el.classList.remove('done'); });
+      var tick = setInterval(function () {
+        if (n >= els.length) { clearInterval(tick); $('#pk-time').textContent = '수출 서류 ' + els.length + '종 완성 · 카드를 누르면 원본 화면'; return; }
+        els[n].classList.add('done'); n++; $('#pk-count').textContent = n + ' / ' + els.length;
+      }, 260);
+    };
+    if (arg === 'go') $('#pk-go').click();
   };
 
   // 규정 근거: 나라별 라벨에서 쓴 조항을 나라별로 모아 원문 링크와 함께
@@ -1444,7 +1499,7 @@
   // ---------- 라우팅 ----------
   // 첫 줄: 묶음 6개. 둘째 줄: 현재 묶음 안의 화면들
   var NAV_MAIN = [['home', '홈', '오늘 할 일'], ['quick', '한 번에 처리', '서류 넣기 → 확인 → 결과물'], ['label', '라벨', '라벨 판정 · 품목 · 규격서'], ['ship', '생산·LOT', '선적·원장 · LOT 조회'], ['intake', '서류', '서류 넣기 · 대시보드 · 수입 체크 · 내보내기']];
-  var NAV_SUB = { label: [['label', '라벨 판정'], ['tags', '나라별 라벨'], ['laws', '규정 근거'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
+  var NAV_SUB = { quick: [['quick', '한 번에 처리'], ['pack', '수출 꾸러미']], label: [['label', '라벨 판정'], ['tags', '나라별 라벨'], ['laws', '규정 근거'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
   function groupOf(name) { for (var g in NAV_SUB) if (NAV_SUB[g].some(function (x) { return x[0] === name; })) return g; return name; }
   function navLink(x, on) { return '<a href="#' + x[0] + '" class="' + (on ? 'on' : '') + '" title="' + esc(x[2] || x[1]) + '"' + (on ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }
   function route() {
