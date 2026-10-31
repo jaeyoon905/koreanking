@@ -235,6 +235,19 @@
       $('#lbl-fixtxt').onclick = function () { download('라벨문안_' + (meta.file || country) + '_' + country + '.txt', labelTxt, 'text/plain;charset=utf-8'); };
     }).catch(function (e) { out.innerHTML = '<p class="alert">수정안 실패: ' + esc(e) + '</p>'; });
   }
+  // 날짜 설정 → 라벨 칸에 반영. 나라별 관용 표기(기본값, 확인 가능): 일본 YYYY.MM.DD, 홍콩·태국 DD/MM/YYYY, 대만 YYYY.MM.DD, 중국 年月日
+  var DATE_FMT_BY = { JP: 'YYYY.MM.DD', HK: 'DD/MM/YYYY', TW: 'YYYY.MM.DD', TH: 'DD/MM/YYYY', CN: 'YYYY年MM月DD日' };
+  var DATE_WORD = { JP: ['製造日 ', '賞味期限 '], HK: ['生產日期 Date of manufacture ', '此日期前最佳 Best before '], TW: ['製造日期 ', '有效日期 '], TH: ['MFG ', 'EXP '], CN: ['生产日期 ', '保质期到期日 '] };
+  function fmtDateBy(iso, fmt) { if (!iso) return ''; var y = iso.slice(0, 4), m = iso.slice(5, 7), d = iso.slice(8, 10); return fmt.replace('YYYY', y).replace('MM', m).replace('DD', d); }
+  function addMonths(iso, months) { if (!iso || !months) return ''; var d = new Date(iso + 'T00:00:00'); d.setMonth(d.getMonth() + months); return d.toISOString().slice(0, 10); }
+  function applyLabelDates(country, fields) {
+    var mfg = $('#lbl-mfg') && $('#lbl-mfg').value, exp = $('#lbl-exp') && $('#lbl-exp').value, fmt = ($('#lbl-datefmt') && $('#lbl-datefmt').value) || DATE_FMT_BY[country] || 'YYYY.MM.DD';
+    if (!mfg && !exp) return fields;
+    var out = {}; for (var k in fields) out[k] = fields[k]; var w = DATE_WORD[country] || ['', ''];
+    if (mfg) out.mfg = w[0] + fmtDateBy(mfg, fmt);
+    if (exp) out.expiry = w[1] + fmtDateBy(exp, fmt);
+    return out;
+  }
   function labelArg(arg) { var a = String(arg || '').split('/'); return { key: LC.sampleLabels[a[0]] ? a[0] : null, country: LC.rules[a[1]] ? a[1] : null }; }
   screens.label = function (arg) {
     var la = labelArg(arg);
@@ -244,7 +257,10 @@
       '<div class="row"><label>받은 파일 <select id="lbl-sample">' + sel + '</select></label>' +
       '<label>또는 엑셀 업로드 <input type="file" id="lbl-file" accept=".xlsx,.xls"></label>' +
       '<label>도착국 <select id="lbl-country">' + Object.keys(LC.rules).map(function (k) { return '<option value="' + k + '">' + LC.rules[k].name + '</option>'; }).join('') + '</select></label>' +
-      '<label>라벨 기준일 <input type="date" id="lbl-made"></label><button class="ghost" id="lbl-run">판정</button></div></div>' +
+      '<label>라벨 기준일 <input type="date" id="lbl-made"></label><button class="ghost" id="lbl-run">판정</button></div>' +
+      '<div class="row" id="lbl-dates"><label>로트(날짜 가져오기) <select id="lbl-lot"><option value="">직접 입력</option>' + state.ledger.slice().sort(function (a, b) { return String(b.mfg).localeCompare(String(a.mfg)); }).slice(0, 30).map(function (l) { return '<option value="' + esc(l.lot) + '">' + esc(l.lot) + (l.company_code ? ' (' + esc(l.company_code) + ')' : '') + ' · ' + esc(l.product) + ' · ' + esc(l.mfg) + '</option>'; }).join('') + '</select></label>' +
+      '<label>제조일 <input type="date" id="lbl-mfg"></label><label>소비(상미)기한 <input type="date" id="lbl-exp"></label>' +
+      '<label>날짜 표기 <select id="lbl-datefmt">' + ['YYYY.MM.DD', 'YYYY/MM/DD', 'DD/MM/YYYY', 'DD.MM.YYYY', 'YYYY年MM月DD日', 'YYYY-MM-DD'].map(function (f) { return '<option>' + f + '</option>'; }).join('') + '</select></label><span class="muted">비우면 라벨 원문 날짜 그대로. 소비기한은 제조일+품목 기한으로 자동, 고칠 수 있음</span></div></div>' +
       '<div id="lbl-out"></div>' + nutritionSourceTable();
   };
   // 영양값 출처: 바이어마다 다른 추정값이 어디서 왔는지. 비어 있으면 안 그림
@@ -299,11 +315,16 @@
       if (LC.rules[pl.country]) $('#lbl-country').value = pl.country;
       $('#lbl-out').innerHTML = '<p class="muted">' + esc(pl.file) + ' (서류 넣기에서 가져옴)</p>'; setTimeout(function () { $('#lbl-run').click(); }, 50);
     }
+    var lotSel = $('#lbl-lot'); if (lotSel) lotSel.onchange = function () { var l = state.ledger.filter(function (x) { return x.lot === lotSel.value; })[0]; if (l) { $('#lbl-mfg').value = l.mfg || ''; $('#lbl-exp').value = l.expiry || addMonths(l.mfg, (LC.products[l.product] || P()).shelf_months); if (LC.products[l.product]) setProduct(l.product); } };
+    var mfgIn = $('#lbl-mfg'); if (mfgIn) mfgIn.onchange = function () { if (mfgIn.value && !$('#lbl-exp').value) $('#lbl-exp').value = addMonths(mfgIn.value, P().shelf_months); };
+    $('#lbl-country').onchange = function () { var df = $('#lbl-datefmt'); if (df && DATE_FMT_BY[$('#lbl-country').value]) df.value = DATE_FMT_BY[$('#lbl-country').value]; };
     $('#lbl-run').onclick = function () {
       var country = $('#lbl-country').value; var made = $('#lbl-made').value || null;
-      if (uploaded) renderJudge(country, uploaded.fields, { made: made, file: uploaded.file });
-      else { var l = LC.sampleLabels[sampleSel.value]; renderJudge(country, l.fields, { made: made, file: l.file }); }
+      var df = $('#lbl-datefmt'); if (df && !df.dataset.touched && DATE_FMT_BY[country]) df.value = DATE_FMT_BY[country];
+      if (uploaded) renderJudge(country, applyLabelDates(country, uploaded.fields), { made: made, file: uploaded.file });
+      else { var l = LC.sampleLabels[sampleSel.value]; renderJudge(country, applyLabelDates(country, l.fields), { made: made, file: l.file }); }
     };
+    if ($('#lbl-datefmt')) $('#lbl-datefmt').onchange = function () { $('#lbl-datefmt').dataset.touched = '1'; };
     $('#lbl-run').click();
   };
 
@@ -920,6 +941,7 @@
       if (API) api('/docs', 'POST', { file: c.name, doc_type: c.doc_type, mode: c.mode, decision: '승인', result: result, fields: c.fields }).catch(function () {});
     });
     save(); renderQuick();
+    var bc = $('#bundle-card') || $('#qk-results'); if (bc) setTimeout(function () { bc.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
     toast('승인 ' + done + '건 반영' + (skipped ? ' · 건너뜀 ' + skipped + '건(가림 미확인·종류 미확인)' : '') + ' → ' + intakeSummary());
   }
   // 바이어별 서류 묶음: 바이어가 보낸 양식·문의마다 "보낼 것" 한 줄 (규격서 PDF·엑셀, 답장, 라벨 문안, 로트 패키지·QR, 선적 서류)
@@ -1025,8 +1047,10 @@
     if (!intakeCards.length) { box.innerHTML = '<p class="muted">넣은 서류가 없습니다. 위에서 파일을 올리거나 "받은 파일 전부 넣기"를 누르세요.</p>'; }
     else {
       var wait = intakeCards.filter(function (c) { return !c.done && !c.loading; }).length, loading = intakeCards.filter(function (c) { return c.loading; }).length;
-      box.innerHTML = '<table><tr><th>파일</th><th>종류</th><th class="num">읽은 칸</th><th>대조</th><th>상태</th></tr>' + intakeCards.map(quickRow).join('') + '</table>' +
+      var tableHtml = '<table><tr><th>파일</th><th>종류</th><th class="num">읽은 칸</th><th>대조</th><th>상태</th></tr>' + intakeCards.map(quickRow).join('') + '</table>' +
         '<div class="row"><button id="qk-approve" ' + (wait ? '' : 'disabled') + ' aria-label="대기 중인 서류 전부 승인">전부 승인 (' + wait + '건)</button>' + (loading ? '<span class="b warn">AI 읽는 중 ' + loading + '건 · 끝나면 표가 바뀝니다</span>' : '') + '<a class="btn ghost" href="#intake">하나씩 보기</a><span class="summary-bar">' + intakeSummary() + '</span></div>';
+      var allDone = intakeCards.length && intakeCards.every(function (c) { return c.done; });
+      box.innerHTML = allDone ? '<p class="alert ok"><b>' + intakeCards.length + '건 반영됨</b> → 아래 <a href="#qk-results">3. 보낼 서류</a>에서 바이어별 패키지를 받으세요.</p><details class="fold-sec"><summary>처리한 서류 ' + intakeCards.length + '건 보기</summary>' + tableHtml + '</details>' : tableHtml;
       $('#qk-approve').onclick = approveAll;
       document.querySelectorAll('[data-qmask]').forEach(function (el) { el.onchange = function () { var c = intakeCards[+el.dataset.qmask]; c.masked = el.checked; if (API && c.blocked && el.checked) extractOnServer(c); else renderQuick(); }; });
       document.querySelectorAll('[data-qdetail]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.qdetail]; c.detail = !c.detail; renderQuick(); }; });
