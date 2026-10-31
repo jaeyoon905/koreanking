@@ -673,6 +673,7 @@
     if (lot) { val['LOT'] = lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : ''); val['製造日'] = lot.mfg; val['賞味期限'] = lot.expiry; }
     var gf = function (x) { return typeof x === 'string' ? x : x.name + (x.g != null ? ' ' + x.g + 'g' : '') + (x.pct != null ? ' (' + x.pct + '%)' : ''); };
     var lang = formLang(f), raw = {}; (f.fields || Object.keys(val)).forEach(function (k) { var v = mp[k] && ours[mp[k]] ? ours[mp[k]] : val[k]; if (v) raw[k] = String(v); });
+    if (lot) { raw['LOT'] = String(val['LOT']); raw['製造日'] = String(val['製造日'] || ''); }   // 양식 칸 목록에 없어도 로트 줄은 채운다
     buyerFormSheet.lastRaw = raw; buyerFormSheet.lastLang = lang;
     var td = function (k) { var v = raw[k] ? txOf(lang, raw[k]) : ''; return '<tr><th>' + esc(k) + '</th><td' + (v ? '' : miss) + (raw[k] && lang !== 'ko' && HANGUL.test(v) ? ' class="tx-wait"' : '') + '>' + esc(v || '') + '</td></tr>'; };
     buyerFormSheet.lastValues = {}; Object.keys(raw).forEach(function (k) { buyerFormSheet.lastValues[k] = txOf(lang, raw[k]); });
