@@ -179,23 +179,40 @@
     return out;
   }
   function listRow(href, badge, main, meta) { return '<a class="list-row" href="' + href + '">' + badge + '<span class="lr-main">' + main + '</span>' + (meta ? '<span class="lr-meta">' + meta + '</span>' : '') + '<span class="chev">›</span></a>'; }
-  screens.home = function () {   // 홈은 세 덩어리: 제목+공식+버튼 / 숫자 3개 / 바로 하기·오늘 할 일
-    var items = todos(), nLaw = LC.laws ? Object.keys(LC.laws).length : 0;
+  function workItems() {   // 처리할 일 = 할 일 + 수정 필요한 라벨 (홈·상단 바 숫자 공용)
+    var items = todos(), hk = LC.sampleLabels.HK, hs = hk ? summarize(judge('HK', hk.fields)) : null;
+    if (hs && hs.fix) items.unshift({ cls: 'bad', text: '홍콩 라벨 수정 ' + hs.fix + '곳 · ' + hk.file, href: '#label/HK/HK', go: '라벨 판정' });
+    return items;
+  }
+  screens.home = function () {   // 업무 홈: 처리할 일 + 진행 중인 선적. 홍보 문구·큰 숫자는 소개(#intro)로
+    var items = workItems();
+    var shipRows = state.shipments.slice(-3).reverse().map(function (sh) {
+      var bc = (LC.buyers || []).filter(function (b) { return sh.buyer && sh.buyer.indexOf(b.code) >= 0; })[0], c = bc ? bc.country : null;
+      var lab = c ? Object.keys(LC.sampleLabels).filter(function (k) { return LC.sampleLabels[k].country === c; }).map(function (k) { return summarize(judge(c, LC.sampleLabels[k].fields)).fix; }) : [];
+      var docs = [['규격서', true], ['패킹리스트', !!(sh.items && sh.items.length)], ['제조일자 리스트', true], ['위생증명서', !!sh.cert], ['라벨', lab.length && lab.every(function (f) { return !f; })]], done = docs.filter(function (d) { return d[1]; }).length;
+      var miss = docs.filter(function (d) { return !d[1]; }).map(function (d) { return d[0]; });
+      return '<tr><td><a href="#pack"><b>' + esc(sh.no) + '</b></a><br><span class="muted">' + esc(sh.buyer) + '</span></td><td class="muted">' + esc(sh.etd || sh.date || '') + '<br>' + esc(sh.route || '') + '</td>' +
+        '<td><div class="prog"><i style="width:' + Math.round(done / docs.length * 100) + '%"></i></div><span class="muted">서류 ' + done + ' / ' + docs.length + (miss.length ? ' · ' + esc(miss.join(', ')) + ' 남음' : ' · 준비 끝') + '</span></td></tr>';
+    }).join('');
+    return '<div class="page-head"><h2>홈</h2><span class="muted">' + LC.TODAY + '</span></div>' +
+      '<div class="home"><div class="card"><div class="sec-head"><h3>처리할 일 <span class="count">' + items.length + '</span></h3></div>' +
+        (items.length ? '<div class="list">' + items.slice(0, 5).map(function (t) { var badge = t.href === '#intake' ? '<span class="tag">대기</span>' : '<span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '수정' : '확인') + '</span>'; return listRow(t.href, badge, esc(t.text), t.go); }).join('') + '</div>' : '<p class="muted">처리할 일이 없어요.</p>') +
+      '</div><div class="card"><div class="sec-head"><h3>진행 중인 선적</h3><a href="#ship">전체 ›</a></div>' +
+        (shipRows ? '<table class="plain"><tr><th>선적</th><th>출항</th><th>서류 준비</th></tr>' + shipRows + '</table>' : '<p class="muted">진행 중인 선적이 없어요. <a href="#quick">서류 넣기 ›</a></p>') +
+      '</div></div>';
+  };
+  screens.intro = function () {   // 서비스 소개: 처음 보는 사람용 (공식·숫자·근거)
+    var nLaw = LC.laws ? Object.keys(LC.laws).length : 0;
     return '<section class="hero-block"><p class="hero">수출 라벨 규정 위반을 <em>선적 전에</em> 잡습니다</p>' +
       '<div class="formula" aria-label="한국 라벨 1장과 종이 일지로 5개국 라벨과 수출 서류 9종">' +
         '<div class="f-in"><b>한국 라벨 1장</b><span>품목 원본</span></div><span class="f-op">+</span><div class="f-in"><b>종이 일지·서류</b><span>사진·PDF</span></div><span class="f-op f-arrow">→</span>' +
         '<div class="f-out"><b>5개국 라벨</b><span>일본·중국·홍콩·대만·태국</span></div><span class="f-op">+</span><div class="f-out"><b>수출 서류 9종</b><span>규격서·패킹리스트·수정 요청서</span></div></div>' +
-      '<a class="btn lg hero-go" href="#pack/go">예시로 보기</a></section>' +
+      '<a class="btn lg hero-go" href="#pack/go">수출 꾸러미 만들어 보기</a></section>' +
       '<div class="big-nums">' +
         '<div><span class="bn-v">50~100<small>만원</small></span><span class="bn-k">라벨 1장 외부 컨설팅 비용</span><span class="bn-s">업계 설명 · 쿡앤셰프뉴스 2026-06-10</span></div>' +
-        '<div><span class="bn-v">20~30<small>분</small> → 즉시</span><span class="bn-k">규격서 1건 작성 시간</span><span class="bn-s">A사 실제 업무 기준</span></div>' +
+        '<div><span class="bn-v">20~30<small>분</small> → 즉시</span><span class="bn-k">규격서 1건 작성 시간</span><span class="bn-s">A사 업무 기준</span></div>' +
         '<div><span class="bn-v">' + nLaw + '<small>개</small></span><span class="bn-k">판정 근거 조항 · 모두 원문 링크</span><span class="bn-s"><a href="#laws">규정 근거 보기 ›</a></span></div>' +
-      '</div>' +
-      '<div class="home"><div class="card"><div class="sec-head"><h3>바로 하기</h3></div><div class="list">' +
-        listRow('#label', '', '라벨 판정', '틀린 곳과 고칠 문구') + listRow('#tags', '', '나라별 라벨', '한국 → 5개국') + listRow('#pack', '', '수출 꾸러미', '서류 9종 한 번에') + listRow('#lot', '', 'LOT 조회', '원어 입고까지 역추적') +
-      '</div></div><div class="card"><div class="sec-head"><h3>오늘 할 일</h3><span class="muted">' + LC.TODAY + '</span></div>' +
-      (items.length ? '<div class="list">' + items.map(function (t) { var badge = t.href === '#intake' ? '<span class="tag">대기</span>' : '<span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '수정' : '확인') + '</span>'; return listRow(t.href, badge, esc(t.text), t.go); }).join('') + '</div>' : '<p class="muted">오늘 할 일 없음</p>') +
-      '</div></div>';
+      '</div>';
   };
   // 이달(없으면 데이터가 있는 마지막 달) 생산·선적 한 줄
   function monthLine() {
@@ -1516,17 +1533,24 @@
   var NAV_SUB = { quick: [['quick', '한 번에 처리'], ['pack', '수출 꾸러미']], label: [['label', '라벨 판정'], ['tags', '나라별 라벨'], ['laws', '규정 근거'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
   function groupOf(name) { for (var g in NAV_SUB) if (NAV_SUB[g].some(function (x) { return x[0] === name; })) return g; return name; }
   function navLink(x, on) { return '<a href="#' + x[0] + '" class="' + (on ? 'on' : '') + '" title="' + esc(x[2] || x[1]) + '"' + (on ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }
+  var NAV_ICON = (function () {   // 선 아이콘 (사이드바)
+    var i = function (d) { return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>'; };
+    return { home: i('<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'), quick: i('<path d="M13 3L5 13h6l-1 8 8-10h-6z"/>'), label: i('<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.5"/>'),
+      ship: i('<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>'), intake: i('<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>') };
+  })();
   function route() {
     var h = location.hash.replace('#', '') || 'home'; var parts = h.split('/'); var name = parts[0]; var arg = decodeURIComponent(parts.slice(1).join('/'));
     if (!screens[name]) name = 'home';
     var g = groupOf(name), sub = NAV_SUB[g];
-    $('#nav').innerHTML = '<div class="nav-main">' + NAV_MAIN.map(function (x) { return navLink(x, x[0] === g); }).join('') + ' <span class="muted" id="mode">' + esc(modeBadge()) + ' · ' + LC.TODAY + '</span></div>' +
-      (sub ? '<div class="nav-sub">' + sub.map(function (x) { return navLink(x, x[0] === name); }).join('') + '</div>' : '');
+    // 왼쪽 사이드바: 묶음 아래에 지금 묶음의 하위 메뉴만 펼침
+    $('#nav').innerHTML = '<div class="nav-main">' + NAV_MAIN.map(function (x) { var on = x[0] === g, sb = NAV_SUB[x[0]]; return '<a href="#' + x[0] + '" class="' + (on ? 'on' : '') + '"' + (on ? ' aria-current="page"' : '') + '>' + (NAV_ICON[x[0]] || '') + '<span>' + x[1] + '</span></a>' + (on && sb ? '<div class="nav-sub">' + sb.map(function (y) { return navLink(y, y[0] === name); }).join('') + '</div>' : ''); }).join('') + '</div>';
+    $('#mode').textContent = modeBadge() + ' · ' + LC.TODAY; $('#tb-n').textContent = String(workItems().length);
     var gName = (NAV_MAIN.filter(function (x) { return x[0] === g; })[0] || [])[1], sName = sub && (sub.filter(function (x) { return x[0] === name; })[0] || [])[1];
     document.title = [sName, gName, '라벨코스트'].filter(function (t, i, a) { return t && a.indexOf(t) === i; }).join(' | ');   // 정부24처럼: 화면 | 묶음 | 라벨코스트
     $('#main').innerHTML = screens[name](arg);
     if (screens[name].bind) screens[name].bind(arg);
   }
+  $('#tb-search').onsubmit = function (e) { e.preventDefault(); var q = $('#tb-q').value.trim(); if (q) location.hash = '#lot/' + encodeURIComponent(q); };
   window.addEventListener('hashchange', route);
   route();
 

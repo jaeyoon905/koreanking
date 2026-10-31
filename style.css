@@ -399,3 +399,49 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
   tr:hover td { background: inherit; }
   .verdict, .stat, .alert, .b { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ===================== 앱 틀: 왼쪽 사이드바 + 상단 바 (업무 툴 모양) ===================== */
+.shell { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+.side { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: var(--surface); border-right: 1px solid var(--hairline); display: flex; flex-direction: column; padding: 18px 12px; }
+.side h1 { margin: 0 8px 20px; padding: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+.side h1 a.logo { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+.side h1 a.logo img { width: 32px; height: 32px; }
+.side h1 .l1 { color: var(--brand); } .side h1 .l2 { color: var(--primary); }
+.side .nav-main { display: flex; flex-direction: column; align-items: stretch; gap: 2px; flex-wrap: nowrap; }
+.side .nav-main > a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border-bottom: 0; font-size: 16px; font-weight: 700; color: var(--ink-2); text-decoration: none; }
+.side .nav-main > a:hover { background: var(--tile); color: var(--ink); }
+.side .nav-main > a.on { background: var(--primary-soft); color: var(--brand); }
+.side .nav-main svg.ico { width: 20px; height: 20px; }
+.side .nav-sub { display: flex; flex-direction: column; gap: 0; margin: 2px 0 8px 32px; padding: 0; border: 0; }
+.side .nav-sub a { font-size: 14px; padding: 6px 10px; border-radius: 6px; color: var(--ink-muted); background: none; }
+.side .nav-sub a:hover { color: var(--ink); background: var(--tile); }
+.side .nav-sub a.on { color: var(--brand); font-weight: 700; background: none; box-shadow: inset 2px 0 0 var(--brand); border-radius: 0; }
+.side-foot { margin-top: auto; padding: 10px 12px; font-size: 14px; color: var(--ink-muted); }
+.col { min-width: 0; display: flex; flex-direction: column; }
+header.topbar { position: sticky; top: 0; z-index: 30; height: 60px; padding: 0 28px; background: var(--surface); border-bottom: 1px solid var(--hairline); display: flex; align-items: center; gap: 20px; }
+.tb-co { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.tb-search { flex: 1; max-width: 420px; margin: 0; }
+.tb-search input { width: 100%; height: 40px; border-radius: 9999px; background: var(--tile); border-color: transparent; font-size: 14px; padding: 0 18px; }
+.tb-right { margin-left: auto; display: flex; align-items: center; gap: 18px; font-size: 14px; white-space: nowrap; }
+.tb-mode { margin: 0; color: var(--ink-muted); font-size: 13px; }
+.tb-bell { color: var(--ink-2); font-weight: 700; text-decoration: none; }
+.tb-bell b { display: inline-block; min-width: 20px; text-align: center; background: var(--fix); color: #fff; border-radius: 9999px; padding: 0 6px; font-size: 12px; margin-left: 4px; }
+.tb-user { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.tb-user i { font-style: normal; width: 30px; height: 30px; border-radius: 50%; background: var(--brand); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+.col #main { max-width: 1240px; margin: 0; padding: 28px 32px 64px; width: 100%; }
+.page-head { display: flex; align-items: baseline; gap: 12px; margin: 0 0 16px; } .page-head h2 { margin: 0; }
+.count { display: inline-block; background: var(--tile); color: var(--ink-2); border-radius: 9999px; padding: 0 8px; font-size: 13px; margin-left: 6px; vertical-align: 3px; }
+.prog { height: 8px; width: 180px; max-width: 100%; background: var(--tile); border-radius: 9999px; overflow: hidden; margin: 4px 0; }
+.prog i { display: block; height: 100%; background: var(--pass); border-radius: 9999px; }
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .side { position: static; height: auto; flex-direction: column; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--hairline); }
+  .side h1 { margin: 0 0 8px; }
+  .side .nav-main { flex-direction: row; overflow-x: auto; gap: 4px; }
+  .side .nav-main > a { flex: 0 0 auto; padding: 8px 10px; font-size: 15px; }
+  .side .nav-sub { display: none; }
+  .side-foot { display: none; }
+  header.topbar { position: static; padding: 0 16px; gap: 12px; } .tb-co, .tb-user, .tb-mode { display: none; }
+  .col #main { padding: 20px 16px 48px; }
+}
+@media print { .side, header.topbar { display: none !important; } .shell { display: block; } }

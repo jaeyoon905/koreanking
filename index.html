@@ -10,8 +10,21 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header><h1><a class="logo" href="./" aria-label="라벨코스트 처음 화면으로"><img src="logo.svg" alt=""><span><span class="l1">라벨</span><span class="l2">코스트</span></span></a></h1><nav id="nav"></nav></header>
-<div id="main"></div>
+<div class="shell">
+<aside class="side">
+  <h1><a class="logo" href="./" aria-label="라벨코스트 처음 화면으로"><img src="logo.svg" alt=""><span><span class="l1">라벨</span><span class="l2">코스트</span></span></a></h1>
+  <nav id="nav" aria-label="메뉴"></nav>
+  <a class="side-foot" href="#intro">서비스 소개</a>
+</aside>
+<div class="col">
+  <header class="topbar">
+    <span class="tb-co">A사 · 영덕 공장</span>
+    <form class="tb-search" id="tb-search" role="search"><input id="tb-q" placeholder="LOT · 회사 코드 · 입고 ID 검색" aria-label="LOT 검색"></form>
+    <span class="tb-right"><span id="mode" class="tb-mode"></span><a class="tb-bell" href="#home" aria-label="처리할 일">처리할 일 <b id="tb-n">0</b></a><span class="tb-user"><i>재</i>김재윤</span></span>
+  </header>
+  <div id="main"></div>
+</div>
+</div>
 <script src="data.js"></script>
 <script src="laws.js"></script>
 <script src="stats.js"></script>
