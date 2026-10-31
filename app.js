@@ -334,10 +334,11 @@
   function labelOverlay(country, fields, res) {
     var by = {}, extra = [], k = 0;
     res.forEach(function (x) { if (x.status === 'pass') return; x.mk = ++k; var f = OV_RULE[x.id]; if (f) (by[f] = by[f] || []).push(x); else extra.push(x); });
+    var kb = LABEL_KEY_BY[country] || {}, th = function (f) { var fk = kb[f[0]]; return fk ? esc(fk) + '<br><small class="muted">' + f[1] + '</small>' : f[1]; };   // 칸 이름은 도착국 말로, 한국어는 담당자용 작은 글씨
     var rows = OV_FIELDS.filter(function (f) { return (fields && fields[f[0]]) || by[f[0]]; }).map(function (f) {
       var v = (fields && fields[f[0]]) || '', iss = by[f[0]];
-      if (!iss) return '<tr><th>' + f[1] + '</th><td>' + esc(v) + '</td></tr>';
-      return '<tr class="ov-hit"><th>' + f[1] + '</th><td>' + (v ? '<del>' + esc(v) + '</del>' : '<del class="ov-none">(없음)</del>') +
+      if (!iss) return '<tr><th>' + th(f) + '</th><td>' + esc(v) + '</td></tr>';
+      return '<tr class="ov-hit"><th>' + th(f) + '</th><td>' + (v ? '<del>' + esc(v) + '</del>' : '<del class="ov-none">(없음 / none)</del>') +
         iss.map(function (x) { return '<div class="ov-fix ' + (x.status === 'fix' ? 'bad' : 'warn') + '"><span class="mk">' + x.mk + '</span><ins>' + esc(x.fix || x.msg) + '</ins><span class="ov-ref">' + esc(x.item) + ' · ' + refCell(country, x, x.src || LC.rules[country].short) + '</span></div>'; }).join('') + '</td></tr>';
     }).join('');
     return '<div class="ov"><div class="pkg ov-pkg"><table>' + rows + '</table></div>' +

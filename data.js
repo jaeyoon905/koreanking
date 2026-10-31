@@ -84,7 +84,7 @@ LC.sampleLabels = {
       name: 'คุก เรด สโนว์ แครป เลก โบรคเคน มีท / COOKED RED SNOW CRAB LEG BROKEN MEAT',
       ingredients: 'เนื้อขาปูหิมะสีแดง 80.00% น้ำ 17.00% เกลือ 0.60% วัตถุปรุงแต่งรสอาหาร (มอโนโซเดียมแอล-กลูทาเมต) วัตถุที่ให้ความหวานแทนน้ำตาล (ซอร์บิทอล) วัตถุเจือปนอาหาร (INS 412)',
       net: '250 กรัม', mfg: 'PRODUCTION DATE', expiry: 'วันหมดอายุ (EXP) / BEST BEFORE', storage: '< -18°C',
-      origin: 'ประเทศ สาธารณรัฐเกาหลี', importer: 'JALUX ASIA LTD. / 02-258-6531', manufacturer: 'ผู้ผลิต : บริษัท เซอุง ฟิชเชอรี จำกัด',
+      origin: 'ประเทศ สาธารณรัฐเกาหลี', importer: 'J Co., Ltd. (Bangkok) / 02-000-0000', manufacturer: 'ผู้ผลิต : บริษัท เอ จำกัด (A Co., Republic of Korea)',
       allergen: '', nutrition: '', fda_no: '10-3-00445-5-1408'
     }
   },

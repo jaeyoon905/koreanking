@@ -153,7 +153,7 @@ def parse_packing(lines, imp):
         packer = re.search(r'PACKER\s*:\s*([A-Z]+)', l)
         desc = re.sub(r'\d[\d,]*\s*C/T.*$', '', l); desc = re.sub(r'PACKER\s*:[^0-9]*', '', desc); desc = re.sub(r'\b\d+\s*KG\s*\(.*?\)', '', desc, flags=re.I)
         desc = re.sub(r'[\d,]+\.\d{2}\s*KG', '', desc, flags=re.I); desc = re.sub(r'\b\d+\s*kg\b', '', desc, flags=re.I)
-        desc = re.sub(r'\b(SEWOONG|FISHERIES|PRODUCT OF KOREA|CO\.,? LTD\.?|GYOREN)\b', '', desc, flags=re.I).strip(' ,.-')
+        desc = re.sub(r'\b([A-Z]+ FISHERIES|FISHERIES|PRODUCT OF KOREA|CO\.,? LTD\.?|GYOREN)\b', '', desc, flags=re.I).strip(' ,.-')
         desc = re.sub(r'\b\d+\s*kgi?\b', '', desc, flags=re.I).strip(' ,.-')
         if imp and (not desc or desc.startswith('SIZE') or re.fullmatch(r'[\d\-/a-z ]+', desc)): desc = (last_name + ' ' + desc).strip()
         it = {'desc': desc, 'ct': int(num(m.group(1)) or 0)}
