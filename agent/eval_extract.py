@@ -43,7 +43,7 @@ def main():
         f = fx.get(fid)
         if not f or not path.exists(): print(fid, '건너뜀(파일 또는 fixture 없음)'); continue
         keys = [x['k'] for x in f['fields']]
-        got = g.llm(f"이 {f['doc_type']}에서 다음 칸을 뽑아라: {keys}. 숫자는 단위 빼고 숫자만. 날짜는 YYYY-MM-DD. 표는 배열. 추정값(推定値/目安)이면 note 에 적어라.", str(path))
+        got = g.llm(g.extract_prompt(f['doc_type']), str(path)) or {}   # 실제 파이프라인과 같은 프롬프트(양식 설명 포함)
         rows = []
         for x in f['fields']:
             exp, act = x.get('v'), got.get(x['k'])

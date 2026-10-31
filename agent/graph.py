@@ -65,7 +65,7 @@ FORM_HINTS = {
 
 def extract_prompt(doc_type: str) -> str:
     hint = FORM_HINTS.get(doc_type, '')
-    return (f'이 {doc_type}에서 다음 칸을 뽑아라: {SCHEMAS.get(doc_type, [])}. 숫자는 단위 빼고 숫자만. 날짜는 YYYY-MM-DD. 추정값(推定値/目安)이면 note 에 적어라.'
+    return (f'이 {doc_type}에서 다음 칸을 뽑아라: {SCHEMAS.get(doc_type, [])}. 숫자는 단위 빼고 숫자만. 날짜는 YYYY-MM-DD. 추정값(推定値/目安)이면 note 에 적어라. 사람 이름은 어떤 칸에도 적지 마라(인원은 숫자만).'
             + (f'\n양식 설명: {hint}' if hint else ''))
 
 
