@@ -445,3 +445,13 @@ header.topbar { position: sticky; top: 0; z-index: 30; height: 60px; padding: 0 
   .col #main { padding: 20px 16px 48px; }
 }
 @media print { .side, header.topbar { display: none !important; } .shell { display: block; } }
+
+/* 홈: 예시 데이터로 자동화 파이프라인 한 줄 (누르면 수출 꾸러미가 채워짐) */
+.pipe-run { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; background: var(--primary-soft); border-radius: 12px; padding: 16px 20px; margin: 0 0 16px; color: var(--ink); text-decoration: none; }
+.pipe-run:hover { text-decoration: none; background: #dceafc; }
+.pr-k { font-size: 16px; font-weight: 700; color: var(--brand); }
+.pr-steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; }
+.pr-steps span { font-size: 14px; color: var(--ink-2); background: var(--surface); border-radius: 9999px; padding: 4px 12px; }
+.pr-steps span + span::before { content: "→"; margin: 0 8px 0 -4px; color: var(--primary); font-weight: 700; }
+.pipe-run .btn { display: inline-flex; align-items: center; height: 40px; padding: 0 24px; border-radius: 8px; background: var(--primary); color: #fff; font-weight: 700; font-size: 15px; }
+.pipe-run:hover .btn { background: var(--primary-hover); }
