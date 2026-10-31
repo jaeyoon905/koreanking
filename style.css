@@ -351,6 +351,22 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .ov-extra { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 16px; font-size: 14px; }
 @media (max-width: 1000px) { .ov { grid-template-columns: 1fr; } }
 
+
+/* 바이어별 보낼 서류 묶음: 버튼이 붙어 보이지 않게. 줄마다 큰 버튼 하나만 파랑, 나머지는 흰 버튼, 요청 서류는 점선 아래 따로 */
+#bundle-card table td { padding: 20px 16px; vertical-align: top; }
+#bundle-card table td:first-child { width: 280px; line-height: 1.5; }
+#bundle-card tr:hover td { background: var(--surface); }
+#bundle-card td.outs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#bundle-card td.outs > button.lg { flex: 1 1 100%; width: auto; height: 48px; font-size: 16px; margin-bottom: 4px; }
+#bundle-card td.outs > button:not(.lg), #bundle-card td.outs > a.btn, #bundle-card div.outs > button {
+  background: var(--surface); color: var(--ink); border: 1px solid var(--hairline); height: 36px; font-size: 14px; font-weight: 600; padding: 0 14px; margin: 0; }
+#bundle-card td.outs > button:not(.lg):hover, #bundle-card td.outs > a.btn:hover, #bundle-card div.outs > button:hover { border-color: var(--primary); color: var(--primary); background: var(--surface); }
+#bundle-card td.outs > a.btn::before { content: "↓"; margin-right: 6px; color: var(--primary); font-weight: 800; }
+#bundle-card div.outs { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; padding-top: 16px; border-top: 1px dashed var(--hairline); }
+#bundle-card div.outs > b { flex-basis: 100%; font-size: 14px; color: var(--ink-2); }
+#bundle-card div.outs > [data-bd-docs] { background: var(--primary-soft); color: var(--primary); border-color: transparent; }
+@media (max-width: 800px) { #bundle-card table td:first-child { width: auto; } #bundle-card table tr { display: flex; flex-direction: column; } }
+
 /* ---------- 모바일 ---------- */
 @media (max-width: 800px) {
   header { padding: 0 16px; } .nav-sub { margin: 0 -16px; padding: 8px 16px; }
