@@ -5,6 +5,8 @@
   var fmtDate = function (d) { return d ? d : '-'; };
   var daysTo = function (iso) { return Math.round((new Date(iso) - new Date(LC.TODAY)) / 86400000); };
   var STATUS = { pass: ['통과', 'ok'], fix: ['수정', 'bad'], check: ['확인', 'warn'] };
+  // 긴 비고: 앞 n자만 보이고 누르면 펼침
+  function fold(t, n) { t = String(t == null ? '' : t); n = n || 40; return t.length <= n ? esc(t) : '<details class="fold"><summary>' + esc(t.slice(0, n)) + '…</summary>' + esc(t) + '</details>'; }
 
   // ---------- 상태 ----------
   // 시드값. 모든 상태는 여기서 복원한다
@@ -202,7 +204,7 @@
       '<span class="muted">' + esc(r.name) + ' · ' + esc(r.law) + ' · 라벨 기준일 ' + fmtDate(meta.made) + (meta.file ? ' · ' + esc(meta.file) : '') + '</span></div>' +
       (rev.length ? '<p class="alert">고시 개정 이후 라벨: ' + rev.map(function (v) { return esc(v.title) + ' (시행 ' + v.effective + ')'; }).join(', ') + ' → 재검토 필요</p>' : '') +
       '<table><tr><th>항목</th><th>판정</th><th>현재</th><th>고칠 것</th></tr>' +
-      res.map(function (x) { return '<tr><td>' + esc(x.item) + '</td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td>' + esc(x.msg) + '</td><td>' + esc(x.fix || '') + '</td></tr>'; }).join('') +
+      res.map(function (x) { return '<tr><td>' + esc(x.item) + '</td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td>' + fold(x.msg, 60) + '</td><td>' + fold(x.fix || '', 60) + '</td></tr>'; }).join('') +
       '</table>' +
       '<details><summary>추출된 필드</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details></div>';
     $('#lbl-out').innerHTML = html;
@@ -469,11 +471,11 @@
     var sorted = state.registry.slice().sort(function (a, b) { var da = a.expiry ? daysTo(a.expiry) : 1e9, db = b.expiry ? daysTo(b.expiry) : 1e9; return da - db; });   // 급한 것 위, 만료일 없는 행은 아래
     var rows = sorted.map(function (r) {
       var d = r.expiry ? daysTo(r.expiry) : null; var cls = d == null ? '' : d <= r.lead || d <= 30 ? 'bad' : d <= 90 ? 'warn' : 'ok';
-      return '<tr><td>' + r.kind + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.no) + '</td><td>' + esc(r.issuer) + '</td><td>' + fmtDate(r.expiry) + '</td><td>' + (d == null ? '-' : '<span class="b ' + cls + '">D-' + d + '</span>') + '</td><td>' + r.countries + '</td><td class="muted">' + esc(r.note) + '</td></tr>';
+      return '<tr><td>' + r.kind + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.no) + '</td><td>' + esc(r.issuer) + '</td><td>' + fmtDate(r.expiry) + '</td><td>' + (d == null ? '-' : '<span class="b ' + cls + '">D-' + d + '</span>') + '</td><td>' + r.countries + '</td><td class="muted">' + fold(r.note) + '</td></tr>';
     }).join('');
     var rev = LC.revisions.map(function (v) {
       var d = daysTo(v.effective);
-      return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + revisionLabels(v) + '</td><td class="muted">' + esc(v.note) + '</td></tr>';
+      return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + revisionLabels(v) + '</td><td class="muted">' + fold(v.note) + '</td></tr>';
     }).join('');
     return '<h2>대시보드</h2>' + dashStats() +
       '<div class="badges"><span class="b bad">30일 이내 ' + cnt.bad + '</span><span class="b warn">90일 이내 ' + cnt.warn + '</span><span class="b ok">여유 ' + cnt.ok + '</span></div>' +

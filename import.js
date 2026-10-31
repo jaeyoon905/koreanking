@@ -35,6 +35,7 @@ LC.renderImport = function (state) {
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var CLS = { '있음': 'ok', '확인': 'warn', '없음': 'bad' };
   var tr = function (cells) { return '<tr>' + cells.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>'; };
+  var fold = function (x, n) { x = String(x == null ? '' : x); n = n || 40; return x.length <= n ? esc(x) : '<details class="fold"><summary>' + esc(x.slice(0, n)) + '…</summary>' + esc(x) + '</details>'; };
   return '<h2>수입 체크</h2><p class="sub">수입 선적 서류가 다 왔는지 봅니다.' + (live ? '' : ' <span class="muted">(승인한 수입 서류가 없어 시드 표시)</span>') + '</p>' +
     list.map(function (s) {
       s.checklist = s.checklist || []; s.items = s.items || []; s.notes = s.notes || [];
@@ -50,7 +51,7 @@ LC.renderImport = function (state) {
         '<table><tr><th>필수</th><th>서류</th><th>상태</th><th>날짜</th><th>비고</th><th>출처</th></tr>' +
         s.checklist.map(function (c) {
           var st = '<span class="b ' + (CLS[c.status] || 'warn') + '">' + esc(c.status) + '</span>' + (c.count_expected ? ' <span class="muted">' + c.count_have + '/' + c.count_expected + '장</span>' : '');
-          return tr([c.required ? '필수' : '<span class="muted">선택</span>', esc(c.doc), st, esc(c.date || '-'), esc(c.note), '<span class="muted">' + esc(c.src || '-') + '</span>']);
+          return tr([c.required ? '필수' : '<span class="muted">선택</span>', esc(c.doc), st, esc(c.date || '-'), fold(c.note), '<span class="muted">' + esc(c.src || '-') + '</span>']);
         }).join('') + '</table>' +
         '<ul class="muted">' + s.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' +
         '<p class="muted">서류 PDF를 서류 넣기에 넣으면 상태가 채워진다. 해외제조업소 등록 만료는 대시보드에서.</p></div>';
