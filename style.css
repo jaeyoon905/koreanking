@@ -148,3 +148,99 @@ pre { white-space: pre-wrap; font-size: 13px; background: var(--stripe); padding
   .sheet th, .sheet td { border: 1px solid #000; }
   tr:nth-child(even) td { background: #fff; }
 }
+
+/* ---------- UX 고도화 (10/31 저녁) ---------- */
+/* 홈 카드 */
+.home-card { display: block; text-decoration: none; color: var(--txt); border-left: 6px solid var(--acc); }
+.home-card:hover { border-color: var(--acc); background: var(--acc-soft); }
+.home-card.warn { border-left-color: var(--warn); }
+.home-card .big { font-size: 34px; font-weight: 800; color: var(--acc); line-height: 1.1; margin: 4px 0; }
+.home-card .big small { font-size: 15px; margin-left: 4px; color: var(--mut); }
+.home-card .line { font-size: 14px; font-weight: 600; }
+a.btn { display: inline-block; padding: 9px 14px; border-radius: 8px; background: var(--acc); color: #fff; text-decoration: none; font-weight: 700; }
+a.btn.ghost { background: #fff; color: var(--acc); border: 1px solid var(--acc); }
+
+/* 내비: 모바일 한 줄 가로 스크롤 */
+#nav a:focus-visible, button:focus-visible, a.btn:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--warn); outline-offset: 2px; }
+@media (max-width: 800px) {
+  #nav { width: 100%; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  #nav a { flex: 0 0 auto; }
+  #mode { display: block; width: 100%; font-size: 12px; }
+  #main { overflow-x: auto; }           /* 넓은 표는 본문 안에서만 스크롤, 페이지는 안 넘침 */
+  .grid4 { grid-template-columns: 1fr; }
+  .home-card .big { font-size: 28px; }
+}
+
+/* 표: 머리 고정, 행 hover */
+/* ponytail: th sticky 는 border-collapse 와 충돌해 유령 행이 생김. 머리 고정은 표를 thead 로 바꾼 뒤에 */
+tr:hover td { background: var(--acc-soft) !important; }
+tr.st-check td { background: #fff6d6 !important; }   /* 검증부: 확인 */
+tr.st-bad td, tr.st-add td.x { background: #fde3e1 !important; }  /* 검증부: 불일치 */
+tr.st-bad td { background: #fde3e1 !important; }
+
+/* ⑦ 파이프라인(카드 안 작은 버전)·카드 접기·드롭존·묶음 */
+.pipeline.mini .stage { min-height: auto; padding: 6px 10px; }
+.pipeline.mini .stage > h4 { margin: 0; font-size: 13px; color: var(--mut); }
+.pipeline.mini .stage.now { border-top-color: var(--warn); background: #fff9ea; }
+.pipeline.mini .stage.now > h4 { color: var(--warn); }
+.pipeline.mini .stage.done > h4 { color: var(--ok); }
+.pipeline.mini .stage:not(.now):not(.done):not(.locked) { opacity: 0.5; }
+.ic-title { cursor: pointer; user-select: none; }
+.ic-title .caret { display: inline-block; width: 1em; color: var(--mut); }
+.card.ic.closed { padding: 10px 18px; margin-bottom: 8px; }
+.card.ic.closed h3 { margin: 0; }
+.drop { border: 2px dashed var(--acc); border-radius: 10px; padding: 18px; text-align: center; background: var(--acc-soft); display: flex; flex-direction: column; gap: 6px; align-items: center; margin-bottom: 12px; }
+.drop.over { background: #cfe0f2; border-style: solid; }
+.drop label { align-items: center; }
+details.demo { margin: 8px 0; }
+details.demo summary { cursor: pointer; font-weight: 700; color: var(--acc); padding: 6px 0; }
+details.demo .row { margin: 6px 0 0; }
+details.demo button { font-size: 13px; padding: 6px 9px; }
+
+/* ⑤ 탭 */
+.tabs { display: inline-flex; gap: 0; align-self: flex-end; }
+.tabs .tab { border-radius: 8px 0 0 8px; }
+.tabs .tab + .tab { border-radius: 0 8px 8px 0; margin-left: -1px; }
+
+/* 토스트 */
+#toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); background: var(--acc); color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50; max-width: 90vw; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 인쇄 보강 */
+@media print {
+  #toast, .drop, details.demo, .pipeline, .tabs, .home-card, a.btn, .summary-bar { display: none !important; }
+  tr:hover td { background: inherit !important; }
+}
+
+/* ---------- 내비 두 줄: 첫 줄 핵심 4개, "자세히" 접이식 ---------- */
+#nav { flex-direction: column; align-items: flex-start; gap: 4px; }
+.nav-main { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.nav-more summary { cursor: pointer; color: var(--mut); font-size: 13px; padding: 2px 4px; list-style: none; }
+.nav-more summary::before { content: "▸ "; } .nav-more[open] summary::before { content: "▾ "; }
+.nav-sub { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0; }
+.nav-sub a { font-size: 13px; padding: 5px 10px; background: transparent; border: 1px solid var(--line); }
+.nav-sub a.on { background: var(--acc); color: #fff; border-color: var(--acc); }
+@media (max-width: 800px) { .nav-main, .nav-sub { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; max-width: 100vw; } .nav-main a, .nav-sub a { flex: 0 0 auto; } }
+
+/* ---------- 한 번에 처리 ---------- */
+h3.step { font-size: 18px; color: var(--acc); margin: 18px 0 8px; padding-left: 10px; border-left: 5px solid var(--acc); }
+tr.qk-sub td { background: #fffdf4 !important; border-top: 0; }
+tr.qk-sub .log { margin: 4px 0 0; } tr.qk-sub .log li { border: 0; padding: 3px 0; }
+button.small { font-size: 12px; padding: 3px 8px; margin-left: 6px; }
+button[disabled] { opacity: 0.5; cursor: default; }
+.card.result h3 { display: flex; justify-content: space-between; align-items: baseline; }
+.card.result h3 .more { font-size: 13px; font-weight: 600; color: var(--acc); text-decoration: none; }
+.card.result table { font-size: 13px; } .card.result th, .card.result td { padding: 5px 7px; }
+#qk-table .summary-bar { padding: 6px 12px; font-size: 14px; }
+
+/* 집계 카드 제목의 CSV 버튼, 대시보드 공공데이터 표 */
+.card h3 button.ghost { float: right; font-size: 12px; padding: 3px 8px; margin-top: -2px; }
+#pub-card table th { width: 22%; }
+
+/* 직접 입력 폼 (⑦ 카드·한 번에 처리 표 안) */
+.manual { border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; background: #fbfcfe; }
+.manual .row label { min-width: 160px; }
+.manual table.kv input { width: 100%; min-width: 90px; }
+.manual button { margin-top: 6px; }
+p.docs a { margin-right: 4px; }
+@media print { .manual, p.docs, #qk-notify { display: none; } }
