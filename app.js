@@ -195,7 +195,6 @@
         '<td><div class="prog"><i style="width:' + Math.round(done / docs.length * 100) + '%"></i></div><span class="muted">서류 ' + done + ' / ' + docs.length + (miss.length ? ' · ' + esc(miss.join(', ')) + ' 남음' : ' · 준비 끝') + '</span></td></tr>';
     }).join('');
     return '<div class="page-head"><h2>홈</h2><span class="muted">' + LC.TODAY + '</span></div>' +
-      '<a class="pipe-run" href="#pack/go"><span class="pr-k">예시 데이터로 자동화 실행</span><span class="pr-steps"><span>서류 읽기</span><span>규정 판정</span><span>5개국 라벨</span><span>수출 서류 9종</span></span><span class="btn">실행</span></a>' +
       '<div class="home"><div class="card"><div class="sec-head"><h3>처리할 일 <span class="count">' + items.length + '</span></h3></div>' +
         (items.length ? '<div class="list">' + items.slice(0, 5).map(function (t) { var badge = t.href === '#intake' ? '<span class="tag">대기</span>' : '<span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '수정' : '확인') + '</span>'; return listRow(t.href, badge, esc(t.text), t.go); }).join('') + '</div>' : '<p class="muted">처리할 일이 없어요.</p>') +
       '</div><div class="card"><div class="sec-head"><h3>진행 중인 선적</h3><a href="#ship">전체 ›</a></div>' +
