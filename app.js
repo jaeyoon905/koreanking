@@ -84,6 +84,8 @@
   }
   function bindProductSelect(id) { var el = $('#' + id); if (el) el.onchange = function () { setProduct(el.value); route(); }; }
   var n = P().nutrition100 || {};
+  // 화면 표시용 한글 이름. 데이터 키는 그대로
+  var NUT_KO = { kcal: '열량(kcal)', protein: '단백질(g)', fat: '지방(g)', satfat: '포화지방(g)', transfat: '트랜스지방(g)', carb: '탄수화물(g)', sugar: '당류(g)', sodium_mg: '나트륨(mg)' };
   var nutritionBy = {
     JP: function () { return [['エネルギー', n.kcal + ' kcal'], ['たんぱく質', n.protein + ' g'], ['脂質', n.fat + ' g'], ['炭水化物', n.carb + ' g'], ['食塩相当量', (n.sodium_mg * 2.54 / 1000).toFixed(2) + ' g'], ['(推定値)', '']]; },
     HK: function () { return [['能量 Energy', n.kcal + ' kcal / ' + Math.round(n.kcal * 4.184) + ' kJ'], ['蛋白質 Protein', n.protein + ' g'], ['總脂肪 Total fat', n.fat + ' g'], ['飽和脂肪 Saturated fat', n.satfat + ' g'], ['反式脂肪 Trans fat', n.transfat + ' g'], ['碳水化合物 Carbohydrates', n.carb + ' g'], ['糖 Sugars', n.sugar + ' g'], ['鈉 Sodium', n.sodium_mg + ' mg']]; },
@@ -189,7 +191,7 @@
   function nutritionSourceTable() {
     var ns = state.nutritionSources || [];
     if (!ns.length) return '';
-    return '<div class="card"><h3>영양값 출처 (100g)</h3><table><tr><th>바이어</th><th>제품</th><th>kcal</th><th>단백질</th><th>식염상당량</th><th>근거</th><th>출처</th></tr>' +
+    return '<div class="card"><h3>영양값 출처 (100g)</h3><table><tr><th>바이어</th><th>제품</th><th>열량(kcal)</th><th>단백질(g)</th><th>식염상당량(g)</th><th>근거</th><th>출처</th></tr>' +
       ns.map(function (x) { return '<tr><td>' + esc(x.buyer) + '</td><td>' + esc(x.product) + '</td><td>' + esc(x.kcal) + '</td><td>' + esc(x.protein) + '</td><td>' + esc(x.salt_g) + '</td><td>' + esc(x.basis) + '</td><td class="muted">' + esc(x.source) + '</td></tr>'; }).join('') +
       '</table><p class="muted">값이 다른 건 바이어마다 조미액이 달라서. 라벨 값은 바이어 제공, 자사 성적서는 조미 전 다른 제품.</p></div>';
   }
@@ -230,7 +232,7 @@
   screens.product = function () {
     var p = P();
     var ing = p.ingredients.map(function (i) { return '<tr><td>' + esc(i.name_ko) + '</td><td>' + (i.pct != null ? i.pct + '%' : '') + '</td><td>' + (i.type === 'additive' ? esc(i.func) + ' / INS ' + i.ins : '원료') + '</td></tr>'; }).join('');
-    var nut = p.nutrition100 ? '<table>' + Object.keys(n).map(function (k) { return '<tr><td>' + k + '</td><td><input data-n="' + k + '" value="' + n[k] + '" size="6"></td></tr>'; }).join('') + '</table>' : '<p class="alert">성적서 필요 · 이 품목은 영양값이 없음</p>';
+    var nut = p.nutrition100 ? '<table>' + Object.keys(n).map(function (k) { return '<tr><td>' + esc(NUT_KO[k] || k) + '</td><td><input data-n="' + k + '" value="' + n[k] + '" size="6" aria-label="' + esc(NUT_KO[k] || k) + '"></td></tr>'; }).join('') + '</table>' : '<p class="alert">성적서 필요 · 이 품목은 영양값이 없음</p>';
     return '<h2>품목</h2><p class="sub">품목을 고르고 영양값을 확인하세요.</p>' +
       '<div class="row">' + productSelect('prd-prod') + '</div><div class="cols"><div class="card"><h3>' + esc(p.name_ko) + ' (' + p.code + ')</h3><table><tr><th>원재료</th><th>배합비</th><th>구분</th></tr>' + ing + '</table><p class="muted">알레르겐: 갑각류(게) · 공정: ' + esc(p.process) + '</p></div>' +
       '<div class="card"><h3>영양 (100g)</h3>' + nut + '<p class="muted">' + esc(p.nutrition_source) + '</p>' + (p.nutrition100 ? '<button id="prd-apply">환산</button>' : '') + '</div></div>' +
