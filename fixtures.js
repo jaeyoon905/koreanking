@@ -69,7 +69,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       ] },
 
     // 1. 원료입고검사서
-    { id: '7-1', match: /입고/i, doc_type: '입고검사서', sensitive: false, source: '7-1.원료입고검사서.pdf (SW-S-양식17, 2026-04-08)',
+    { id: '7-1', match: /^7-1\./i, doc_type: '입고검사서', sensitive: false, source: '7-1.원료입고검사서.pdf (SW-S-양식17, 2026-04-08)',
       fields: [
         { k: 'species', label: '원료명', v: '붉은대게 (Chionoecetes japonicus)', src: 'p1 원료명' },
         { k: 'fishing_period', label: '조업일자', v: '2026-04-03 ~ 04-08', src: 'p1 조업일자' },
@@ -85,7 +85,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       ] },
 
     // 2. 가공일지
-    { id: '7-2', match: /가공/i, doc_type: '가공일지', sensitive: false, source: '7-2.가공일지.pdf (2026-04-10 금)',
+    { id: '7-2', match: /^7-2\./i, doc_type: '가공일지', sensitive: false, source: '7-2.가공일지.pdf (2026-04-10 금)',
       fields: [
         { k: 'date', label: '날짜', v: '2026-04-10', src: 'p1 상단' },
         { k: 'raw_sources', label: '다리 작업 원료 약어(순서대로)', v: ['삼', '삼', '구', '대', '화', '삼', '대', '삼', '구', '대', '화', '대'], src: 'p1 금일 작업 · 다리' },
@@ -95,7 +95,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       ] },
 
     // 3. 포장일지
-    { id: '7-3', match: /포장/i, doc_type: '포장일지', sensitive: false, source: '7-3.포장 일지.pdf (2026-04-15 수)',
+    { id: '7-3', match: /^7-3\./i, doc_type: '포장일지', sensitive: false, source: '7-3.포장 일지.pdf (2026-04-15 수)',
       fields: [
         { k: 'date', label: '날짜', v: '2026-04-15', src: 'p1 상단' },
         { k: 'rows', label: '포장 행 (U사 LB만)', v: [
@@ -109,7 +109,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       ] },
 
     // 4. 패킹리스트 (계좌·단가 가린 뒤 처리)
-    { id: '5-2', match: /패킹|인보이스/i, doc_type: '패킹리스트', sensitive: true, source: '5-2.패킹리스트.png (UE-2606, 2026-05-19)',
+    { id: '5-2', match: /^5-2\./i, doc_type: '패킹리스트', sensitive: true, source: '5-2.패킹리스트.png (UE-2606, 2026-05-19)',
       fields: [
         { k: 'invoice_no', label: '선적번호', v: 'UE-2606', src: '우상단 INVOICE NO' },
         { k: 'date', label: '날짜', v: '2026-05-19', src: '우상단 DATE' },
@@ -129,7 +129,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       ] },
 
     // 5. 위생증명서
-    { id: '6', match: /위생/i, doc_type: '위생증명서', sensitive: false, source: '6.위생증명서.pdf (2026-05-20)',
+    { id: '6', match: /^6\./i, doc_type: '위생증명서', sensitive: false, source: '6.위생증명서.pdf (2026-05-20)',
       fields: [
         { k: 'issuer', label: '발급', v: '국립수산물품질관리원 부산지원', src: '상단 기관명 · 하단 서명' },
         { k: 'date', label: '발행일', v: '2026-05-20', src: 'Date' },
@@ -142,7 +142,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       ] },
 
     // 6. HACCP 인증서
-    { id: '8', match: /HACCP/i, doc_type: 'HACCP인증서', sensitive: false, source: '8.HACCP인증서.pdf (발급 2026-01-19)',
+    { id: '8', match: /^8\./i, doc_type: 'HACCP인증서', sensitive: false, source: '8.HACCP인증서.pdf (발급 2026-01-19)',
       fields: [
         { k: 'cert_no', label: '인증번호', v: '제2009-4-8012호', src: 'p1' },
         { k: 'valid_from', label: '유효 시작', v: '2026-01-23', src: 'p1 유효기간' },
@@ -186,7 +186,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       ] },
 
     // 9. 실물 라벨 사진
-    { id: '사진', match: /제품사진|라벨/i, doc_type: '라벨', sensitive: false, source: '추가_제품사진1·2.jpg (U사 LB 1kg 실물 라벨)',
+    { id: '사진', match: /제품사진/i, doc_type: '라벨', sensitive: false, source: '추가_제품사진1·2.jpg (U사 LB 1kg 실물 라벨)',
       fields: [
         { k: 'buyer', label: '바이어', v: 'U사', src: '輸入者' },
         { k: 'name', label: '名称', v: '紅ずわいがにむき身', src: '라벨 名称' },
@@ -206,7 +206,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       ] },
 
     // ===== 시연용 가상 6월 선적 세트 (4월 자료 구조 복제. 실제 서류 아님) =====
-    { id: '7-1b', match: /7-1b|입고검사서_6월/i, doc_type: '입고검사서', sensitive: false, source: '7-1b.원료입고검사서_6월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+    { id: '7-1b', match: /^7-1b/i, doc_type: '입고검사서', sensitive: false, source: '7-1b.원료입고검사서_6월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
       fields: [
         { k: 'species', label: '원료명', v: '붉은대게 (Chionoecetes japonicus)', src: 'p1 원료명' },
         { k: 'fishing_period', label: '조업일자', v: '2026-06-02 ~ 06-06', src: 'p1 조업일자' },
@@ -220,7 +220,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
         { k: 'core_temp', label: '중심온도 기준', v: '10℃ 이하 (5회 측정 양호)', src: 'p1 1.입고 검수 기준' },
         { k: 'black', label: '흑변 공제', v: '18상자', src: 'p1 비고' }
       ] },
-    { id: '7-2b', match: /7-2b|가공일지_6월/i, doc_type: '가공일지', sensitive: false, source: '7-2b.가공일지_6월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+    { id: '7-2b', match: /^7-2b/i, doc_type: '가공일지', sensitive: false, source: '7-2b.가공일지_6월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
       fields: [
         { k: 'date', label: '날짜', v: '2026-06-08', src: 'p1 상단' },
         { k: 'raw_sources', label: '다리 작업 원료 약어(순서대로)', v: ['구', '구', '대', '구', '화', '구'], src: 'p1 금일 작업 · 다리' },
@@ -228,7 +228,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
         { k: 'headcount', label: '공정별 인원·시간', v: '채육 7 · 선별 60 · 계량 32 · 입상 36 · 포장 70 (시간×인)', src: 'p1 작업시간(H×인)' },
         { k: 'notes', label: '특이사항', v: '결근 1명', src: 'p1 하단 특이사항' }
       ] },
-    { id: '7-3b', match: /7-3b|포장 일지_6월|포장일지_6월/i, doc_type: '포장일지', sensitive: false, source: '7-3b.포장 일지_6월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+    { id: '7-3b', match: /^7-3b/i, doc_type: '포장일지', sensitive: false, source: '7-3b.포장 일지_6월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
       fields: [
         { k: 'date', label: '날짜', v: '2026-06-12', src: 'p1 상단' },
         { k: 'rows', label: '포장 행 (U사)', v: [
@@ -238,7 +238,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
         ], src: 'p1 제품 포장 현황 표 (규격 12kg = 1kg×12p, 진공 포장)' },
         { k: 'lot_rule', label: '로트 규칙', v: '생산일 기준 글자 코드 (담당자 확인)', src: '추가질문 답변 1·2' }
       ] },
-    { id: '5-2b', match: /5-2b|UE-2607/i, doc_type: '패킹리스트', sensitive: true, source: '5-2b.패킹리스트_UE-2607.png (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+    { id: '5-2b', match: /^5-2b|UE-2607/i, doc_type: '패킹리스트', sensitive: true, source: '5-2b.패킹리스트_UE-2607.png (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
       fields: [
         { k: 'invoice_no', label: '선적번호', v: 'UE-2607', src: '우상단 INVOICE NO' },
         { k: 'date', label: '날짜', v: '2026-07-02', src: '우상단 DATE' },
@@ -254,7 +254,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
         { k: 'hs', label: 'HS', v: '1605.10', src: '좌하단' },
         { k: 'note', label: '비고', v: '연결 로트는 선적 구성 추정(검증부)을 보고 사람이 정함', src: '-' }
       ] },
-    { id: '6b', match: /6b|위생증명서_7월/i, doc_type: '위생증명서', sensitive: false, source: '6b.위생증명서_7월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
+    { id: '6b', match: /^6b/i, doc_type: '위생증명서', sensitive: false, source: '6b.위생증명서_7월.pdf (시연용 가상, 4월 자료 구조 복제) · 시연용 가상',
       fields: [
         { k: 'issuer', label: '발급', v: '국립수산물품질관리원 부산지원', src: '상단 기관명 · 하단 서명' },
         { k: 'date', label: '발행일', v: '2026-07-03', src: 'Date' },
