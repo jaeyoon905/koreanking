@@ -439,17 +439,18 @@
   };
   var TAG_CTRY = [['JP', '일본', '食品表示基準', tagJP], ['CN', '중국', 'GB 7718-2025 · GB 28050-2025', tagCN], ['HK', '홍콩', 'Cap.132W', tagHK], ['TW', '대만', '식품안전위생관리법', tagTW]];
   screens.tags = function () {
-    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 마우스를 대면 그 라벨이 앞으로 오고, 누르면 맨 앞으로 정렬돼요.</p>' +
+    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 마우스를 대면 그 라벨이 메인이 되고, 누르면 맨 위로 정렬돼요.</p>' +
       '<div class="row">' + productSelect('tg-prod') + '</div>' +
       '<div class="tagview"><section><h3 class="tv-h">한국 원본 <span class="muted">식품등의 표시기준</span></h3><div id="tg-kr"></div></section>' +
-      '<section><div class="tag-deck" id="tg-deck"></div><h3 class="tv-h" id="tg-why-h"></h3><div id="tg-why"></div></section></div>';
+      '<section><h3 class="tv-h">나라별 라벨 <span class="muted">대면 메인 · 누르면 맨 위로</span></h3><div class="tag-deck" id="tg-deck"></div></section>' +
+      '<section class="tv-why"><h3 class="tv-h" id="tg-why-h"></h3><div id="tg-why"></div></section></div>';
   };
   screens.tags.bind = function () {
     bindProductSelect('tg-prod');
     var p = P(), order = TAG_CTRY.map(function (c) { return c[0]; }), main = order[0];
     $('#tg-kr').innerHTML = tagKR(p);
     var deck = $('#tg-deck');
-    deck.innerHTML = TAG_CTRY.map(function (c) { return '<div class="tag-card" data-c="' + c[0] + '" tabindex="0" role="button" aria-label="' + c[1] + ' 라벨 맨 앞으로"><span class="tc-tab">' + c[1] + '</span>' + c[3](p) + '</div>'; }).join('');
+    deck.innerHTML = TAG_CTRY.map(function (c) { return '<div class="tag-card" data-c="' + c[0] + '" tabindex="0" role="button" aria-label="' + c[1] + ' 라벨 맨 위로"><span class="tc-tab">' + c[1] + '</span>' + c[3](p) + '</div>'; }).join('');
     var card = function (code) { return deck.querySelector('[data-c="' + code + '"]'); };
     function hl(n) { Array.prototype.forEach.call(deck.querySelectorAll('[data-mk]'), function (r) { r.classList.toggle('hl', !!n && r.closest('.tag-card').dataset.c === main && r.dataset.mk === n); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-why .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
     function setMain(code) {   // 대면 메인: 앞으로 + 바꾼 이유
