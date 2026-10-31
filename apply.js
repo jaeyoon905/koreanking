@@ -27,7 +27,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   }
   function ensure(s) { // app.js 가 안 만든 키 방어
     ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'labels', 'importShipments'].forEach(function (k) { s[k] = s[k] || []; });
-    s.specForms = s.specForms || {}; s.processLog = s.processLog || {}; s.revisions = s.revisions || [];
+    s.specForms = s.specForms || {}; s.processLog = s.processLog || {}; s.revisions = s.revisions || []; s.productNutrition = s.productNutrition || {};
   }
   // 로트의 원료 연결. 그날 가공일지 약어가 있으면 그 입고분들, 없으면 제조일 이전 가장 가까운 입고분 1건
   function linkRaw(s, lot) {
@@ -220,7 +220,14 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   };
   A['영양성적서'] = function (o, s) {
     upsert(s.nutritionSources, 'buyer', reportKey(o), { buyer: reportKey(o), product: o.product, kcal: num(o.kcal), protein: num(o.protein), fat: num(o.fat), carb: num(o.carb), salt_g: saltOf(o), basis: '실측', src: (o.issuer || '성적서') + ' ' + (o.report_no || '') + ' ' + (o.date || '') });
-    return '영양값 출처 1건 기록 (' + reportKey(o) + ', 식염 ' + saltOf(o) + 'g 환산)';
+    var m = /\b(LB|WF|SR|LEG|CL)\b/.exec(String(o.product || '').toUpperCase()), code = m ? m[1] : null, extra = '';
+    if (code) {   // 품목 영양값(100g) 채움. 실측 성적서가 바이어 추정값보다 우선
+      var nv = { kcal: num(o.kcal), protein: num(o.protein), fat: num(o.fat), satfat: num(o.satfat), transfat: num(o.transfat), carb: num(o.carb), sugar: num(o.sugar), sodium_mg: num(o.sodium_mg) };
+      s.productNutrition[code] = { n: nv, source: '자사 성적서 ' + (o.issuer || '') + ' ' + (o.report_no || '') + ' ' + (o.date || '') };
+      if (window.LC && LC.products && LC.products[code]) { LC.products[code].nutrition100 = nv; LC.products[code].nutrition_source = s.productNutrition[code].source; }
+      extra = ' · 품목 ' + code + ' 영양값(100g) 채움 → 라벨·규격서·수정안에 반영';
+    }
+    return '영양값 출처 1건 기록 (' + reportKey(o) + ', 식염 ' + saltOf(o) + 'g 환산)' + extra;
   };
 
   // ---------- 바이어 문의 메일 ----------
@@ -465,5 +472,6 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
     if (!f) return [{ item: doc_type, status: 'check', note: '대조 규칙 없는 서류 종류. 사람이 확인' }];
     return requiredCheck(doc_type, o).concat(f(o, state), X[doc_type] ? X[doc_type](o, state) : []);
   };
+  LC.lotRows = lotRows;   // 승인 카드의 '나온 것' 링크가 로트 번호를 만들 때 씀
   LC.applyDoc = function (doc_type, obj, state) { ensure(state); var f = A[doc_type]; return f ? f(obj || {}, state) : '반영 규칙 없음 (' + doc_type + '). 기록만 남김'; };
 })();

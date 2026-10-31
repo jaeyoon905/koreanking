@@ -15,10 +15,10 @@
       ledger: LC.seedLedger.slice(), raw: LC.rawLots.slice(), registry: LC.registry.slice(),
       shipments: (LC.shipmentsSeed || []).slice(), nutritionSources: (LC.nutritionSources || []).slice(), docs: [], specForms: {}, revisions: [],
       labels: Object.values(LC.sampleLabels).map(function (l) { return { file: l.file, country: l.country, made: l.made }; }),
-      importShipments: [], processLog: {}, importWaybills: [], publicData: {}, extraProducts: []
+      importShipments: [], processLog: {}, importWaybills: [], publicData: {}, extraProducts: [], productNutrition: {}
     };
   }
-  var SAVED = ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'docs', 'specForms', 'revisions', 'labels', 'importShipments', 'processLog', 'importWaybills', 'publicData', 'extraProducts'];
+  var SAVED = ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'docs', 'specForms', 'revisions', 'labels', 'importShipments', 'processLog', 'importWaybills', 'publicData', 'extraProducts', 'productNutrition'];
   var state = { lastLabel: null };
   (function load() { var s = seeds(); SAVED.forEach(function (k) { state[k] = JSON.parse(localStorage.getItem('lc.' + k) || 'null') || s[k]; }); })();
   // 서버(server/app.py)가 있으면 서버 상태가 원본, 없으면(file://) 브라우저 저장. 동작은 같다
@@ -43,7 +43,11 @@
     np.ingredients = []; np.nutrition100 = null; np.nutrition_source = '성적서 없음'; np.shelf_months = o.shelf_months || 24; np.source = o.source || '식약처 품목제조보고';
     LC.products[o.code] = np; return np;
   }
-  function mergeExtraProducts() { (state.extraProducts || []).forEach(addExtraProduct); }
+  function mergeExtraProducts() {
+    (state.extraProducts || []).forEach(addExtraProduct);
+    var pn = state.productNutrition || {};   // 승인된 자사 성적서 → 품목 영양값
+    Object.keys(pn).forEach(function (k) { if (LC.products && LC.products[k] && pn[k] && pn[k].n) { LC.products[k].nutrition100 = pn[k].n; LC.products[k].nutrition_source = pn[k].source || '자사 성적서'; } });
+  }
   mergeExtraProducts();
   // 토스트: 승인 결과 같은 짧은 알림. 3초 뒤 사라짐
   function toast(msg) {
@@ -60,7 +64,7 @@
   }
   if (API) {
     api('/health').then(function (h) { health = h; if (h && h.today) LC.TODAY = h.today; return api('/state'); })
-      .then(function (s) { var seeded = seeds(); SAVED.forEach(function (k) { if (s && s[k] != null) state[k] = s[k]; else if (!localStorage.getItem('lc.' + k)) state[k] = seeded[k]; }); mergeExtraProducts(); route(); })
+      .then(function (s) { var seeded = seeds(); SAVED.forEach(function (k) { if (s && s[k] != null) state[k] = s[k]; else if (!localStorage.getItem('lc.' + k)) state[k] = seeded[k]; }); mergeExtraProducts(); setProduct(state.productCode); route(); })
       .catch(function () { health = { ok: false }; route(); });
   }
 
@@ -262,6 +266,11 @@
       fr.onload = function () { var wb = XLSX.read(fr.result, { type: 'array' }); uploaded = { file: file.name, fields: parseSheet(wb.Sheets[wb.SheetNames[0]]) }; $('#lbl-out').innerHTML = '<p class="muted">' + esc(file.name) + ' 읽음 (' + wb.SheetNames[0] + '). 판정을 누르세요.</p>'; };
       fr.readAsArrayBuffer(file);
     };
+    if (state.pendingLabel && state.pendingLabel.fields) {   // 서류 넣기 "라벨 판정" 링크로 들어온 경우
+      var pl = state.pendingLabel; state.pendingLabel = null; uploaded = { file: pl.file, fields: pl.fields };
+      if (LC.rules[pl.country]) $('#lbl-country').value = pl.country;
+      $('#lbl-out').innerHTML = '<p class="muted">' + esc(pl.file) + ' (서류 넣기에서 가져옴)</p>'; setTimeout(function () { $('#lbl-run').click(); }, 50);
+    }
     $('#lbl-run').onclick = function () {
       var country = $('#lbl-country').value; var made = $('#lbl-made').value || null;
       if (uploaded) renderJudge(country, uploaded.fields, { made: made, file: uploaded.file });
@@ -649,6 +658,32 @@
     }; });
     document.querySelectorAll('[data-manapply]').forEach(function (el) { el.onclick = function () { var i = +el.dataset.manapply; if (!intakeCards[i].doc_type) { toast('서류 종류를 먼저 고르세요'); return; } manualApply(i); rerenderFn(); toast('직접 입력 적용 · 검증부 대조 결과를 확인하고 승인'); }; });
   }
+  // 승인된 서류에서 바로 나오는 결과물. 서류 종류별로 어디서 무엇을 받는지 한 줄로
+  function outputsFor(c, i) {
+    if (!c.done || c.done !== '승인') return '';
+    var o = fieldsObj(c) || {}, out = [], m = /[_\-\s](LB|WF|SR|LEG|CL)(?=[_\-\s.]|$)/i.exec(c.name), code = m ? m[1].toUpperCase() : null;
+    var a = function (href, text, attr) { return '<a class="btn small" href="' + href + '"' + (attr || '') + '>' + text + '</a>'; };
+    if (c.doc_type === '규격서양식' && o.buyer) out.push(a('#spec', '이 양식으로 채운 규격서 → PDF', ' data-out-spec="' + i + '"'));
+    if (c.doc_type === '메일') { if (o.reply_draft) out.push(a('#', '답장 초안 .txt 받기', ' data-out-reply="' + i + '"')); out.push(a('#spec', '규격서 PDF 첨부용', ' data-out-prod="' + i + '"')); }
+    if (c.doc_type === '영양성적서') out.push(a('#product', '품목 영양 환산표(나라별)', ' data-out-prod="' + i + '"'));
+    if (c.doc_type === '포장일지') (typeof LC.lotRows === 'function' ? LC.lotRows(o) : []).slice(0, 3).forEach(function (r) {
+      out.push(a('#lot/' + encodeURIComponent(r.lot), 'LOT ' + r.lot + ' 조회·클레임 보고서'));
+      if (API) out.push(a('/api/shipdocs/buyer?lot=' + encodeURIComponent(r.lot), '바이어 패키지 zip', ' download') + a('/api/lot/' + encodeURIComponent(r.lot) + '/qr.png', 'QR 라벨', ' target="_blank"'));
+    });
+    if (c.doc_type === '라벨' && o.name) out.push(a('#label', '라벨 판정 → 수정안 만들기', ' data-out-label="' + i + '"'));
+    if (c.doc_type === '고시문') out.push(a('#dash', '대시보드: 개정 → 영향 라벨'));
+    if (c.doc_type === '패킹리스트' || c.doc_type === '위생증명서') out.push(a('#ship', '선적 카드: 제조일자 리스트·패킹리스트 초안·위생증명서 신청값'));
+    if (c.doc_type === '입고검사서' || c.doc_type === '가공일지') out.push(a('#ship', '선적·원장'), a('#stats', '집계'));
+    if (/^수입|^BL$|^운송장$/.test(c.doc_type || '')) out.push(a('#import', '수입 체크리스트'));
+    if (c.doc_type === 'HACCP인증서') out.push(a('#dash', '만료 대시보드'));
+    return out.length ? '<p class="outs"><b>나온 것</b> ' + out.join(' ') + '</p>' : '';
+  }
+  function bindOutputs(rerenderFn) {
+    document.querySelectorAll('[data-out-spec]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.outSpec], o = fieldsObj(c) || {}; state.specBuyer = o.buyer; var m = /[_\-\s](LB|WF|SR|LEG|CL)(?=[_\-\s.]|$)/i.exec(c.name); if (m) setProduct(m[1].toUpperCase()); }; });
+    document.querySelectorAll('[data-out-prod]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.outProd], o = fieldsObj(c) || {}; var m = /\b(LB|WF|SR|LEG|CL)\b/i.exec(String(o.product || '') + ' ' + c.name); if (m) setProduct(m[1].toUpperCase()); }; });
+    document.querySelectorAll('[data-out-reply]').forEach(function (el) { el.onclick = function (e) { e.preventDefault(); var c = intakeCards[+el.dataset.outReply], o = fieldsObj(c) || {}; download('답장초안_' + c.name.replace(/\.[^.]+$/, '') + '.txt', String(o.reply_draft || '')); }; });
+    document.querySelectorAll('[data-out-label]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.outLabel], o = fieldsObj(c) || {}; var cc = String(o.country || '').slice(0, 2).toUpperCase(); if (!LC.rules[cc]) { var nm = { '일본': 'JP', '홍콩': 'HK', '대만': 'TW', '태국': 'TH', '중국': 'CN' }; Object.keys(nm).forEach(function (k) { if (c.name.indexOf(k) >= 0) cc = nm[k]; }); } state.pendingLabel = { file: c.name, country: cc, fields: o }; }; });   // 나라는 읽은 값 → 없으면 파일명(일본·홍콩…)
+  }
   function needsManual(c) { return !c.done && !c.loading && (!c.doc_type || c.mode === 'none' || !(c.fields && c.fields.length)) && !(c.doc_type && c.sensitive && !c.masked); }
   function manualButton(c, i) { return needsManual(c) ? ' <button class="ghost" data-man="' + i + '" aria-label="직접 입력 폼 열기">' + (c.manual ? '입력 닫기' : '직접 입력') + '</button>' : ''; }
 
@@ -661,8 +696,9 @@
   function intakeCard(c, i) {
     if (c.open === undefined) c.open = true;
     var h = '<div class="card ic' + (c.open ? '' : ' closed') + '" id="ic-' + i + '"><h3 class="ic-title" data-toggle="' + i + '" title="접기/펼치기"><span class="caret">' + (c.open ? '▾' : '▸') + '</span> ' + esc(c.name) + (c.done ? ' <span class="b ' + (c.done === '승인' ? 'ok' : 'bad') + '">' + (c.done === '승인' ? '반영됨' : '반려') + '</span>' : '') + (c.doc_type ? ' <span class="muted">' + esc(c.doc_type) + '</span>' : '') + '</h3>';
-    if (!c.open) return h + '</div>';
+    if (!c.open) return h + outputsFor(c, i) + '</div>';
     h += pipeline(c);
+    if (c.loading) return h + '<p><b>접수부</b> 종류: ' + (c.doc_type ? esc(c.doc_type) : '<span class="muted">파일 내용으로 판별 중</span>') + '</p><p><b>읽기부</b> <span class="b warn">AI가 읽는 중… 10~40초</span> <span class="muted">끝나면 값과 대조 결과가 여기 나오고 승인할 수 있어요</span></p></div>';
     h += '<p><b>접수부</b> 종류: ' + (c.doc_type ? esc(c.doc_type) : '종류 미확인 · 추출 불가(키 없음) · 수동 입력') + '</p>';
     if (c.doc_type && c.sensitive && !c.masked) return h + '<p class="alert">접수부 차단: 계좌·단가가 있을 수 있는 서류는 가린 뒤 처리. LLM에 보내지 않음</p><label class="chk"><input type="checkbox" data-mask="' + i + '"> 계좌·단가 가렸음</label></div>';
     if (needsManual(c)) return h + '<p>' + manualButton(c, i) + '</p>' + (c.manual ? manualForm(c, i) : '') + '</div>';
@@ -687,7 +723,7 @@
     var fr = new FileReader();
     fr.onload = function () {
       var b64 = String(fr.result).split(',')[1] || '';
-      var c = API ? { name: file.name, doc_type: '', mode: 'fixture', fields: [], fixture: matchFixture(file.name), b64: b64 } : cardFromFixture(matchFixture(file.name), file.name);
+      var c = API ? { name: file.name, doc_type: (matchFixture(file.name) || {}).doc_type || '', mode: 'fixture', fields: [], fixture: matchFixture(file.name), b64: b64, loading: true } : cardFromFixture(matchFixture(file.name), file.name);
       intakeCards.push(c); rerender();
       if (API) extractOnServer(c);
     };
@@ -736,7 +772,7 @@
     document.querySelectorAll('[data-ok]').forEach(function (el) { el.onclick = function () { decide(+el.dataset.ok, true); }; });
     document.querySelectorAll('[data-no]').forEach(function (el) { el.onclick = function () { decide(+el.dataset.no, false); }; });
     document.querySelectorAll('[data-toggle]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.toggle]; c.open = !c.open; renderIntake(); }; });
-    bindManual(renderIntake);
+    bindManual(renderIntake); bindOutputs(renderIntake);
   }
   // 어떤 서류를 올리면 무엇이 나오는지. 올린 것은 ✓ (승인된 처리 기록 + 지금 올린 카드 기준)
   var DOC_GUIDE = [
@@ -783,6 +819,7 @@
   // ---------- 한 번에 처리: 서류 넣기 → 확인(한 표) → 결과물 ----------
   function cardStatus(c) {
     if (c.done) return c.done === '승인' ? ['반영됨', 'ok'] : ['반려', 'bad'];
+    if (c.loading) return ['AI 읽는 중…', 'warn'];
     if (!c.doc_type || c.mode === 'none') return [c.doc_type ? '직접 입력 필요' : '종류 미확인', 'bad'];
     if (c.sensitive && !c.masked) return ['가림 확인 필요', 'warn'];
     if (c.loading) return ['읽는 중', 'warn'];
@@ -790,13 +827,14 @@
   }
   function cardDiffs(c) { if (c.done || !c.doc_type || c.mode === 'none' || (c.sensitive && !c.masked)) return []; try { return reconcileCard(c); } catch (e) { return [{ item: '대조 오류', status: 'bad', note: String(e) }]; } }
   function quickRow(c, i) {
-    var st = cardStatus(c), diffs = cardDiffs(c), bad = diffs.filter(function (d) { return d.status === 'check' || d.status === 'bad'; });
+    var st = cardStatus(c), diffs = c.loading ? [] : cardDiffs(c), bad = diffs.filter(function (d) { return d.status === 'check' || d.status === 'bad'; });
     var cnt = { ok: 0, add: 0, check: 0, bad: 0 }; diffs.forEach(function (d) { cnt[d.status] = (cnt[d.status] || 0) + 1; });
     var summary = diffs.length ? '통과 ' + cnt.ok + (cnt.add ? ' · 추가 ' + cnt.add : '') + (cnt.check ? ' · <b>확인 ' + cnt.check + '</b>' : '') + (cnt.bad ? ' · <b>불일치 ' + cnt.bad + '</b>' : '') : '-';
     var mask = c.doc_type && c.sensitive && !c.masked && !c.done ? '<label class="chk"><input type="checkbox" data-qmask="' + i + '"> 계좌·단가 가렸음</label>' : '';
     var h = '<tr class="' + (bad.length ? 'st-check' : '') + '"><td>' + esc(c.name) + (mask ? '<br>' + mask : '') + '</td><td>' + (c.doc_type ? esc(c.doc_type) : '<span class="muted">미확인</span>') + '</td><td class="num">' + ((c.fields || []).length || '-') + '</td><td>' + summary + '</td><td><span class="b ' + st[1] + '">' + st[0] + '</span>' + (c.done ? '' : ' <button class="ghost small" data-qdetail="' + i + '" aria-label="값 전체 보기">자세히</button>') + '</td></tr>';
     if (bad.length && !c.done) h += '<tr class="qk-sub"><td colspan="5"><b>확인할 것</b><ul class="log">' + bad.map(function (d) { return '<li><span class="b ' + (DIFF[d.status] || ['', ''])[1] + '">' + (DIFF[d.status] || [d.status])[0] + '</span> ' + esc(d.item) + ' <span class="muted">' + esc(d.note) + '</span></li>'; }).join('') + '</ul></td></tr>';
     if (needsManual(c)) h += '<tr class="qk-sub"><td colspan="5">' + manualButton(c, i) + (c.manual ? manualForm(c, i) : '') + '</td></tr>';
+    var outs = outputsFor(c, i); if (outs) h += '<tr class="qk-sub"><td colspan="5">' + outs + '</td></tr>';
     if (c.detail) h += '<tr class="qk-sub"><td colspan="5"><table class="kv"><tr><th>라벨</th><th>값</th><th>읽은 위치</th></tr>' + (c.fields || []).map(function (x) { return '<tr><td>' + esc(x.label || x.k) + '</td><td>' + cell(x.value !== undefined ? x.value : x.v) + '</td><td class="muted">' + esc(x.src) + '</td></tr>'; }).join('') + '</table></td></tr>';
     return h;
   }
@@ -804,7 +842,7 @@
     var skipped = 0, done = 0;
     intakeCards.forEach(function (c, i) {
       if (c.done) return;
-      if (!c.doc_type || c.mode === 'none' || (c.sensitive && !c.masked)) { skipped++; return; }
+      if (c.loading || !c.doc_type || c.mode === 'none' || (c.sensitive && !c.masked)) { skipped++; return; }
       var result; try { result = applyCard(c); } catch (e) { result = '반영 실패: ' + e; }
       c.done = '승인'; c.result = result; c.open = false; done++;
       state.docs.push({ file: c.name, doc_type: c.doc_type, at: LC.TODAY, result: result });
@@ -857,13 +895,13 @@
     var box = $('#qk-table'); if (!box) return;
     if (!intakeCards.length) { box.innerHTML = '<p class="muted">넣은 서류가 없습니다. 위에서 파일을 올리거나 "받은 파일 전부 넣기"를 누르세요.</p>'; }
     else {
-      var wait = intakeCards.filter(function (c) { return !c.done; }).length;
+      var wait = intakeCards.filter(function (c) { return !c.done && !c.loading; }).length, loading = intakeCards.filter(function (c) { return c.loading; }).length;
       box.innerHTML = '<table><tr><th>파일</th><th>종류</th><th class="num">읽은 칸</th><th>대조</th><th>상태</th></tr>' + intakeCards.map(quickRow).join('') + '</table>' +
-        '<div class="row"><button id="qk-approve" ' + (wait ? '' : 'disabled') + ' aria-label="대기 중인 서류 전부 승인">전부 승인 (' + wait + '건)</button><a class="btn ghost" href="#intake">하나씩 보기</a><span class="summary-bar">' + intakeSummary() + '</span></div>';
+        '<div class="row"><button id="qk-approve" ' + (wait ? '' : 'disabled') + ' aria-label="대기 중인 서류 전부 승인">전부 승인 (' + wait + '건)</button>' + (loading ? '<span class="b warn">AI 읽는 중 ' + loading + '건 · 끝나면 표가 바뀝니다</span>' : '') + '<a class="btn ghost" href="#intake">하나씩 보기</a><span class="summary-bar">' + intakeSummary() + '</span></div>';
       $('#qk-approve').onclick = approveAll;
       document.querySelectorAll('[data-qmask]').forEach(function (el) { el.onchange = function () { var c = intakeCards[+el.dataset.qmask]; c.masked = el.checked; if (API && c.blocked && el.checked) extractOnServer(c); else renderQuick(); }; });
       document.querySelectorAll('[data-qdetail]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.qdetail]; c.detail = !c.detail; renderQuick(); }; });
-      bindManual(renderQuick);
+      bindManual(renderQuick); bindOutputs(renderQuick);
     }
     if ($('#qk-docbox')) { $('#qk-docbox').innerHTML = docBox(); bindDocBox(renderQuick); }
     if ($('#qk-guide')) $('#qk-guide').innerHTML = docGuide();
