@@ -218,7 +218,7 @@ def extract(body):
     fx0 = subprocess.run(['node', str(HERE / 'fixture_dump.js'), name], capture_output=True, text=True, encoding='utf-8')
     fx = json.loads(fx0.stdout or 'null') if fx0.returncode == 0 else None
     if fx:
-        if fx['doc_type'] in graph.SENSITIVE and not body.get('masked'):
+        if fx['doc_type'] in graph.SENSITIVE and fx.get('sensitive') is not False and not body.get('masked'):   # 미리 읽어 둔 서류가 '계좌·단가 없음'이라고 표시하면 가림 없이 진행
             return {'doc_type': fx['doc_type'], 'mode': 'none', 'blocked': True, 'reason': '계좌·단가가 있을 수 있는 서류는 가린 뒤 처리. LLM에 보내지 않음', 'fields': []}
         return {'doc_type': fx['doc_type'], 'mode': 'fixture', 'blocked': False, 'fields': fx['fields'], 'source': fx.get('source')}
     tmp = None; redacted = None

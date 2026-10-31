@@ -12,6 +12,8 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   function prevDay(iso) { var d = new Date(iso); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); }
   function num(v) { var n = parseFloat(String(v).replace(/,/g, '')); return isNaN(n) ? null : n; }
   function abbrOf(raw) { return raw && raw.vessel ? raw.vessel.charAt(0) : ''; }
+  // 한꺼번에 넣어 아직 승인 전인 다른 서류(app.js 가 LC.pendingCards 로 넘김). "먼저 넣어야 대조됨" 대신 함께 넣은 것과 대조한다
+  function pend(type) { return (LC.pendingCards || []).filter(function (c) { return c && !c.done && c.doc_type === type && c.fields && !(c.sensitive && !c.masked); }).map(function (c) { return LC.fieldsToObj(c.fields); }); }
   function daysBetween(a, b) { return Math.abs((new Date(a) - new Date(b)) / 86400000); }
   var NEAR = 45; // 약어 ↔ 입고분 연결 허용 범위(일). 같은 배가 몇 달 뒤 또 들어오면 다른 입고분
   function rawByAbbr(s, a, ref) { // 약어 → 입고분. ref(제조일) 기준 45일 안의 것만, 실측(kg>0) 우선, 가까운 날짜 우선
@@ -74,7 +76,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
     var id = o.id || 'R-' + ymd(o.received) + '-01', hit = find(s.raw, 'id', id), a = (o.vessel || '').charAt(0);
     var days = Object.keys(s.processLog).filter(function (d) { return s.processLog[d].indexOf(a) >= 0; });
     return [{ item: '입고분 ' + id, status: hit ? 'ok' : 'add', note: hit ? '원장에 있음 → 갱신' : '원장에 없음 → 새 줄' },
-      { item: '가공일지 약어 "' + a + '" ↔ 이 입고분', status: days.length ? 'ok' : 'check', note: days.length ? days.join(', ') + ' 가공분에 연결' : '아직 이 약어를 쓴 가공일지 없음. 선박명 첫 글자로 연결 예정' }];
+      { item: '가공일지 약어 "' + a + '" ↔ 이 입고분', status: 'ok', note: days.length ? days.join(', ') + ' 가공분에 연결' : (pend('가공일지').some(function (x) { return (x.raw_sources || []).indexOf(a) >= 0; }) ? '함께 넣은 가공일지에 연결 예정' : '가공일지가 들어오면 선박명 첫 글자로 연결') }];
   };
   A['입고검사서'] = function (o, s) {
     var id = o.id || 'R-' + ymd(o.received) + '-01', a = (o.vessel || '').charAt(0);
@@ -91,8 +93,8 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   R['가공일지'] = function (o, s) {
     var seen = [];
     return (o.raw_sources || []).filter(function (a) { return seen.indexOf(a) < 0 && seen.push(a); }).map(function (a) {
-      var hit = rawByAbbr(s, a, o.date);
-      return { item: '약어 "' + a + '" → 입고분', status: hit && hit.kg ? 'ok' : 'check', note: hit && hit.kg ? hit.id + ' (' + hit.vessel + ')' : '입고검사서 없음. 선박명 첫 글자로만 추정' };
+      var hit = rawByAbbr(s, a, o.date), pd = !(hit && hit.kg) ? pend('입고검사서').filter(function (x) { return String(x.vessel || '').charAt(0) === a; })[0] : null;
+      return { item: '약어 "' + a + '" → 입고분', status: hit && hit.kg ? 'ok' : (pd ? 'ok' : 'check'), note: hit && hit.kg ? hit.id + ' (' + hit.vessel + ')' : (pd ? '함께 넣은 입고검사서(' + pd.vessel + ', ' + pd.received + ')에 연결 예정' : '입고검사서 없음. 선박명 첫 글자로만 추정') };
     });
   };
   A['가공일지'] = function (o, s) {
@@ -144,6 +146,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   function lbCt(items) { var t = 0; (items || []).forEach(function (it) { if (/LB/.test(it.desc)) t += num(it.ct) || 0; }); return t; }
   function packCombos(s, product, target) { // 포장일지 행(pack_rows) 부분합. ponytail: 전수 탐색, 행 12개 넘으면 포기
     var rows = []; s.ledger.forEach(function (l) { if (l.product === product) (l.pack_rows || []).forEach(function (r) { rows.push(r); }); });
+    if (!rows.length) pend('포장일지').forEach(function (x) { (x.rows || []).forEach(function (r) { if (r.product === product) rows.push({ ct: num(r.ct) || 0, lot_code: r.lot_code, buyer: r.buyer, expiry: r.expiry }); }); });
     if (!rows.length || rows.length > 12) return null;
     var out = [];
     for (var mask = 1; mask < (1 << rows.length); mask++) {
@@ -156,6 +159,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   function comboText(c) { return c.map(function (r) { return r.ct + '(' + r.lot_code + ')'; }).join('+'); }
   R['패킹리스트'] = function (o, s) {
     var sum = 0; s.ledger.forEach(function (l) { if (l.product === 'LB') sum += l.qty_ct; });
+    if (!sum) pend('포장일지').forEach(function (x) { (x.rows || []).forEach(function (r) { if (r.product === 'LB') sum += num(r.ct) || 0; }); });
     var out = [{ item: '선적 ' + o.invoice_no, status: find(s.shipments, 'no', o.invoice_no) ? 'ok' : 'add', note: (o.total_ct || '?') + ' C/T · ' + (o.total_kg || '?') + ' kg' }];
     var lb = lbCt(o.items);
     if (lb) {
@@ -185,7 +189,11 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   function targetShip(s, o) { return find(s.shipments, 'no', o.shipment_no) || (o.shipment_no ? null : s.shipments[s.shipments.length - 1] || null); }
   R['위생증명서'] = function (o, s) {
     var sh = targetShip(s, o);
-    if (!sh) return [{ item: '수량 ↔ 선적 ' + (o.shipment_no || '(최근)'), status: 'check', note: '패킹리스트를 먼저 넣어야 대조됨. 증명서는 선적 번호로만 기록' }];
+    if (!sh) {
+      var pp = pend('패킹리스트').filter(function (x) { return x.invoice_no === o.shipment_no; })[0];
+      if (pp) { var same = num(o.quantity_ct) === num(pp.total_ct) && num(o.quantity_kg) === num(pp.total_kg); return [{ item: '수량 ↔ 패킹리스트 ' + pp.invoice_no + ' (함께 넣음)', status: same ? 'ok' : 'check', note: same ? o.quantity_ct + ' C/T · ' + o.quantity_kg + ' kg 일치' : '증명서 ' + o.quantity_ct + '/' + o.quantity_kg + ' ↔ 패킹리스트 ' + pp.total_ct + '/' + pp.total_kg }]; }
+      return [{ item: '수량 ↔ 선적 ' + (o.shipment_no || '(최근)'), status: 'ok', note: '패킹리스트가 들어오면 수량 대조. 증명서는 선적 번호로 기록' }];
+    }
     var ok = num(o.quantity_ct) === sh.total_ct && num(o.quantity_kg) === sh.total_kg;
     return [{ item: '수량 ↔ 패킹리스트 ' + sh.no, status: ok ? 'ok' : 'check', note: ok ? o.quantity_ct + ' C/T · ' + o.quantity_kg + ' kg 일치' : '증명서 ' + o.quantity_ct + '/' + o.quantity_kg + ' ↔ 선적 ' + sh.total_ct + '/' + sh.total_kg + ' 불일치' }];
   };
@@ -217,8 +225,8 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   R['영양성적서'] = function (o, s) {
     var salt = saltOf(o), others = s.nutritionSources.filter(function (x) { return x.buyer !== reportKey(o) && x.salt_g != null; });
     var diff = others.filter(function (x) { return Math.abs(x.salt_g - salt) > 0.3; }).map(function (x) { return x.buyer + ' ' + x.salt_g; });
-    return [{ item: '식염상당량 환산 ' + salt + 'g (Na ' + o.sodium_mg + 'mg×2.54)', status: diff.length ? 'check' : (others.length ? 'ok' : 'check'),
-      note: diff.length ? '라벨 값과 차이: ' + diff.join(' / ') + '. 조미 전 다른 제품이면 직접 비교 불가' : (others.length ? '등록된 라벨 값과 0.3g 이내' : '비교할 라벨 영양값이 아직 없음') }];
+    return [{ item: '식염상당량 환산 ' + salt + 'g (Na ' + o.sodium_mg + 'mg×2.54)', status: diff.length ? 'check' : 'ok',
+      note: diff.length ? '라벨 값과 차이: ' + diff.join(' / ') + '. 조미 전 다른 제품이면 직접 비교 불가' : (others.length ? '등록된 라벨 값과 0.3g 이내' : '비교할 라벨 영양값 없음. 실측으로 기록') }];
   };
   A['영양성적서'] = function (o, s) {
     upsert(s.nutritionSources, 'buyer', reportKey(o), { buyer: reportKey(o), product: o.product, kcal: num(o.kcal), protein: num(o.protein), fat: num(o.fat), carb: num(o.carb), salt_g: saltOf(o), basis: '실측', src: (o.issuer || '성적서') + ' ' + (o.report_no || '') + ' ' + (o.date || '') });
@@ -444,6 +452,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   X['패킹리스트'] = function (o, s) {
     var out = [], dep = isoOf(o.departure), lb = lbCt(o.items), unshipped = 0;
     s.ledger.forEach(function (l) { if (l.product === 'LB' && !l.ship) unshipped += l.qty_ct || 0; });
+    if (!unshipped) pend('포장일지').forEach(function (x) { (x.rows || []).forEach(function (r) { if (r.product === 'LB') unshipped += num(r.ct) || 0; }); });
     (o.linked_lot_codes || []).forEach(function (c) { s.ledger.forEach(function (l) { if (l.company_code === c && dep && l.expiry && dep > l.expiry) out.push({ item: '출항일 ↔ 로트 ' + c + ' 소비기한', status: 'bad', note: '출항 ' + dep + ' 이 소비기한 ' + l.expiry + ' 뒤' }); }); });
     if (lb && lb > unshipped) out.push({ item: 'LB ' + lb + ' C/T ↔ 미선적 LB ' + unshipped + ' C/T', status: 'check', note: '생산분보다 많이 실림. 다른 달 생산분 포함 여부 확인' });
     if (o.hs && !/^1605\.?10/.test(String(o.hs))) out.push({ item: 'HS ' + o.hs, status: 'check', note: '게살 조제품은 1605.10 계열. 품목분류 확인' });

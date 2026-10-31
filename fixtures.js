@@ -265,6 +265,109 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
         { k: 'form', label: '양식', v: '바이어 요청, 비협약국 양식', src: '추가질문 답변 3' },
         { k: 'shipment_no', label: '해당 선적', v: 'UE-2607', src: '수량·날짜로 대응' }
       ] }
+    ,
+    // ===== 시연용 가상 세트: 일본 P사 · LB · 2026년 7월 선적 (입고 1건 → 가공 7/8 → 로트 CA → 선적 PE-2608 → 위생증명서). 실제 서류 아님 =====
+    { id: 'P-1', match: /^P-1\./i, doc_type: '입고검사서', sensitive: false, source: 'P-1.원료입고검사서_7월.pdf · 시연용 가상(일본 P사 세트)',
+      fields: [
+        { k: 'species', label: '원료명', v: '붉은대게 (Chionoecetes japonicus)', src: 'p1 원료명' },
+        { k: 'fishing_period', label: '조업일자', v: '2026-07-01 ~ 07-05', src: 'p1 조업일자' },
+        { k: 'received', label: '입고일', v: '2026-07-06', src: 'p1 입고일' },
+        { k: 'vessel', label: '공급자(어선)', v: '삼○호', src: 'p1 공급자' },
+        { k: 'landing', label: '원산지', v: '국내산 (동해 연근해)', src: 'p1 원산지' },
+        { k: 'boxes_in', label: '입고 상자', v: 520, src: 'p1 3.원료판정 입고량' },
+        { k: 'boxes_ok', label: '판정 상자', v: 480, src: 'p1 3.원료판정 판정수량' },
+        { k: 'deduct', label: '공제 상자', v: 40, src: 'p1 비고 (흑변 14 + 기본공제 5% 26)' },
+        { k: 'total_kg', label: '총중량 kg', v: 14400, src: 'p1 3.원료판정 총중량 (30kg×480)' },
+        { k: 'core_temp', label: '중심온도 기준', v: '10℃ 이하 (5회 측정 양호)', src: 'p1 1.입고 검수 기준' },
+        { k: 'black', label: '흑변 공제', v: '14상자', src: 'p1 비고' }
+      ] },
+    { id: 'P-2', match: /^P-2\./i, doc_type: '가공일지', sensitive: false, source: 'P-2.가공일지_7월.pdf · 시연용 가상(일본 P사 세트)',
+      fields: [
+        { k: 'date', label: '날짜', v: '2026-07-08', src: 'p1 상단' },
+        { k: 'raw_sources', label: '다리 작업 원료 약어(순서대로)', v: ['삼', '삼', '삼', '삼', '삼'], src: 'p1 금일 작업 · 다리' },
+        { k: 'products_made', label: '만든 품목', v: ['LB', 'WF'], src: 'p1 금일 작업 열 제목' },
+        { k: 'headcount', label: '공정별 인원·시간', v: '채육 7 · 선별 62 · 계량 34 · 입상 38 · 포장 74 (시간×인)', src: 'p1 작업시간(H×인)' },
+        { k: 'notes', label: '특이사항', v: '특이사항 없음', src: 'p1 하단 특이사항' }
+      ] },
+    { id: 'P-3', match: /^P-3\./i, doc_type: '포장일지', sensitive: false, source: 'P-3.포장일지_7월.pdf · 시연용 가상(일본 P사 세트)',
+      fields: [
+        { k: 'date', label: '날짜', v: '2026-07-10', src: 'p1 상단' },
+        { k: 'rows', label: '포장 행 (P사)', v: [
+          { buyer: 'P사', product: 'LB', ct: 240, mfg: '2026-07-08', expiry: '2028-07-07', lot_code: 'CA' },
+          { buyer: 'P사', product: 'WF', ct: 90, mfg: '2026-07-08', expiry: '2028-07-07', lot_code: 'CA' }
+        ], src: 'p1 제품 포장 현황 표 (규격 12kg = 1kg×12p, 진공 포장)' },
+        { k: 'lot_rule', label: '로트 규칙', v: '생산일 기준 글자 코드 (담당자 확인)', src: '추가질문 답변 1·2' }
+      ] },
+    { id: 'P-4', match: /^P-4\.|PE-2608/i, doc_type: '패킹리스트', sensitive: false, source: 'P-4.패킹리스트_PE-2608.pdf · 시연용 가상(일본 P사 세트, 계좌·단가 없음)',
+      fields: [
+        { k: 'invoice_no', label: '선적번호', v: 'PE-2608', src: '우상단 INVOICE NO' },
+        { k: 'date', label: '날짜', v: '2026-07-15', src: '우상단 DATE' },
+        { k: 'departure', label: '출항', v: '2026-07-16', src: 'DEPARTURE DATE' },
+        { k: 'vessel', label: '선박', v: 'HONOR BRIGHT 2625E', src: 'VESSEL/FLIGHT' },
+        { k: 'route', label: '구간', v: '부산 → 오사카', src: 'FROM / TO' },
+        { k: 'buyer', label: '바이어', v: 'P사', src: 'CONSIGNEE' },
+        { k: 'items', label: '품목', v: [{ desc: 'BROKEN(LB)', ct: 240, kg: 2880 }, { desc: 'WHITE FLAKE', ct: 90, kg: 1080 }], src: '본문 표 (규격 12kg = 1kg×12)' },
+        { k: 'total_ct', label: '합계 C/T', v: 330, src: 'G-TOTAL' },
+        { k: 'total_kg', label: '합계 kg', v: 3960, src: 'G-TOTAL' },
+        { k: 'hs', label: 'HS', v: '1605.10', src: '좌하단' },
+        { k: 'linked_lot_codes', label: '연결할 회사 LOT', v: ['CA'], src: '포장일지 7/10 LB 240 C/T = 선적 240 C/T' }
+      ] },
+    { id: 'P-5', match: /^P-5\./i, doc_type: '위생증명서', sensitive: false, source: 'P-5.위생증명서_7월.pdf · 시연용 가상(일본 P사 세트)',
+      fields: [
+        { k: 'issuer', label: '발급', v: '국립수산물품질관리원 부산지원', src: '상단 기관명 · 하단 서명' },
+        { k: 'date', label: '발행일', v: '2026-07-16', src: 'Date' },
+        { k: 'applicant', label: '신청인', v: 'A사', src: 'Applicant' },
+        { k: 'commodity', label: '품명', v: 'FROZEN COOKED RED SNOW CRAB MEAT', src: 'Commodity' },
+        { k: 'quantity_ct', label: '수량 C/T', v: 330, src: 'Quantity' },
+        { k: 'quantity_kg', label: '수량 kg', v: 3960, src: 'Quantity' },
+        { k: 'form', label: '양식', v: '바이어 요청, 비협약국 양식', src: '-' },
+        { k: 'shipment_no', label: '해당 선적', v: 'PE-2608', src: '수량·날짜로 대응' }
+      ] },
+    { id: 'P-7', match: /^P-7\./i, doc_type: '영양성적서', sensitive: false, source: 'P-7.영양성분_성적서_LB_7월.pdf · 시연용 가상(일본 P사 세트)',
+      fields: [
+        { k: 'product', label: '제품명', v: '냉동 자숙 홍게 다리 파살 (LB) 1 kg', src: 'p1 제품명' },
+        { k: 'date', label: '검사완료', v: '2026-06-20', src: 'p1' },
+        { k: 'issuer', label: '시험기관', v: '시험검사기관 (시연용)', src: 'p1 기관명' },
+        { k: 'kcal', label: '열량 kcal/100g', v: 38.2, src: 'p1 결과표' },
+        { k: 'sodium_mg', label: '나트륨 mg', v: 220, src: 'p1 결과표' },
+        { k: 'carb', label: '탄수화물 g', v: 1.2, src: 'p1 결과표' },
+        { k: 'sugar', label: '당류 g', v: 0, src: 'p1 결과표' },
+        { k: 'fat', label: '조지방 g', v: 0.2, src: 'p1 결과표' },
+        { k: 'transfat', label: '트랜스지방 g', v: 0, src: 'p1 결과표' },
+        { k: 'satfat', label: '포화지방 g', v: 0.18, src: 'p1 결과표' },
+        { k: 'protein', label: '조단백질 g', v: 7.9, src: 'p1 결과표' },
+        { k: 'note', label: '비고', v: '시연용 가상 성적서 (품목 LB 기준값과 같은 수치)', src: '-' }
+      ] },
+    { id: 'P-8', match: /^P-8\./i, doc_type: '규격서양식', sensitive: false, source: 'P-8.P사_LB_規格書.xlsx · 시연용 가상(일본 P사 양식)',
+      fields: [
+        { k: 'buyer', label: '바이어', v: 'P사', src: 'B2 会社名' },
+        { k: 'form_title', label: '양식명', v: '商品規格書', src: 'A1' },
+        { k: 'fields', label: '양식 칸', v: ['会社名', '作成日', '韓国商品名', '商品番号', '日本商品名', '商品コード', '形態', '工場', '規格', '賞味期限', '単位', '重点管理', '配合', '調味液', '包装資材'], src: 'A열 라벨' },
+        { k: 'recipe', label: '配合', v: [{ name: 'LEG BROKEN', g: 700, pct: 70 }, { name: '調味料(液)', g: 300, pct: 30 }], src: '配合 표' },
+        { k: 'seasoning', label: '調味液', v: [{ name: '水', g: 40000, pct: 95.2 }, { name: '調味料P-1 (食塩、トレハロース、調味料(アミノ酸等))', g: 2000, pct: 4.8 }], src: '調味液 표' },
+        { k: 'qc', label: '重点管理', v: ['解凍重量 560g 이상 (歩留 80%)', '異物 혼입 금지 (금속·목재·곤충·플라스틱·비닐·모발)', '危険夾雑物 금지 (足先·爪先·えら·黒変肉)', '一般細菌 1.0×10⁴ 이하, 大腸菌群 음성'], src: '重点管理 칸' },
+        { k: 'packaging', label: '包装資材', v: ['아우터 카톤 400×270×200 1매', 'PP 트레이 266×195×33 12매', '인쇄 진공袋 360×250×0.08 12매', '이너 씰 65×65 12매'], src: '包装資材 표' },
+        { k: 'spec', label: '규격·기한', v: '1kg×12 / 賞味期限 2年間 / 商品コード P-LB-01', src: '規格·賞味期限·商品コード' }
+      ] },
+    { id: 'P-9', match: /^P-9\./i, doc_type: '라벨', sensitive: false, source: 'P-9.라벨_P사_LB_7월.xlsx · 시연용 가상(일본 P사 라벨 문안)',
+      fields: [
+        { k: 'buyer', label: '바이어', v: 'P사', src: '輸入者' },
+        { k: 'name', label: '名称', v: '紅ずわいがにむき身', src: '名称' },
+        { k: 'brand', label: '商品名', v: '紅ずわいがに棒くずれ(LB)', src: '商品名' },
+        { k: 'ingredients', label: '原材料名', v: '紅ずわいがに（韓国）、食塩／トレハロース、調味料（アミノ酸等）、（一部にかにを含む）', src: '原材料名' },
+        { k: 'net', label: '内容量', v: '1キログラム', src: '内容量' },
+        { k: 'expiry', label: '賞味期限', v: '2028.07.07', src: '賞味期限' },
+        { k: 'storage', label: '保存方法', v: '要冷凍（－18℃以下）', src: '保存方法' },
+        { k: 'origin', label: '原産国名', v: '韓国', src: '原産国名' },
+        { k: 'importer', label: '輸入者', v: 'P사 (大阪府 大阪市)', src: '輸入者' },
+        { k: 'allergen', label: '알레르겐', v: 'かに（原材料名に一括表示）', src: '原材料名' },
+        { k: 'nutrition', label: '栄養成分 100g', v: 'エネルギー38kcal たんぱく質7.9g 脂質0.2g 炭水化物1.2g 食塩相当量0.56g（推定値）', src: '栄養成分表示' },
+        { k: 'pack', label: '容器包装 識別表示', v: 'プラ トレー:PP／袋:PE,PA', src: '識別表示' },
+        { k: 'code', label: '商品コード', v: 'P-LB-01', src: '商品コード' },
+        { k: 'country', label: '도착국', v: 'JP', src: '輸入者' },
+        { k: 'made', label: '라벨 기준 연도', v: '2026', src: '-' },
+        { k: 'source', label: '파일', v: 'P-9.라벨_P사_LB_7월.xlsx', src: '-' }
+      ] }
   ];
 
   // 대조·반영은 전부 apply.js 로 위임
