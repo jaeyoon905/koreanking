@@ -15,3 +15,8 @@ agent/redacted/
 server/*.db
 server/backup/
 tests/last_run.txt
+
+# 발표자료 레퍼런스 (공유 안 함)
+ref-deck.pdf
+ref-*
+~$*
