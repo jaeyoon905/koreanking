@@ -15,10 +15,10 @@
       ledger: LC.seedLedger.slice(), raw: LC.rawLots.slice(), registry: LC.registry.slice(),
       shipments: (LC.shipmentsSeed || []).slice(), nutritionSources: (LC.nutritionSources || []).slice(), docs: [], specForms: {}, revisions: [],
       labels: Object.values(LC.sampleLabels).map(function (l) { return { file: l.file, country: l.country, made: l.made }; }),
-      importShipments: [], processLog: {}, importWaybills: [], publicData: {}, extraProducts: [], productNutrition: {}, replies: []
+      importShipments: [], processLog: {}, importWaybills: [], publicData: {}, extraProducts: [], productNutrition: {}, replies: [], tx: {}
     };
   }
-  var SAVED = ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'docs', 'specForms', 'revisions', 'labels', 'importShipments', 'processLog', 'importWaybills', 'publicData', 'extraProducts', 'productNutrition', 'replies'];
+  var SAVED = ['ledger', 'raw', 'registry', 'shipments', 'nutritionSources', 'docs', 'specForms', 'revisions', 'labels', 'importShipments', 'processLog', 'importWaybills', 'publicData', 'extraProducts', 'productNutrition', 'replies', 'tx'];
   var state = { lastLabel: null };
   (function load() { var s = seeds(); SAVED.forEach(function (k) { state[k] = JSON.parse(localStorage.getItem('lc.' + k) || 'null') || s[k]; }); })();
   // 서버(server/app.py)가 있으면 서버 상태가 원본, 없으면(file://) 브라우저 저장. 동작은 같다
@@ -219,9 +219,16 @@
         ((r.changes || []).some(function (c) { return /자료 필요/.test(String(c && (c.after || c.why))); }) ? '<p class="alert">자료가 없어 못 고친 칸이 있습니다. 표의 "이유"를 보고 자료를 넣으세요.</p>' : '') +
         '<div class="actions"><button class="lg" id="lbl-fixpdf">수정안 PDF 받기</button><button id="lbl-fixlabel">라벨 문안만 받기 (PDF)</button><button class="ghost" id="lbl-fixtxt">라벨 문안 .txt</button></div></div>';
       state.lastFix = { country: country, file: meta.file, before: s0, after: s2, fields: fixed }; save();
-      var KEY_KO = { name: '명칭', ingredients: '원재료명', net: '내용량', mfg: '제조일', expiry: '유통(소비)기한', storage: '보존방법', origin: '원산지', importer: '수입자', manufacturer: '제조자', allergen: '알레르겐', nutrition: '영양성분', pack: '포장 식별표시', lot_format: 'LOT 표기', country: '나라' };
+      var KEY_BY = {
+        JP: { name: '名称', ingredients: '原材料名', net: '内容量', mfg: '製造日', expiry: '賞味期限', storage: '保存方法', origin: '原産国名', importer: '輸入者', manufacturer: '製造者', allergen: 'アレルゲン', nutrition: '栄養成分表示', pack: '識別表示', lot_format: 'ロット表示' },
+        HK: { name: '品名 Product name', ingredients: '成分 Ingredients', net: '淨含量 Net content', mfg: '生產日期 Date of manufacture', expiry: '此日期前最佳 Best before', storage: '保存方法 Storage', origin: '原產地 Origin', importer: '進口商 Importer', manufacturer: '製造商 Manufacturer', allergen: '致敏物 Allergen', nutrition: '營養資料 Nutrition', pack: '包裝 Packaging', lot_format: '批號 Lot' },
+        TW: { name: '品名', ingredients: '成分', net: '淨重', mfg: '製造日期', expiry: '有效日期', storage: '保存方法', origin: '原產地', importer: '進口商', manufacturer: '製造商', allergen: '過敏原資訊', nutrition: '營養標示', pack: '包裝', lot_format: '批號' },
+        TH: { name: 'ชื่ออาหาร Product name', ingredients: 'ส่วนประกอบ Ingredients', net: 'น้ำหนักสุทธิ Net weight', mfg: 'วันผลิต MFG', expiry: 'วันหมดอายุ EXP', storage: 'การเก็บรักษา Storage', origin: 'ประเทศผู้ผลิต Origin', importer: 'ผู้นำเข้า Importer', manufacturer: 'ผู้ผลิต Manufacturer', allergen: 'ข้อมูลสำหรับผู้แพ้อาหาร Allergen', nutrition: 'ข้อมูลโภชนาการ Nutrition', pack: 'บรรจุภัณฑ์ Packaging', lot_format: 'รุ่นการผลิต Lot' },
+        CN: { name: '食品名称', ingredients: '配料', net: '净含量', mfg: '生产日期', expiry: '保质期到期日', storage: '贮存条件', origin: '原产国', importer: '进口商/代理商', manufacturer: '生产者', allergen: '致敏物质提示', nutrition: '营养成分表', pack: '包装', lot_format: '批号' }
+      };
+      var KEY_KO = KEY_BY[country] || KEY_BY.JP;
       var labelRows = Object.keys(fixed).filter(function (k) { return fixed[k] && k !== 'country'; });
-      var labelHtml = '<div class="sheet"><h3>라벨 문안 (수정안) · ' + esc(LC.rules[country].name) + ' · ' + esc(meta.file || '') + '</h3><p class="muted">규칙 판정 뒤 고친 문안 · ' + LC.TODAY + '</p><table>' + labelRows.map(function (k) { return '<tr><th>' + esc(KEY_KO[k] || k) + '</th><td>' + esc(fixed[k]) + '</td></tr>'; }).join('') + '</table></div>';
+      var labelHtml = '<div class="sheet"><h3>Label text (corrected draft) · ' + esc(LC.rules[country].name) + ' · ' + esc(meta.file || '') + '</h3><p class="muted">규칙 판정 뒤 고친 문안 · ' + LC.TODAY + '</p><table>' + labelRows.map(function (k) { return '<tr><th>' + esc(KEY_KO[k] || k) + '</th><td>' + esc(fixed[k]) + '</td></tr>'; }).join('') + '</table></div>';
       var labelTxt = labelRows.map(function (k) { return (KEY_KO[k] || k) + ': ' + fixed[k]; }).join('\n');
       $('#lbl-fixpdf').onclick = function () { downloadPdf('라벨수정안_' + (meta.file || country) + '_' + country, $('#lbl-fixcard').outerHTML); };
       $('#lbl-fixlabel').onclick = function () { downloadPdf('라벨문안_' + (meta.file || country) + '_' + country, labelHtml); };
@@ -379,14 +386,37 @@
       '賞味期限': p.shelf_months + '개월 (' + Math.round(p.shelf_months / 12) + '年間)', '単位': 'ケース', '形態': p.note || '' };
     if (lot) { val['LOT'] = lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : ''); val['製造日'] = lot.mfg; val['賞味期限'] = lot.expiry; }
     var gf = function (x) { return typeof x === 'string' ? x : x.name + (x.g != null ? ' ' + x.g + 'g' : '') + (x.pct != null ? ' (' + x.pct + '%)' : ''); };
-    var td = function (k) { var v = mp[k] && ours[mp[k]] ? ours[mp[k]] : val[k]; return '<tr><th>' + esc(k) + '</th><td' + (v ? '' : miss) + '>' + esc(v || '') + '</td></tr>'; };
-    buyerFormSheet.lastValues = {}; (f.fields || Object.keys(val)).forEach(function (k) { var v = mp[k] && ours[mp[k]] ? ours[mp[k]] : val[k]; if (v) buyerFormSheet.lastValues[k] = v; });
+    var lang = formLang(f), raw = {}; (f.fields || Object.keys(val)).forEach(function (k) { var v = mp[k] && ours[mp[k]] ? ours[mp[k]] : val[k]; if (v) raw[k] = String(v); });
+    buyerFormSheet.lastRaw = raw; buyerFormSheet.lastLang = lang;
+    var td = function (k) { var v = raw[k] ? txOf(lang, raw[k]) : ''; return '<tr><th>' + esc(k) + '</th><td' + (v ? '' : miss) + (raw[k] && lang !== 'ko' && HANGUL.test(v) ? ' class="tx-wait"' : '') + '>' + esc(v || '') + '</td></tr>'; };
+    buyerFormSheet.lastValues = {}; Object.keys(raw).forEach(function (k) { buyerFormSheet.lastValues[k] = txOf(lang, raw[k]); });
+    var pend = lang !== 'ko' && Object.keys(raw).some(function (k) { return HANGUL.test(txOf(lang, raw[k])); });
     var list = function (title, arr) { if ((f.fields || []).indexOf(title) < 0 && !(arr && arr.length)) return ''; return '<tr><th colspan="2">' + title + '</th></tr>' + (arr && arr.length ? arr.map(function (x, i) { return '<tr><td>' + (i + 1) + '</td><td>' + esc(gf(x)) + '</td></tr>'; }).join('') : '<tr><td colspan="2"' + miss + '></td></tr>'); };
     var sections = ['重点管理', '配合', '調味液', '包装資材'], basic = (f.fields || Object.keys(val)).filter(function (k) { return sections.indexOf(k) < 0; });
     if (lot) basic = basic.concat(['LOT', '製造日']);
     var hit = Object.keys(mp).filter(function (k) { return mp[k] && ours[mp[k]]; }).length;
-    return '<div class="sheet"><h3>' + esc(f.form_title || '商品規格書') + ' · ' + esc(buyer) + '</h3><p class="muted">' + esc(buyer) + ' 양식 칸 순서 그대로 · 노란 칸은 우리 데이터에 없는 값' + (f.mapping ? ' · AI가 짝지은 칸 ' + hit + '/' + Object.keys(mp).length + ' (승인됨)' : '') + ' · 발행일 ' + LC.TODAY + '</p><table>' +
+    return '<div class="sheet"><h3>' + esc(f.form_title || '商品規格書') + ' · ' + esc(buyer) + '</h3><p class="muted">' + esc(buyer) + ' 양식 칸 순서 그대로 · 노란 칸은 우리 데이터에 없는 값' + (f.mapping ? ' · AI가 짝지은 칸 ' + hit + '/' + Object.keys(mp).length + ' (승인됨)' : '') + (lang !== 'ko' ? ' · 값은 ' + lang + '로 번역' + (pend ? ' 중…' : '됨(AI 초안, 보내기 전 확인)') : '') + ' · 발행일 ' + LC.TODAY + '</p><table>' +
       basic.map(td).join('') + list('重点管理', f.qc) + list('配合', f.recipe) + list('調味液', f.seasoning) + list('包装資材', f.packaging) + '</table></div>';
+  }
+  // 양식 언어: 칸 이름 글자로 판별. ko 면 번역 없음
+  function formLang(f) {
+    var t = ((f && f.fields) || []).join(' ') + ' ' + ((f && f.form_title) || '');
+    if (/[぀-ヿ]/.test(t)) return 'ja';
+    if (/[\u0E00-\u0E7F]/.test(t)) return 'th';
+    if (/[\u4e00-\u9fff]/.test(t)) return /[产规营养贮质签]/.test(t) ? 'zh-Hans' : 'zh-Hant';
+    if (/[가-힣]/.test(t)) return 'ko';
+    return 'en';
+  }
+  var HANGUL = /[가-힣]/;
+  function txOf(lang, v) { var m = (state.tx || {})[lang]; return m && m[v] ? m[v] : v; }
+  // 한국어가 든 값만 모아 번역을 받아 state.tx 에 저장. 바뀐 게 있으면 true
+  function translateMissing(lang, values) {
+    if (!API || !lang || lang === 'ko') return Promise.resolve(false);
+    state.tx = state.tx || {}; var m = state.tx[lang] = state.tx[lang] || {};
+    var items = []; Object.keys(values || {}).forEach(function (k) { var v = String(values[k] || ''); if (HANGUL.test(v) && !m[v] && items.indexOf(v) < 0) items.push(v); });
+    if (!items.length) return Promise.resolve(false);
+    toast('양식 언어(' + lang + ')로 번역 중… ' + items.length + '칸');
+    return api('/translate', 'POST', { lang: lang, items: items }).then(function (r) { var got = (r && r.map) || {}; var c = 0; Object.keys(got).forEach(function (k) { if (!m[k]) { m[k] = got[k]; c++; } }); if (c) save(); return c > 0; }).catch(function () { return false; });
   }
   function buyerFormValues(buyer, lot) { buyerFormSheet(buyer, lot); return buyerFormSheet.lastValues || {}; }   // 칸 이름 → 값 (엑셀 채우기용)
   function formSelect(id) {
@@ -405,8 +435,11 @@
   screens.spec.bind = function () {
     bindProductSelect('sp-prod'); var el = $('#sp-form'); if (el) el.onchange = function () { state.specBuyer = el.value; route(); }; var ls = $('#sp-lot'); if (ls) ls.onchange = function () { state.specLot = ls.value; route(); };
     var cur = specLot(), nm = '규격서_' + (state.specBuyer || '기본') + '_' + P().code + (cur ? '_' + cur.lot : '');
-    var pb = $('#sp-pdf'); if (pb) pb.onclick = function () { downloadPdf(nm, $('.sheet').outerHTML); };
-    var xb = $('#sp-xlsx'); if (xb) xb.onclick = function () { downloadFilledXlsx(state.specBuyer, cur); };
+    var f0 = state.specBuyer && state.specForms[state.specBuyer];
+    if (f0) translateMissing(formLang(f0), buyerFormSheet.lastRaw || {}).then(function (ch) { if (ch) route(); });
+    var ready = function () { return f0 ? translateMissing(formLang(f0), buyerFormSheet.lastRaw || {}).then(function (ch) { if (ch) { route(); } }) : Promise.resolve(); };
+    var pb = $('#sp-pdf'); if (pb) pb.onclick = function () { ready().then(function () { downloadPdf(nm, (f0 ? buyerFormSheet(state.specBuyer, cur) : $('.sheet').outerHTML)); }); };
+    var xb = $('#sp-xlsx'); if (xb) xb.onclick = function () { ready().then(function () { downloadFilledXlsx(state.specBuyer, cur); }); };
     bindBundles();
   };
 
@@ -909,6 +942,7 @@
     var a = function (href, text, attr) { return '<a class="btn small" href="' + href + '"' + (attr || '') + '>' + text + '</a>'; };
     var rows = bs.map(function (b, i) {
       var p = LC.products[b.product] || P(), items = [];
+      items.push(btn('data-bd-zip="' + i + '"', '이 거래 서류 한 번에 받기 (zip)', 'lg'));
       if (b.form) { items.push(btn('data-bd-pdf="' + i + '"', '규격서 PDF (' + esc(b.form.form_title || '양식') + ')')); if (b.form.form_b64) items.push(btn('data-bd-xlsx="' + i + '"', '바이어 엑셀에 채워 받기', 'small ghost')); }
       if (b.reply) items.push(btn('data-bd-reply="' + i + '"', '답장 초안 .txt' + (b.reply.deadline ? ' (기한 ' + esc(b.reply.deadline) + ')' : ''), 'small'));
       if (state.lastFix && state.lastFix.fields) items.push(btn('data-bd-label="' + i + '"', '라벨 문안 PDF (' + esc(state.lastFix.country) + ' 수정안)', 'small ghost'));
@@ -922,8 +956,27 @@
   function bindBundles() {
     var bs = bundleBuyers();
     var withProduct = function (b, fn) { var prev = state.productCode; setProduct(b.product); try { fn(); } finally { setProduct(prev); } };
-    document.querySelectorAll('[data-bd-pdf]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdPdf]; withProduct(b, function () { downloadPdf('규격서_' + b.buyer + '_' + b.product + (b.lot ? '_' + b.lot.lot : ''), buyerFormSheet(b.buyer, b.lot)); }); }; });
-    document.querySelectorAll('[data-bd-xlsx]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdXlsx]; withProduct(b, function () { downloadFilledXlsx(b.buyer, b.lot); }); }; });
+    var prep = function (b) { var raw; withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); raw = buyerFormSheet.lastRaw; }); return translateMissing(formLang(state.specForms[b.buyer]), raw || {}); };
+    document.querySelectorAll('[data-bd-pdf]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdPdf]; prep(b).then(function () { withProduct(b, function () { downloadPdf('규격서_' + b.buyer + '_' + b.product + (b.lot ? '_' + b.lot.lot : ''), buyerFormSheet(b.buyer, b.lot)); }); }); }; });
+    document.querySelectorAll('[data-bd-xlsx]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdXlsx]; prep(b).then(function () { withProduct(b, function () { downloadFilledXlsx(b.buyer, b.lot); }); }); }; });
+    document.querySelectorAll('[data-bd-zip]').forEach(function (el) { el.onclick = function () {
+      var b = bs[+el.dataset.bdZip]; el.disabled = true; el.textContent = '패키지 만드는 중…';
+      var go = function () {
+        var items = [];
+        withProduct(b, function () {
+          if (b.form) { var html = buyerFormSheet(b.buyer, b.lot); items.push({ type: 'pdf', name: '규격서_' + b.buyer + '_' + b.product, html: html }); if (b.form.form_b64) items.push({ type: 'xlsx', name: '규격서_채움_' + (b.form.form_name || b.buyer).replace(/\.xlsx?$/i, ''), b64: b.form.form_b64, values: buyerFormValues(b.buyer, b.lot) }); }
+        });
+        if (b.reply) items.push({ type: 'txt', name: '답장초안_' + b.buyer, text: String(b.reply.reply_draft || '') });
+        if (state.lastFix && state.lastFix.fields) { var fx = state.lastFix, rows = Object.keys(fx.fields).filter(function (k) { return fx.fields[k] && k !== 'country'; }); items.push({ type: 'pdf', name: '라벨문안_' + fx.country, html: '<div class="sheet"><h3>Label text (corrected draft) · ' + esc(fx.country) + '</h3><table>' + rows.map(function (k) { return '<tr><th>' + esc(k) + '</th><td>' + esc(fx.fields[k]) + '</td></tr>'; }).join('') + '</table></div>' }); }
+        if (b.lot) items.push({ type: 'lot', lot: b.lot.lot, url: serverOrigin() + '/lot/' + encodeURIComponent(b.lot.lot) });
+        if (state.shipments.length) items.push({ type: 'ship', no: state.shipments[state.shipments.length - 1].no });
+        toast('서류 ' + items.length + '건 묶는 중…');
+        return fetch(API + '/package', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: '서류패키지_' + b.buyer + '_' + b.product + '_' + LC.TODAY.replace(/-/g, ''), items: items }) })
+          .then(function (r) { if (!r.ok) throw new Error('패키지 실패 ' + r.status); return r.blob(); })
+          .then(function (bl) { download('서류패키지_' + b.buyer + '_' + b.product + '.zip', bl, 'application/zip'); });
+      };
+      (b.form ? prep(b) : Promise.resolve()).then(go).catch(function (e) { toast(String(e)); }).then(function () { el.disabled = false; el.textContent = '이 거래 서류 한 번에 받기 (zip)'; });
+    }; });
     document.querySelectorAll('[data-bd-reply]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdReply]; download('답장초안_' + b.buyer + '.txt', String(b.reply.reply_draft || ''), 'text/plain;charset=utf-8'); }; });
     document.querySelectorAll('[data-bd-label]').forEach(function (el) { el.onclick = function () { var fx = state.lastFix, rows = Object.keys(fx.fields).filter(function (k) { return fx.fields[k] && k !== 'country'; }); downloadPdf('라벨문안_' + fx.country + '_' + (fx.file || ''), '<div class="sheet"><h3>라벨 문안 (수정안) · ' + esc(fx.country) + '</h3><table>' + rows.map(function (k) { return '<tr><th>' + esc(k) + '</th><td>' + esc(fx.fields[k]) + '</td></tr>'; }).join('') + '</table></div>'); }; });
   }

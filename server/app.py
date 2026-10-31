@@ -325,6 +325,49 @@ class H(BaseHTTPRequestHandler):
         if not self.authed(): return self.deny()
         if self.path == '/api/extract':
             return self.send_json(200, extract(self.body()))
+        if self.path == '/api/package':   # 이 거래에 보낼 서류를 zip 하나로: PDF(HTML 렌더)·채운 엑셀·답장 txt·로트 패키지·QR·선적 서류
+            b = self.body(); items = b.get('items') or []; name = re.sub(r'[\\/:*?"<>|]+', '_', str(b.get('name') or '서류패키지'))
+            if not items: return self.send_json(400, {'error': 'items 없음'})
+            import zipfile, io
+            out = ROOT / 'agent' / 'out'; out.mkdir(exist_ok=True); zp = out / (name + '.zip'); made = []; css = (ROOT / 'style.css').read_text('utf-8', errors='replace') if (ROOT / 'style.css').exists() else ''
+            st = get_state()
+            if SD:
+                for k, v in (SD.load_state() or {}).items(): st.setdefault(k, v)
+            try:
+                from playwright.sync_api import sync_playwright
+                with zipfile.ZipFile(zp, 'w', zipfile.ZIP_DEFLATED) as z, sync_playwright() as pw:
+                    br = pw.chromium.launch(channel='chrome', headless=True); pg = br.new_page()
+                    for it in items[:30]:
+                        t = it.get('type'); nm = re.sub(r'[\\/:*?"<>|]+', '_', str(it.get('name') or t))
+                        try:
+                            if t == 'pdf':
+                                doc = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>' + css + '\n@page{size:A4;margin:14mm}body{background:#fff;padding:0;margin:0}.no-print,.actions{display:none!important}</style></head><body><main>' + str(it.get('html') or '') + '</main></body></html>'
+                                pg.set_content(doc, wait_until='load'); pg.emulate_media(media='print'); z.writestr(nm + '.pdf', pg.pdf(format='A4', print_background=True)); made.append(nm + '.pdf')
+                            elif t == 'txt': z.writestr(nm + '.txt', str(it.get('text') or '')); made.append(nm + '.txt')
+                            elif t == 'xlsx' and it.get('b64'):
+                                import openpyxl
+                                wb = openpyxl.load_workbook(io.BytesIO(base64.b64decode(it['b64']))); norm = lambda s: re.sub(r'\s+', '', str(s or '')).strip().lower(); keys = {norm(k): v for k, v in (it.get('values') or {}).items() if v not in (None, '')}
+                                for ws in wb.worksheets:
+                                    for row in ws.iter_rows():
+                                        for c in row:
+                                            k = norm(c.value)
+                                            if k and k in keys:
+                                                tgt = ws.cell(row=c.row, column=c.column + 1)
+                                                if tgt.value in (None, ''): tgt.value = str(keys[k])
+                                bio = io.BytesIO(); wb.save(bio); z.writestr(nm + '.xlsx', bio.getvalue()); made.append(nm + '.xlsx')
+                            elif t == 'lot' and SD and it.get('lot'):
+                                z.write(SD.buyer_package(st, it['lot']), '로트패키지_' + it['lot'] + '.zip'); made.append('로트패키지_' + it['lot'] + '.zip')
+                                if QR:
+                                    l = next((x for x in st.get('ledger', []) if x.get('lot') == it['lot']), None)
+                                    if l:
+                                        qp = ROOT / 'agent' / 'qr' / (it['lot'] + '.png'); qp.parent.mkdir(exist_ok=True); QR.label_png(l, str(it.get('url') or ('http://localhost:%s/lot/%s' % (PORT, urllib.parse.quote(it['lot'])))), qp); z.write(qp, 'QR_' + it['lot'] + '.png'); made.append('QR_' + it['lot'] + '.png')
+                            elif t == 'ship' and SD and it.get('no'):
+                                for fn, lab in ((SD.packing_list_draft, '패킹리스트초안'), (SD.manufacture_date_list, '제조일자리스트'), (SD.sanitary_cert_request, '위생증명서신청값')):
+                                    pth = fn(st, it['no']); z.write(pth, lab + '_' + it['no'] + pathlib.Path(pth).suffix); made.append(lab)
+                        except Exception as e: z.writestr('오류_' + nm + '.txt', '%s: %s' % (type(e).__name__, e))
+                    z.writestr('목록.txt', '\n'.join(made) + '\n'); br.close()
+            except Exception as e: return self.send_json(500, {'error': '패키지 실패: %s' % type(e).__name__})
+            return self.send_file(zp, 'application/zip', download=True)
         if self.path == '/api/pdf':   # 화면 조각(HTML) → PDF 파일. 인쇄창 없이 바로 내려받기(휴대폰 포함)
             b = self.body(); html = str(b.get('html') or ''); name = re.sub(r'[\\/:*?"<>|]+', '_', str(b.get('name') or 'document')) or 'document'
             if not html.strip(): return self.send_json(400, {'error': 'html 없음'})
@@ -356,6 +399,16 @@ class H(BaseHTTPRequestHandler):
             except Exception as e: return self.send_json(500, {'error': '엑셀 채우기 실패: %s' % type(e).__name__})
             self.log_message('formfill %d cells', filled)
             return self.send_file(fp, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', download=True)
+        if self.path == '/api/translate':   # 규격서 값 번역(AI 초안). 숫자·단위·코드·회사명은 그대로. 결과는 화면이 저장해 재사용
+            b = self.body(); lang = str(b.get('lang') or 'en'); items = [str(x) for x in (b.get('items') or []) if str(x).strip()][:80]
+            if not items: return self.send_json(200, {'map': {}})
+            if not os.environ.get('ANTHROPIC_API_KEY'): return self.send_json(200, {'map': {}, 'note': 'API 키 없음'})
+            names = {'en': '영어', 'ja': '일본어', 'zh-Hant': '번체 중국어(홍콩·대만)', 'zh-Hans': '간체 중국어', 'th': '태국어'}
+            try:
+                r = graph.llm('다음 한국어 문구(수산 가공식품 규격서·라벨 용어)를 ' + names.get(lang, lang) + '로 번역하라. 규칙: 숫자·단위·%·℃·코드(LB·WF 등)·학명·회사명(A사)·이미 외국어인 부분은 그대로 둔다. 식품 표시 관용 표현을 쓴다(예: -18℃ 이하 냉동 → Keep frozen at or below -18°C). 출력은 {"원문": "번역"} JSON 하나, 원문 전부 빠짐없이.\n' + json.dumps(items, ensure_ascii=False))
+                r = r if isinstance(r, dict) else {}; r.pop('_src', None)
+                return self.send_json(200, {'map': {k: v for k, v in r.items() if k in items and isinstance(v, str) and v.strip()}})
+            except Exception as e: return self.send_json(500, {'error': '번역 실패: %s' % type(e).__name__})
         if self.path == '/api/label/fix':   # 라벨 수정안: 지적된 칸만 AI가 고침. 다시 판정은 화면의 규칙이 한다
             b = self.body()
             if not os.environ.get('ANTHROPIC_API_KEY'): return self.send_json(200, {'fields': b.get('fields') or {}, 'changes': [], 'note': 'API 키 없음'})
