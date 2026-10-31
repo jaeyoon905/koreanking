@@ -62,7 +62,7 @@
     return new Promise(function (resolve) {
       var old = $('#confirm-dlg'); if (old) old.remove();
       var d = document.createElement('dialog'); d.id = 'confirm-dlg'; d.className = 'card';
-      d.innerHTML = '<h3>' + esc(title) + '</h3><p>' + esc(body) + '</p><div class="row"><button id="cf-ok">' + esc(okText || '진행') + '</button><button class="ghost" id="cf-no">취소</button></div>';
+      d.innerHTML = '<h3>' + esc(title) + '</h3><p>' + esc(body) + '</p><div class="row"><button class="ghost" id="cf-no">취소</button><button class="danger" id="cf-ok">' + esc(okText || '진행') + '</button></div>';
       document.body.appendChild(d); d.showModal();
       var done = function (ok) { try { d.close(); } catch (e) {} d.remove(); resolve(ok); };
       $('#cf-ok').onclick = function () { done(true); }; $('#cf-no').onclick = function () { done(false); }; d.oncancel = function () { done(false); };
@@ -1269,21 +1269,26 @@
   }
   function bundleCards() {
     var bs = bundleBuyers(); if (!bs.length) return '';
-    var btn = function (attr, text, cls) { return '<button class="' + (cls || 'small') + '" ' + attr + '>' + text + '</button>'; };
-    var a = function (href, text, attr) { var cls = /class="([^"]*)"/.exec(attr || ''); return '<a class="' + (cls ? cls[1] : 'btn small') + '" href="' + href + '"' + (attr || '').replace(/\s*class="[^"]*"/, '') + '>' + text + '</a>'; };
-    var rows = bs.map(function (b, i) {
-      var p = LC.products[b.product] || P(), items = [];
-      items.push(btn('data-bd-zip="' + i + '"', '이 거래 서류 한 번에 받기 (zip)', 'lg'));
-      if (b.form) { items.push(btn('data-bd-pdf="' + i + '"', '규격서 PDF', 'small ghost')); if (b.form.form_b64) items.push(btn('data-bd-xlsx="' + i + '"', '바이어 엑셀 채움', 'small ghost')); }
-      if (b.reply) items.push(btn('data-bd-reply="' + i + '"', '답장 초안' + (b.reply.deadline ? ' · 기한 ' + esc(b.reply.deadline) : ''), 'small ghost'));
-      if (state.lastFix && state.lastFix.fields) items.push(btn('data-bd-label="' + i + '"', '라벨 문안 (' + esc(state.lastFix.country) + ')', 'small ghost'));
-      if (b.lot && API) items.push(a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(b.lot.lot), '로트 패키지', ' download class="btn small ghost"'), a(API + '/lot/' + encodeURIComponent(b.lot.lot) + '/qr.png', 'QR', ' target="_blank" class="btn small ghost"'));
-      if (state.shipments.length && API) { var no = state.shipments[state.shipments.length - 1].no; items.push(a(API + '/shipdocs/pl?no=' + encodeURIComponent(no), '패킹리스트', ' download class="btn small ghost"'), a(API + '/shipdocs/mdl?no=' + encodeURIComponent(no), '제조일자 리스트', ' download class="btn small ghost"')); }
-      var asked = b.reply && b.reply.answers ? b.reply.answers.map(function (x) { return x['주제'] || x.topic; }).filter(function (v, j, arr) { return v && arr.indexOf(v) === j; }).join('·') : '';
-      var rds = requestedDocs(b), rdHtml = rds.length ? '<div class="outs"><b>바이어가 물은 것 → 서류</b> ' + rds.map(function (d, j) { return d.ok ? btn('data-bd-doc="' + i + ':' + j + '"', d.title, 'small ghost') : '<span class="b warn">' + esc(d.title) + ' · 자료 필요</span>'; }).join(' ') + (rds.some(function (d) { return d.ok; }) ? ' ' + btn('data-bd-docs="' + i + '"', '요청 서류 전부 zip', 'small ghost') : '') + '</div>' : '';
-      return '<tr><td><b>' + esc(b.buyer) + '</b><br><span class="muted">' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ', 로트 ' + esc(b.lot.lot) : ', 로트 없음') + (asked ? '<br>문의 항목: ' + esc(asked.replace(/·/g, ', ')) : '') + '</span></td><td class="outs">' + items.join(' ') + rdHtml + '</td></tr>';
+    var btn = function (attr, text, cls) { return '<button class="' + (cls || 'small ghost') + '" ' + attr + '>' + text + '</button>'; };
+    var a = function (href, text, attr) { return '<a class="btn small ghost dl" href="' + href + '"' + (attr || '') + '>' + text + '</a>'; };
+    var cards = bs.map(function (b, i) {
+      var p = LC.products[b.product] || P(), groups = [], count = 0;
+      var g = function (name, items) { if (items.length) { groups.push('<div class="bd-g"><dt>' + name + '</dt><dd>' + items.join('') + '</dd></div>'); count += items.length; } };
+      if (b.form) g('규격서', [btn('data-bd-pdf="' + i + '"', 'PDF')].concat(b.form.form_b64 ? [btn('data-bd-xlsx="' + i + '"', '바이어 엑셀에 채움')] : []));
+      if (b.reply) g('답장', [btn('data-bd-reply="' + i + '"', '초안 .txt' + (b.reply.deadline ? ' <small>기한 ' + esc(b.reply.deadline) + '</small>' : ''))]);
+      if (state.lastFix && state.lastFix.fields) g('라벨', [btn('data-bd-label="' + i + '"', '고친 문안 PDF <small>' + esc(state.lastFix.country) + '</small>')]);
+      if (b.lot && API) g('로트 ' + esc(b.lot.lot), [a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(b.lot.lot), '바이어 패키지 zip', ' download'), a(API + '/lot/' + encodeURIComponent(b.lot.lot) + '/qr.png', 'QR 라벨', ' target="_blank"')]);
+      if (state.shipments.length && API) { var no = state.shipments[state.shipments.length - 1].no; g('선적 ' + esc(no), [a(API + '/shipdocs/pl?no=' + encodeURIComponent(no), '패킹리스트 초안', ' download'), a(API + '/shipdocs/mdl?no=' + encodeURIComponent(no), '제조일자 리스트', ' download'), a(API + '/shipdocs/cert?no=' + encodeURIComponent(no), '위생증명서 신청값', ' download')]); }
+      var rds = requestedDocs(b), okDocs = rds.filter(function (d) { return d.ok; });
+      var req = rds.length ? '<div class="bd-g bd-req"><dt>바이어가 물은 것에 대한 서류</dt><dd>' + rds.map(function (d, j) { return d.ok ? btn('data-bd-doc="' + i + ':' + j + '"', d.title) : '<span class="bd-miss">' + esc(d.title) + ' <small>자료 필요</small></span>'; }).join('') + (okDocs.length ? btn('data-bd-docs="' + i + '"', '요청 서류 전부 zip', 'small ghost accent') : '') + '</dd></div>' : '';
+      count += okDocs.length;
+      var asked = b.reply && b.reply.answers ? b.reply.answers.map(function (x) { return x['주제'] || x.topic; }).filter(function (v, j, arr) { return v && arr.indexOf(v) === j; }) : [];
+      return '<article class="bundle">' +
+        '<header class="bd-head"><div class="bd-who"><b>' + esc(b.buyer) + '</b><span>' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ', 로트 ' + esc(b.lot.lot) : ', 로트 없음') + '</span>' + (asked.length ? '<span class="bd-ask">문의 항목: ' + esc(asked.join(', ')) + '</span>' : '') + '</div>' +
+        '<button class="bd-zip" data-bd-zip="' + i + '"><span>이 거래 서류 한 번에 받기</span><small>zip, ' + count + '건</small></button></header>' +
+        '<dl class="bd-groups">' + groups.join('') + req + '</dl></article>';
     }).join('');
-    return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류</h3><p class="muted">파란 버튼 하나로 한 벌이 나오고, 낱개도 받을 수 있습니다. 보내기 전 검수창을 거칩니다.</p><table><tr><th>바이어 · 품목</th><th>보낼 것</th></tr>' + rows + '</table></div>';
+    return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류</h3><p class="muted">파란 버튼 하나로 한 벌이 나오고, 낱개도 받을 수 있습니다. 보내기 전 검수창을 거칩니다.</p><div class="bundles">' + cards + '</div></div>';
   }
   function bindBundles() {
     var bs = bundleBuyers();
@@ -1292,7 +1297,7 @@
     document.querySelectorAll('[data-bd-pdf]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdPdf]; prep(b).then(function () { var html, ctx; withProduct(b, function () { html = buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); return sendGate('규격서 PDF', b.buyer + ' · ' + b.product, ctx).then(function (ok) { if (ok) downloadPdf('규격서_' + b.buyer + '_' + b.product + (b.lot ? '_' + b.lot.lot : ''), html); }); }); }; });
     document.querySelectorAll('[data-bd-xlsx]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdXlsx]; prep(b).then(function () { var ctx; withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); return sendGate('바이어 엑셀 채움', b.buyer, ctx).then(function (ok) { if (ok) withProduct(b, function () { downloadFilledXlsx(b.buyer, b.lot); }); }); }); }; });
     document.querySelectorAll('[data-bd-zip]').forEach(function (el) { el.onclick = function () {
-      var b = bs[+el.dataset.bdZip]; el.disabled = true; el.textContent = '패키지 만드는 중…';
+      var b = bs[+el.dataset.bdZip]; el.disabled = true; el.innerHTML = '<span>패키지 만드는 중</span><small>10~40초</small>';
       var go = function () {
         var items = [];
         withProduct(b, function () {
@@ -1307,7 +1312,7 @@
           .then(function (r) { if (!r.ok) throw new Error('패키지 실패 ' + r.status); return r.blob(); })
           .then(function (bl) { download('서류패키지_' + b.buyer + '_' + b.product + '.zip', bl, 'application/zip'); }); });
       };
-      (b.form ? prep(b) : Promise.resolve()).then(function () { var ctx = { product: LC.products[b.product] || P() }; if (b.form) withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); if (state.lastFix) { ctx.fixCount = (state.lastFix.after || {}).fix || 0; ctx.checkCount = (state.lastFix.after || {}).check || 0; ctx.aiFixed = Object.keys(state.lastFix.fields || {}).length ? undefined : undefined; } return sendGate('거래 서류 패키지', b.buyer + ' · ' + b.product, ctx); }).then(function (ok) { if (ok) return go(); }).catch(function (e) { toast(String(e)); }).then(function () { el.disabled = false; el.textContent = '이 거래 서류 한 번에 받기 (zip)'; });
+      (b.form ? prep(b) : Promise.resolve()).then(function () { var ctx = { product: LC.products[b.product] || P() }; if (b.form) withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); if (state.lastFix) { ctx.fixCount = (state.lastFix.after || {}).fix || 0; ctx.checkCount = (state.lastFix.after || {}).check || 0; ctx.aiFixed = Object.keys(state.lastFix.fields || {}).length ? undefined : undefined; } return sendGate('거래 서류 패키지', b.buyer + ' · ' + b.product, ctx); }).then(function (ok) { if (ok) return go(); }).catch(function (e) { toast(String(e)); }).then(function () { el.disabled = false; el.innerHTML = '<span>이 거래 서류 한 번에 받기</span><small>zip</small>'; });
     }; });
     var reqItems = function (b) { var docs = requestedDocs(b).filter(function (d) { return d.ok; }), p = LC.products[b.product] || P(); return reqDocTranslate(b, docs).then(function () { return docs.map(function (d) { return { type: 'pdf', name: '요청서류_' + d.topic + '_' + b.buyer, html: reqDocHtml(d.topic, d.lang, p, b.lot, b.buyer, d.rows) }; }); }); };
     document.querySelectorAll('[data-bd-doc]').forEach(function (el) { el.onclick = function () { var x = el.dataset.bdDoc.split(':'), b = bs[+x[0]], d = requestedDocs(b)[+x[1]], p = LC.products[b.product] || P(); if (!d || !d.ok) return; reqDocTranslate(b, [d]).then(function () { return sendGate('요청 서류 · ' + d.title, b.buyer, { product: p, txCount: d.rows.filter(function (r) { return HANGUL.test(String(r[1])); }).length }); }).then(function (ok) { if (ok) downloadPdf('요청서류_' + d.topic + '_' + b.buyer, reqDocHtml(d.topic, d.lang, p, b.lot, b.buyer, d.rows)); }); }; });

@@ -445,3 +445,80 @@ header.topbar { position: sticky; top: 0; z-index: 30; height: 60px; padding: 0 
   .col #main { padding: 20px 16px 48px; }
 }
 @media print { .side, header.topbar { display: none !important; } .shell { display: block; } }
+
+/* ====================================================================
+   3판 손질 (재윤 허락, 2026-11-01 새벽) — 라벨 위에서 보기·고친 라벨 카드는 그대로.
+   원칙: 색은 전부 토큰, 누르는 것은 44px, 주 버튼은 한 화면에 하나, 숫자는 고정폭.
+   ==================================================================== */
+:root {
+  --on-primary: #fff; --brand-hover: #0e4f8a; --primary-soft-2: #d6e6fb; --check-ink: #a87800;
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+}
+
+/* 누르는 것: 크기·반응·초점 */
+button, a.btn, .chip, .list-row, .tile, .lead-tile, .stat, .pk-card { touch-action: manipulation; }
+button, a.btn { transition: background-color .15s ease, border-color .15s ease, transform .08s ease; }
+button:active:not([disabled]), a.btn:active { transform: scale(.98); }
+button.small, a.btn.small { height: 36px; min-height: 36px; }
+@media (pointer: coarse) { button.small, a.btn.small { height: 44px; min-height: 44px; } }
+button[disabled] { opacity: .6; cursor: not-allowed; }
+.summary-bar span b, td.num, th.num, .lr-meta, .bd-who span, #mode { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { button, a.btn { transition: none; } button:active:not([disabled]), a.btn:active { transform: none; } }
+
+/* 확인창·검수창 */
+dialog.card { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: 24px 28px; margin: auto; box-shadow: none; }
+dialog.card::backdrop { background: rgba(24, 26, 29, .45); }
+dialog.card h3 { font-size: 20px; margin-bottom: 6px; }
+dialog.card > p.muted:first-of-type { margin: 0 0 16px; }
+dialog.card .log li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+dialog.card .row { margin: 16px 0 8px; align-items: center; }
+dialog.card label.chk { margin: 8px 0 0; font-size: 15px; }
+
+/* ---------- 바이어별 보낼 서류: 바이어마다 한 장 ---------- */
+#bundle-card > h3 { font-size: 22px; margin-bottom: 4px; }
+#bundle-card > p.muted { margin: 0 0 20px; }
+.bundles { display: flex; flex-direction: column; gap: 16px; }
+.bundle { border: 1px solid var(--hairline); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
+.bd-head { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; padding: 20px 24px; background: var(--tile); }
+.bd-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bd-who b { font-size: 19px; letter-spacing: -0.01em; }
+.bd-who span { font-size: 14px; color: var(--ink-2); }
+.bd-who .bd-ask { color: var(--ink-muted); }
+button.bd-zip { height: auto; min-height: 56px; padding: 10px 24px; display: flex; flex-direction: column; align-items: center; gap: 0; line-height: 1.25; border-radius: var(--r-md); min-width: 240px; }
+button.bd-zip span { font-size: 17px; font-weight: 700; }
+button.bd-zip small { font-size: 13px; font-weight: 400; opacity: .85; }
+.bd-groups { margin: 0; padding: 8px 24px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 4px 32px; }
+.bd-g { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--hairline); min-width: 0; }
+.bd-g dt { font-size: 13px; color: var(--ink-muted); font-weight: 700; }
+.bd-g dd { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bd-g dd button, .bd-g dd a.btn { height: 36px; min-height: 36px; font-size: 14px; font-weight: 600; padding: 0 12px; background: var(--surface); color: var(--ink); border-color: var(--hairline); }
+.bd-g dd button:hover, .bd-g dd a.btn:hover { border-color: var(--primary); color: var(--primary); background: var(--surface); }
+.bd-g dd a.btn.dl::before { content: "↓"; margin-right: 6px; color: var(--primary); font-weight: 800; }
+.bd-g dd button small { font-weight: 400; color: var(--ink-muted); margin-left: 4px; }
+.bd-g.bd-req { grid-column: 1 / -1; border-bottom: 0; padding-top: 16px; }
+.bd-g.bd-req dt { color: var(--ink-2); font-size: 14px; }
+.bd-g dd button.accent { background: var(--primary-soft); color: var(--primary); border-color: transparent; font-weight: 700; }
+.bd-miss { display: inline-flex; align-items: center; height: 36px; padding: 0 12px; border-radius: var(--r-sm); background: var(--check-soft); color: var(--check-ink); font-size: 14px; }
+.bd-miss small { margin-left: 6px; font-size: 12px; }
+@media (max-width: 800px) {
+  .bd-head { grid-template-columns: 1fr; padding: 16px; }
+  button.bd-zip { width: 100%; min-width: 0; }
+  .bd-groups { padding: 4px 16px 12px; grid-template-columns: 1fr; }
+  .bd-g dd button, .bd-g dd a.btn { height: 44px; min-height: 44px; }
+}
+
+/* 한 번에 처리: 단계 제목에 번호 원, 접힌 내부 기록은 조용하게 */
+h3.step { font-size: 20px; }
+details.fold-sec > summary { padding: 14px 16px; border-radius: var(--r-md); background: var(--tile); color: var(--ink-2); font-weight: 700; font-size: 15px; margin: 16px 0; }
+details.fold-sec[open] > summary { margin-bottom: 12px; }
+
+/* 안내표(올릴 서류와 나오는 것): 본문보다 한 단계 작게, 머리글은 조용하게 */
+details.guide > summary { font-weight: 700; color: var(--ink-2); padding: 4px 0 10px; }
+details.guide table { font-size: 14px; } details.guide th, details.guide td { padding: 8px 12px; }
+details.guide td:first-child { width: 72px; text-align: center; }
+
+/* 고친 라벨·라벨 위에서 보기는 손대지 않음 (#lbl-fixcard, .ov, .ov-pkg 규칙 없음) */
+
+/* 되돌릴 수 없는 동작은 빨간 버튼, 취소가 먼저 */
+button.danger { background: var(--fix); border-color: var(--fix); color: var(--on-primary); }
+button.danger:hover { background: #b8261b; border-color: #b8261b; }
