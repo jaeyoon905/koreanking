@@ -581,15 +581,23 @@
     return '<div class="pk-card skel" aria-hidden="true"><div class="pk-thumb"><div class="sk-doc"><i class="sk-h"></i>' + rows + '<i class="sk-box"></i></div></div><div class="pk-meta"><i class="sk-t"></i><i class="sk-s"></i></div></div>';
   }
   // 수출 꾸러미 9종(나라별 라벨 5 + 규격서·수정 요청서·패킹리스트·위생증명서 신청값). 한 번에 처리 3단계 맨 위에 나온다
+  // 채우는 동안 100ms마다 다시 그리므로, 기록이 바뀌기 전까지는 한 번 만든 카드를 다시 쓴다
+  var packMemo = { key: null, cards: null };
   function packDocs() {
-    var p = P(), lot = state.ledger[state.ledger.length - 1], sh = state.shipments[state.shipments.length - 1];
+    var p = P(), lot = state.ledger[state.ledger.length - 1];
+    var sh = state.shipments.filter(function (s) { return s.items && s.items.length; }).pop() || state.shipments[state.shipments.length - 1];   // 품목이 빈 선적은 건너뜀
+    var key = [state.productCode, state.docs.length, state.ledger.length, lot && lot.lot, sh && sh.no].join('|');
+    if (packMemo.key === key) return packMemo.cards;
+    var tot = sh ? [sh.total_ct, sh.total_kg] : [];
+    if (sh && tot[0] == null) tot = [sh.items.reduce(function (a, i) { return a + (+i.ct || 0); }, 0), sh.items.reduce(function (a, i) { return a + (+i.kg || 0); }, 0)];
     var hk = LC.sampleLabels.HK ? judge('HK', LC.sampleLabels.HK.fields).filter(function (x) { return x.status !== 'pass'; }) : [];
     var doc = function (title, rows) { return '<div class="doc-mini"><h4>' + title + '</h4><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>'; };
-    return TAG_CTRY.map(function (c) { return [c[1] + ' 라벨', c[2], '#tags/' + c[0], c[3](p)]; }).concat([
+    packMemo.key = key;
+    return packMemo.cards = TAG_CTRY.map(function (c) { return [c[1] + ' 라벨', c[2], '#tags/' + c[0], c[3](p)]; }).concat([
       ['규격서', '바이어 양식', '#spec', specSheet(lot)],
       ['수정 요청서', '홍콩 라벨 · 수정 ' + hk.filter(function (x) { return x.status === 'fix'; }).length + ' · 확인 ' + hk.filter(function (x) { return x.status === 'check'; }).length, '#label', doc('라벨 수정 요청서 · 홍콩', hk.map(function (x) { return [x.item, x.fix || x.msg]; }))],
-      ['패킹리스트', sh ? sh.no : '선적 없음', '#ship', doc('PACKING LIST' + (sh ? ' · ' + sh.no : ''), sh ? sh.items.slice(0, 6).map(function (i) { return [i.desc, i.ct + ' C/T · ' + i.kg + ' kg']; }).concat([['TOTAL', sh.total_ct + ' C/T · ' + sh.total_kg + ' kg']]) : [])],
-      ['위생증명서 신청값', '수품원', '#ship', doc('위생증명서 신청 정보', sh ? [['수출자', p.factory ? p.factory.name : ''], ['수입자', sh.buyer], ['선박', sh.vessel], ['구간', sh.route], ['HS', sh.hs || ''], ['수량', sh.total_ct + ' C/T / ' + sh.total_kg + ' kg']] : [])]
+      ['패킹리스트', sh ? sh.no : '선적 없음', '#ship', doc('PACKING LIST' + (sh ? ' · ' + sh.no : ''), sh ? sh.items.slice(0, 6).map(function (i) { return [i.desc, i.ct + ' C/T · ' + i.kg + ' kg']; }).concat([['TOTAL', tot[0] + ' C/T · ' + tot[1] + ' kg']]) : [])],
+      ['위생증명서 신청값', '수품원', '#ship', doc('위생증명서 신청 정보', sh ? [['수출자', p.factory ? p.factory.name : ''], ['수입자', sh.buyer], ['선박', sh.vessel], ['구간', sh.route], ['HS', sh.hs || ''], ['수량', tot[0] + ' C/T / ' + tot[1] + ' kg']] : [])]
     ]).map(function (c) { return '<a class="pk-card done" href="' + c[2] + '"><div class="pk-thumb"><div class="pk-scale">' + c[3] + '</div></div><div class="pk-meta"><b>' + c[0] + '</b><span>' + esc(c[1]) + '</span></div><span class="pk-ok">✓</span></a>'; });
   }
   // 승인 전(pend)에는 회색 틀 9장
