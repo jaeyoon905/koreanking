@@ -144,6 +144,7 @@
     allRevisions().forEach(function (v) {
       var d = daysTo(v.effective); if (d < 0 || d > 180 || !LC.rules[v.country]) return;
       var hits = affectedLabels(v), fix = hits.reduce(function (t, h) { return t + (h.s ? h.s.fix : 0); }, 0);
+      if (!hits.length) return;   // 영향 라벨 0건은 할 일 아님 (대시보드에서 봄)
       out.push({ cls: fix ? 'bad' : 'warn', text: '규정 개정 D-' + d + ' · ' + v.title + ' · 영향 라벨 ' + hits.length + '건' + (fix ? ' (수정 ' + fix + ')' : ''), href: hits.length ? '#label/' + hits[0].key + '/' + v.country : '#label/' + (LC.sampleLabels.HK ? 'HK' : Object.keys(LC.sampleLabels)[0]) + '/' + v.country, go: '라벨 판정' });
     });
     var ps = LC.products || { LB: LC.product }, noNut = Object.keys(ps).filter(function (k) { return !ps[k].nutrition100; });
@@ -759,7 +760,7 @@
       '<div class="card"><div id="in-guide">' + docGuide() + '</div>' + dropZone('in') + '<p class="summary-bar" id="in-sum">' + intakeSummary() + '</p></div>' +
       '<div class="card"><h3>서류함</h3><div id="in-docbox">' + docBox() + '</div></div>' +
       '<div id="in-cards"></div><h3>처리 기록</h3><div id="in-docs"></div>' +
-      '<div class="row"><button class="ghost small" id="in-empty" aria-label="원장을 비움">빈 원장</button><button class="ghost small" id="in-seed" aria-label="시드 데이터로 복원">시드로 복원</button></div>';
+      '<div class="row"><button class="ghost small" id="in-empty" aria-label="원장을 비움">빈 원장</button><button class="ghost small" id="in-seed" aria-label="예시 데이터로 되돌리기">예시 데이터로 되돌리기</button></div>';
   };
   function renderIntake() {
     $('#in-cards').innerHTML = intakeCards.map(intakeCard).join('');
@@ -976,7 +977,7 @@
   screens['export'] = function () {
     var ymd = LC.TODAY.replace(/-/g, '');
     return '<h2>내보내기</h2><p class="sub">CSV나 JSON으로 내려받습니다.</p>' + (state.ledger.length ? '' : emptyLedger()) +
-      '<div class="card"><h3>표 내보내기 (CSV)</h3><div class="row">' + EXPORTS.map(function (e, i) { return '<button data-csv="' + i + '">' + e[0] + '</button>'; }).join('') + '</div><p class="muted">파일명 라벨코스트_표이름_' + ymd + '.csv</p></div>' +
+      '<div class="card"><h3>표 내보내기 (CSV)</h3><div class="row">' + EXPORTS.map(function (e, i) { return '<button class="ghost" data-csv="' + i + '">' + e[0] + '</button>'; }).join('') + '</div><p class="muted">파일명 라벨코스트_표이름_' + ymd + '.csv</p></div>' +
       '<div class="card"><h3>백업</h3><div class="row"><button id="exp-json">전체 백업(JSON)</button><label>백업 불러오기 <input type="file" id="exp-load" accept=".json"></label>' + (API ? '<a href="' + API + '/backup" target="_blank">서버 백업 내려받기</a>' : '') + '</div><p id="exp-msg" class="muted">' + intakeSummary() + '</p></div>';
   };
   screens['export'].bind = function () {

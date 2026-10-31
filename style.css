@@ -224,6 +224,14 @@ tr.qk-sub .log { margin: 4px 0 0; } tr.qk-sub .log li { border: 0; padding: 3px 
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
 
+/* 한 화면에 파란 버튼 하나: 결과물 카드 안 버튼은 보조로 */
+.card.result button, .card.result a.btn { background: var(--surface); color: var(--ink); border-color: var(--hairline); height: 36px; font-size: 14px; padding: 0 14px; }
+.card.result button:hover, .card.result a.btn:hover { background: var(--tile); }
+
+/* 그리드 칸이 내용 때문에 넘치지 않게 */
+.home > *, .feature > *, .cols > *, .grid4 > *, .stats > * { min-width: 0; }
+select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
+
 /* ---------- 모바일 ---------- */
 @media (max-width: 800px) {
   header { padding: 0 16px; } .nav-sub { margin: 0 -16px; padding: 8px 16px; }
@@ -233,6 +241,11 @@ tr.qk-sub .log { margin: 4px 0 0; } tr.qk-sub .log li { border: 0; padding: 3px 
   h2 { font-size: 24px; }
   .cols, .pipeline, .home, .tiles, .feature { grid-template-columns: 1fr; }
   .actions { flex-direction: column; } .actions button.lg { width: 100%; }
+  .card { overflow-x: auto; } .stats { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .row > label { flex: 1 1 100%; } .row > label > select, .row > label > input { width: 100%; }
+  .hero { font-size: 22px; } .search { height: 52px; padding-left: 16px; }
+  .lt-v { font-size: 30px; } .lr-meta { display: none; }
+  .verdict .v-sub { margin-left: 0; width: 100%; }
   .stage + .stage::before { content: "⌄"; left: 46%; top: -18px; }
   table { font-size: 14px; } th, td { padding: 8px 10px; }
   .verdict { font-size: 18px; padding: 16px; }
