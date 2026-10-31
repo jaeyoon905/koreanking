@@ -326,14 +326,14 @@ if (typeof module !== 'undefined') module.exports = LC;
 LC.products.LEG = {
   code: 'LEG', name_ko: '냉동 자숙 홍게 다리 (L/M/S)', name_en: 'FROZEN COOKED RED SNOW CRAB LEG (L/M/S)', name_ja: '紅ずわいがに脚（L/M/S）',
   net: '1 kg', pack: '1 kg × 10 (10 kg/C/T)', storage: '-18℃ 이하 냉동', shelf_months: 24,
-  ingredients: [{ name_ko: '홍게 다리', pct: 100, type: 'raw' }], allergens: ['crustacea'], nutrition100: null, nutrition_source: '성적서 없음 (시연용 추가 품목)',
+  ingredients: [{ name_ko: '홍게 다리', pct: 98, type: 'raw' }, { name_ko: '정제소금', pct: 2, type: 'raw' }], allergens: ['crustacea'], nutrition100: { kcal: 36.0, protein: 7.5, fat: 0.2, satfat: 0.1, transfat: 0, carb: 0.9, sugar: 0, sodium_mg: 200 }, nutrition_source: '시연용 임의값 (성적서 없음, 회사 확인 필요)',
   process: '원어 입고 → 자숙 → 절단·선별(L/M/S) → 급속동결 → 포장 → 금속검출 → 냉동보관', factory: LC.product.factory,
   note: '시연용 추가 품목. 포장일지 LEG S·LEG M 행, 가공일지 "L/M/S 다리" 기준. 규격·배합은 회사 확인 필요', demo: true
 };
 LC.products.CL = {
   code: 'CL', name_ko: '냉동 자숙 홍게 집게살', name_en: 'FROZEN COOKED RED SNOW CRAB CLAW MEAT', name_ja: '紅ずわいがに爪肉',
   net: '500 g', pack: '500 g × 20 (10 kg/C/T)', storage: '-18℃ 이하 냉동', shelf_months: 24,
-  ingredients: [{ name_ko: '홍게 집게살', pct: 100, type: 'raw' }], allergens: ['crustacea'], nutrition100: null, nutrition_source: '성적서 없음 (시연용 추가 품목)',
+  ingredients: [{ name_ko: '홍게 집게살', pct: 97, type: 'raw' }, { name_ko: '정제수', pct: 2.5, type: 'raw' }, { name_ko: '정제소금', pct: 0.5, type: 'raw' }], allergens: ['crustacea'], nutrition100: { kcal: 39.5, protein: 8.3, fat: 0.3, satfat: 0.1, transfat: 0, carb: 0.8, sugar: 0, sodium_mg: 215 }, nutrition_source: '시연용 임의값 (성적서 없음, 회사 확인 필요)',
   process: '원어 입고 → 자숙 → 집게 분리·채육 → 선별 → 급속동결 → 포장 → 금속검출 → 냉동보관', factory: LC.product.factory,
   note: '시연용 추가 품목. 가공일지 "집게" 기준. 규격·배합은 회사 확인 필요', demo: true
 };

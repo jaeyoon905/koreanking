@@ -37,6 +37,11 @@
   // 식약처 품목제조보고에서 추가한 품목: 기본 품목(LB)을 틀로 쓰고 이름·코드만 덮는다. 영양값은 없음(성적서 필요)
   function addExtraProduct(o) {
     LC.products = LC.products || { LB: LC.product };
+    if (o.source === '품목대장') {   // 품목대장으로 들어온 품목: 있는 칸만 덮어쓴다
+      var base = LC.products[o.code] || LC.product, mp = {}; for (var k0 in base) mp[k0] = base[k0];
+      Object.keys(o).forEach(function (k) { if (o[k] != null && o[k] !== '') mp[k] = o[k]; }); if (!mp.factory) mp.factory = LC.product.factory;
+      LC.products[o.code] = mp; return mp;
+    }
     if (LC.products[o.code]) return LC.products[o.code];
     var np = {}; for (var k in LC.product) np[k] = LC.product[k];
     np.code = o.code; np.name_ko = o.name_ko; np.name_en = o.name_en || o.name_ko; np.name_ja = ''; np.type = o.type || ''; np.report_no = o.report_no || '';
@@ -613,6 +618,7 @@
   var FORMS = {
     '포장일지': { fields: [F('date', '날짜', 'date')], rows: { k: 'rows', label: '포장 행', cols: [F('buyer', '바이어'), F('product', '품목'), F('ct', 'C/T', 'number'), F('mfg', '제조일', 'date'), F('expiry', '소비기한', 'date'), F('lot_code', '회사 LOT 코드')] } },
     '입고검사서': { fields: [F('species', '원료명'), F('fishing_period', '조업 기간'), F('received', '입고일', 'date'), F('vessel', '선박 (첫 글자 = 가공일지 약어)'), F('landing', '위판장'), F('boxes_in', '입고 상자', 'number'), F('boxes_ok', '판정 상자', 'number'), F('total_kg', '총 kg', 'number'), F('deduct', '공제 상자', 'number'), F('note', '비고')] },
+    '품목대장': { fields: [], rows: { k: 'rows', label: '품목', cols: [F('code', '코드'), F('name_ko', '제품명(국문)'), F('name_en', '제품명(영문)'), F('name_ja', '제품명(일문)'), F('net', '내용량'), F('pack', '포장(박스당)'), F('shelf_months', '소비기한 개월', 'number'), F('storage', '보관'), F('ingredients', '배합 (예: 홍게 다리살 80%, 정제수 17%, L-글루탐산나트륨(향미증진제 621))'), F('kcal', '열량 kcal/100g', 'number'), F('protein', '단백질 g', 'number'), F('fat', '지방 g', 'number'), F('carb', '탄수화물 g', 'number'), F('sodium_mg', '나트륨 mg', 'number')] } },
     '가공일지': { fields: [F('date', '날짜', 'date'), F('raw_sources', '원료 약어 (한 글자씩 공백 구분)'), F('products_made', '만든 품목'), F('notes', '메모 (이름 없이)')] },
     '패킹리스트': { fields: [F('invoice_no', '선적번호'), F('date', '날짜', 'date'), F('departure', '출항일', 'date'), F('buyer', '바이어'), F('vessel', '선박'), F('from', '출발항'), F('to', '도착항'), F('total_ct', '합계 C/T', 'number'), F('total_kg', '합계 kg', 'number'), F('hs', 'HS 코드'), F('linked_lot_codes', '연결 로트 코드 (쉼표)')], rows: { k: 'items', label: '품목', cols: [F('desc', '품목'), F('ct', 'C/T', 'number'), F('kg', 'kg', 'number')] } },
     '위생증명서': { fields: [F('issuer', '발급기관'), F('serial', '발행번호'), F('date', '발급일', 'date'), F('applicant', '신청인'), F('commodity', '품명'), F('quantity_ct', '수량 C/T', 'number'), F('quantity_kg', '수량 kg', 'number'), F('form', '양식'), F('shipment_no', '선적번호')] },
@@ -674,6 +680,7 @@
     });
     if (c.doc_type === '라벨' && o.name) out.push(a('#label', '라벨 판정 → 수정안 만들기', ' data-out-label="' + i + '"'));
     if (c.doc_type === '고시문') out.push(a('#dash', '대시보드: 개정 → 영향 라벨'));
+    if (c.doc_type === '품목대장') out.push(a('#product', '품목 화면(영양 환산표)'), a('#spec', '규격서'));
     if (c.doc_type === '패킹리스트' || c.doc_type === '위생증명서') out.push(a('#ship', '선적 카드: 제조일자 리스트·패킹리스트 초안·위생증명서 신청값'));
     if (c.doc_type === '입고검사서' || c.doc_type === '가공일지') out.push(a('#ship', '선적·원장'), a('#stats', '집계'));
     if (/^수입|^BL$|^운송장$/.test(c.doc_type || '')) out.push(a('#import', '수입 체크리스트'));
@@ -778,6 +785,7 @@
   }
   // 어떤 서류를 올리면 무엇이 나오는지. 올린 것은 ✓ (승인된 처리 기록 + 지금 올린 카드 기준)
   var DOC_GUIDE = [
+    ['품목 기본정보 (처음 한 번)', ['품목대장'], '품목대장 엑셀(코드·이름·내용량·배합·소비기한·영양) 또는 직접 입력', '품목 추가·갱신 → 규격서·라벨·답장의 값'],
     ['라벨 (기본)', ['라벨'], '라벨 사진 또는 문안', '나라별 규정 판정서 · 개정 영향'],
     ['생산 기록', ['입고검사서', '가공일지', '포장일지'], '원료입고검사서 · 가공일지 · 포장일지', '로트 원장 · 원료 역추적 · 클레임 보고서'],
     ['수출 서류', ['패킹리스트', '위생증명서'], '패킹리스트(계좌·단가는 자동으로 가림) · 위생증명서', '선적 ↔ 로트 연결 · 선적 서류 초안 5종'],

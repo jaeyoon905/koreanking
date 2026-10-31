@@ -60,7 +60,7 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
     return ingredientsOf(label.ingredients).filter(function (a) { return txt.indexOf(a) < 0; });
   }
 
-  LC.docTypes = ['입고검사서', '가공일지', '포장일지', '패킹리스트', '위생증명서', 'HACCP인증서', '영양성적서', '규격서양식', '라벨', '고시문', '메일', '수입인보이스', 'BL', '수입신고서', '운송장'];
+  LC.docTypes = ['입고검사서', '가공일지', '포장일지', '패킹리스트', '위생증명서', 'HACCP인증서', '영양성적서', '규격서양식', '라벨', '고시문', '메일', '품목대장', '수입인보이스', 'BL', '수입신고서', '운송장'];
 
   LC.fieldsToObj = function (fields) {
     if (!fields || !Array.isArray(fields)) return fields || {};
@@ -228,6 +228,38 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
       extra = ' · 품목 ' + code + ' 영양값(100g) 채움 → 라벨·규격서·수정안에 반영';
     }
     return '영양값 출처 1건 기록 (' + reportKey(o) + ', 식염 ' + saltOf(o) + 'g 환산)' + extra;
+  };
+
+  // ---------- 품목 기본정보(품목대장) ----------
+  // 한 행 = 품목 하나. 승인하면 LC.products 에 추가·갱신하고 state.extraProducts 에 저장(새로고침 뒤 app.js 가 다시 입힌다)
+  function parseIngredientsText(t) {   // "홍게 다리살 80%, 정제수 17%, L-글루탐산나트륨(향미증진제 621)" 같은 글을 배열로
+    return String(t || '').split(/[,，、;\n]+/).map(function (x) { return x.trim(); }).filter(Boolean).map(function (x) {
+      var pct = /([\d.]+)\s*%/.exec(x), add = /\(([^()\d]*?)\s*(\d{3,4})?\)/.exec(x), name = x.replace(/\s*\(.*\)\s*/, '').replace(/\s*[\d.]+\s*%/, '').trim();
+      return add && add[2] ? { name_ko: name, type: 'additive', func: (add[1] || '').trim(), ins: +add[2] } : { name_ko: name, pct: pct ? +pct[1] : null, type: 'raw' };
+    });
+  }
+  function productRow(r) {
+    var code = String(r.code || '').trim().toUpperCase(); if (!code) return null;
+    var ing = Array.isArray(r.ingredients) ? r.ingredients : parseIngredientsText(r.ingredients);
+    var nk = ['kcal', 'protein', 'fat', 'satfat', 'transfat', 'carb', 'sugar', 'sodium_mg'], nut = null;
+    if (nk.some(function (k) { return num(r[k]) != null; })) { nut = {}; nk.forEach(function (k) { nut[k] = num(r[k]); }); }
+    var alg = Array.isArray(r.allergens) ? r.allergens : String(r.allergens || '').split(/[,，\s]+/).filter(Boolean);
+    return { code: code, name_ko: r.name_ko || '', name_en: r.name_en || '', name_ja: r.name_ja || '', net: r.net || '', pack: r.pack || '', shelf_months: num(r.shelf_months), storage: r.storage || '', process: r.process || '',
+      allergens: alg.length ? alg : ['crustacea'], ingredients: ing, nutrition100: nut, nutrition_source: nut ? (r.nutrition_source || '품목대장 입력값') : null, source: '품목대장' };
+  }
+  R['품목대장'] = function (o, s) {
+    var rows = (o.rows || []).map(productRow).filter(Boolean);
+    if (!rows.length) return [{ item: '품목', status: 'check', note: '품목 행을 못 읽음 → 직접 입력' }];
+    return rows.map(function (p) { var had = window.LC && LC.products && LC.products[p.code]; return { item: '품목 ' + p.code + ' ' + p.name_ko, status: had ? 'ok' : 'add', note: (had ? '갱신' : '새 품목') + ' · 배합 ' + p.ingredients.length + '개' + (p.nutrition100 ? ' · 영양 100g 있음' : ' · 영양 없음(성적서 넣으면 채움)') + (p.shelf_months ? ' · ' + p.shelf_months + '개월' : '') }; });
+  };
+  A['품목대장'] = function (o, s) {
+    var rows = (o.rows || []).map(productRow).filter(Boolean), names = [];
+    s.extraProducts = s.extraProducts || [];
+    rows.forEach(function (p) {
+      upsert(s.extraProducts, 'code', p.code, p); names.push(p.code);
+      if (window.LC && LC.products) { var base = LC.products[p.code] || LC.product, np = {}; for (var k in base) np[k] = base[k]; Object.keys(p).forEach(function (k) { if (p[k] != null && p[k] !== '') np[k] = p[k]; }); if (!np.factory) np.factory = LC.product.factory; LC.products[p.code] = np; }
+    });
+    return '품목 ' + rows.length + '개 추가·갱신 (' + names.join(', ') + ') → 규격서·라벨·답장에 바로 반영';
   };
 
   // ---------- 바이어 문의 메일 ----------

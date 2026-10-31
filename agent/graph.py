@@ -27,7 +27,8 @@ SCHEMAS = {
     '위생증명서':  ['issuer', 'serial', 'date', 'applicant', 'commodity', 'quantity', 'form'],
     'HACCP인증서': ['cert_no', 'holder', 'valid_from', 'valid_to', 'category', 'ccp', 'issuer'],
     '메일':        ['from', 'date', 'subject', 'lang', 'product', 'questions', 'deadline'],   # questions: 질문 문장 배열. 주제 분류·근거 찾기는 코드(answer_evidence)
-    '고시문':      ['country', 'title', 'effective', 'changed_articles', 'affects'],   # 개발부 입력
+    '고시문':      ['country', 'title', 'effective', 'changed_articles', 'affects'],
+    '품목대장':    ['rows'],   # rows: [{code, name_ko, name_en, name_ja, net, pack, shelf_months, storage, process, allergens, ingredients:[{name_ko, pct, type, func, ins}], kcal, protein, fat, satfat, transfat, carb, sugar, sodium_mg}]   # 개발부 입력
     # 수입 서류 (수입부 import.js 키와 맞춤)
     '수입인보이스': ['invoice_no', 'date', 'exporter', 'importer', 'from', 'to', 'vessel', 'items', 'total_ct', 'incoterms'],
     'BL':          ['bl_no', 'carrier', 'vessel', 'voyage', 'pol', 'pod', 'containers', 'cartons', 'net_kg', 'issued', 'shipment_no'],
@@ -40,6 +41,7 @@ NAME_HINTS = [('Declaration', '수입신고서'), ('선하증권', 'BL'), ('KMTC
               ('表示案', '바이어지시'), ('패킹', '패킹리스트'), ('인보이스', '패킹리스트'), ('입고', '입고검사서'), ('가공일지', '가공일지'),
               ('포장', '포장일지'), ('위생증명', '위생증명서'), ('HACCP', 'HACCP인증서'), ('라벨', '라벨'), ('제품사진', '라벨'), ('메일', '메일'),
               ('고시', '고시문'), ('告示', '고시문'), ('基準', '고시문'), ('公告', '고시문'), ('解读', '고시문'), ('改正', '고시문'), ('通则', '고시문'),
+              ('품목대장', '품목대장'), ('품목 목록', '품목대장'), ('제품대장', '품목대장'), ('product master', '품목대장'), ('품목기본', '품목대장'),
               ('메일', '메일'), ('mail', '메일'), ('問い合わせ', '메일'), ('inquiry', '메일'), ('질의', '메일'), ('문의', '메일')]
 SENSITIVE = {'패킹리스트', '메일', '수입인보이스'}  # 계좌·단가가 섞일 수 있는 종류. masked=True 아니면 LLM 금지
 
@@ -64,6 +66,8 @@ FORM_HINTS = {
     '고시문':     ('정부가 낸 식품표시 규정 개정 고시·공고·해설(중국 GB 공告·解读, 일본 消費者庁 告示, 홍콩·대만·태국 공고 등). country 는 ISO 두 글자(CN·JP·HK·TW·TH), '
                   'title 은 규정 이름+번호, effective 는 시행일 YYYY-MM-DD(유예기간 끝나는 날이 따로 있으면 note 에). changed_articles 는 [{article: 조항 번호·이름, before: 전, after: 후}] 로 바뀐 조항만. '
                   'affects 는 라벨에서 고쳐야 할 표시 항목 이름 목록(예: 保质期到期日, 致敏物质, 数字标签). 문서에 없는 내용은 만들지 말고 null.'),
+    '품목대장':   ('우리 회사 품목 기본정보 표(엑셀·PDF). 한 행이 품목 하나. rows 의 code 는 품목 코드(LB·WF·SR·LEG·CL 등 대문자), shelf_months 는 개월 숫자, '
+                  'ingredients 는 [{name_ko, pct(숫자), type: raw|additive, func(첨가물 용도), ins(번호)}], allergens 는 영어 소문자 배열(crustacea 등), 영양은 100g 기준 숫자(kcal, protein, fat, satfat, transfat, carb, sugar, sodium_mg). 빈 칸은 null.'),
     '메일':       ('바이어가 보낸 문의 메일. from 은 회사·부서만(사람 이름 금지), lang 은 본문 언어 코드(ja·en·zh·ko), product 는 언급된 우리 품목 코드(LB·WF·SR 등, 없으면 null), '
                   'questions 는 질문 문장을 원문 그대로 하나씩 배열(번호 제거), deadline 은 회신 기한 YYYY-MM-DD. 단가·금액 숫자가 보여도 뽑지 않는다.'),
     '수입신고서': ('일본 정부 "Declaration for the import into the Republic of Korea of Food from Japan". Consignment Code, Declaration Number(NS…KR…), '
