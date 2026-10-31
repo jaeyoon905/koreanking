@@ -442,17 +442,21 @@
     return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 겹쳐 놓은 라벨을 누르면 그 라벨과 바꾼 이유가 나와요.</p>' +
       '<div class="row">' + productSelect('tg-prod') + '</div>' +
       '<div class="tagview"><section><h3 class="tv-h">한국 원본 <span class="muted">식품등의 표시기준</span></h3><div id="tg-kr"></div></section>' +
-      '<section><h3 class="tv-h">나라별 라벨</h3><div id="tg-main"></div><div class="tag-pile" id="tg-pile"></div></section></div>';
+      '<section><h3 class="tv-h">나라별 라벨 <span id="tg-chip"></span></h3><div id="tg-main"></div><div class="tag-pile" id="tg-pile"></div></section>' +
+      '<section><h3 class="tv-h" id="tg-why-h">바꾼 이유</h3><div id="tg-why"><p class="muted">왼쪽 라벨을 누르면 그 나라에서 바꾼 이유가 나와요.</p></div></section></div>';
   };
   screens.tags.bind = function (arg) {
     bindProductSelect('tg-prod');
     var p = P(), sel = arg === 'go' ? TAG_CTRY[0][0] : TAG_WHY[arg] ? arg : null;   // #tags/JP·#tags/go: 바로 펼친 화면
     $('#tg-kr').innerHTML = tagKR(p);
     var cardHtml = function (c) { return '<div class="tag-card" data-c="' + c[0] + '" tabindex="0" role="button" aria-label="' + c[1] + ' 라벨 보기"><span class="tc-tab">' + c[1] + '</span>' + c[3](p) + '</div>'; };
-    function hl(n) { Array.prototype.forEach.call(document.querySelectorAll('#tg-main [data-mk]'), function (r) { r.classList.toggle('hl', !!n && r.dataset.mk === n); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-main .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
+    function hl(n) { Array.prototype.forEach.call(document.querySelectorAll('#tg-main [data-mk]'), function (r) { r.classList.toggle('hl', !!n && r.dataset.mk === n); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-why .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
     function render() {
       var c = TAG_CTRY.filter(function (x) { return x[0] === sel; })[0];
-      $('#tg-main').innerHTML = c ? '<div class="tv-main">' + cardHtml(c).replace('class="tag-card"', 'class="tag-card main"') + '<div><h3 class="tv-h">' + c[1] + '에서 바꾼 이유 <span class="muted">' + esc(c[2]) + '</span></h3>' + bubbles(TAG_WHY[c[0]]()) + '</div></div>' : '';
+      $('#tg-main').innerHTML = c ? '<div class="tag-card main">' + c[3](p) + '</div>' : '';
+      $('#tg-chip').innerHTML = c ? '<span class="tc-chip">' + c[1] + '</span>' : '';
+      $('#tg-why-h').innerHTML = c ? c[1] + '에서 바꾼 이유 <span class="muted">' + esc(c[2]) + '</span>' : '바꾼 이유';
+      if (c) $('#tg-why').innerHTML = bubbles(TAG_WHY[c[0]]());
       var pile = $('#tg-pile');
       pile.innerHTML = TAG_CTRY.filter(function (x) { return x[0] !== sel; }).map(cardHtml).join('');
       var cards = Array.prototype.slice.call(pile.children);
@@ -464,7 +468,7 @@
       });
     }
     var root = $('.tagview');
-    root.onmouseover = function (e) { var t = e.target.closest('#tg-main .bubble, #tg-main [data-mk]'); hl(t ? t.dataset.mk : null); };
+    root.onmouseover = function (e) { var t = e.target.closest('#tg-why .bubble, #tg-main [data-mk]'); hl(t ? t.dataset.mk : null); };
     root.onmouseleave = function () { hl(null); };
     render();
   };
