@@ -20,7 +20,7 @@ LC.product = {
   nutrition100: { kcal: 38.2, protein: 7.9, fat: 0.2, satfat: 0.18, transfat: 0, carb: 1.2, sugar: 0, sodium_mg: 220 },
   nutrition_source: '바이어별 추정값이 다름(T사 76·U사 40·S사 42kcal). 자사 성적서는 조미 전 다른 제품(68.3kcal). LB 조미 제품 실측 성적서 없음',
   process: '원어 입고 → 자숙 → 탈각 → 선별 → 조미 → 급속동결 → 포장 → 금속검출 → 냉동보관',
-  factory: { name: 'A사 (경북 영덕)', lic: '199005660**', haccp: 'HACCP 제2009-4-8012호 (~2029-01-22)' }
+  factory: { name: 'A사 (경북 영덕)', name_en: 'A Co. (Yeongdeok, Gyeongsangbuk-do, Republic of Korea)', lic: '199005660**', haccp: 'HACCP 제2009-4-8012호 (~2029-01-22)' }
 };
 
 LC.product.name_ja = '紅ずわいがに棒くずれ（LB）';
@@ -172,7 +172,7 @@ LC.rules = {
     name: '태국', short: '보건부 고시 450호', law: '보건부 고시 450호 (포장식품 표시), 367호 대체', effective: '2024-07-19', grace_end: '2026-07-19', lang: '태국어',
     required: ['품명', '식품등록번호 13자리', '제조자·수입자', '원재료 %', '첨가물 기능+명칭/INS', '알레르겐 정보', '내용량', '제조일·유통기한', '보존방법'],
     checks: [
-      { id: 'allergen', item: '알레르겐 정보', run: function (f) { return /ข้อมูลสำหรับผู้แพ้อาหาร|แพ้/.test(f.allergen) ? { status: 'pass', msg: '알레르겐 줄 있음' } : { status: 'fix', msg: '450호 알레르겐 정보 줄 없음', fix: 'ข้อมูลสำหรับผู้แพ้อาหาร : มี ปู (갑각류)' }; } },
+      { id: 'allergen', item: '알레르겐 정보', run: function (f) { return /ข้อมูลสำหรับผู้แพ้อาหาร|แพ้/.test(f.allergen) ? { status: 'pass', msg: '알레르겐 줄 있음' } : { status: 'fix', msg: '450호 알레르겐 정보 줄 없음', fix: 'ข้อมูลสำหรับผู้แพ้อาหาร : มี ปู (Crustacean: crab)' }; } },
       { id: 'fda', item: '식품등록번호', run: function (f) { return /\d{2}-\d-\d{5}-\d-\d{4}/.test(f.fda_no || '') ? { status: 'pass', msg: f.fda_no } : { status: 'fix', msg: '13자리 등록번호 누락' }; } },
       { id: 'pct', item: '원재료 %', run: function (f) { return /%/.test(f.ingredients) ? { status: 'pass', msg: '함량 % 기재' } : { status: 'fix', msg: '주요 원재료 % 필요' }; } },
       { id: 'additive', item: '첨가물 기능+이름', src: '보건부 고시 450호 5(7)', run: function (f) {   // 향미증진제·감미료는 INS 만으론 부족(7.3), 그 외는 วัตถุเจือปนอาหาร+INS 가능

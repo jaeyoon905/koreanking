@@ -242,9 +242,10 @@
   var LABEL_KEY_KO = { name: '명칭', ingredients: '원재료', net: '내용량', mfg: '제조일', expiry: '유통기한', storage: '보관', origin: '원산지', importer: '수입자', manufacturer: '제조자', allergen: '알레르겐', nutrition: '영양표시', pack: '포장 표시', lot_format: 'LOT' };
   function labelFix(country, fields, res, meta) {
     var hints = {};
-    try { if (nutritionBy[country] && P().nutrition100) hints.nutrition = nutritionBy[country]().map(function (x) { return x[0] + ' ' + x[1]; }).join(' / '); } catch (e) {}
-    if (allergenBy[country]) hints.allergen = allergenBy[country];
-    if (additiveBy[country]) hints.additive = additiveBy[country];
+    var noKo = function (x) { return String(x || '').replace(/\s*[\(（][^()（）]*[가-힣][^()（）]*[\)）]/g, '').trim(); };   // 라벨에 들어갈 문구: 한국어 설명 괄호는 뺀다
+    try { if (nutritionBy[country] && P().nutrition100) { var nt = nutritionBy[country]().map(function (x) { return x[0] + ' ' + x[1]; }).join(' / '); if (!/[가-힣]/.test(nt)) hints.nutrition = nt; } } catch (e) {}
+    if (allergenBy[country] && !/^[가-힣]/.test(allergenBy[country])) hints.allergen = noKo(allergenBy[country]);
+    if (additiveBy[country]) hints.additive = noKo(additiveBy[country]);
     var out = $('#lbl-fixout'); out.innerHTML = '<p class="muted">지적된 칸만 고친 라벨 전체를 만들고, 같은 규칙으로 다시 판정합니다.</p>';
     return api('/label/fix', 'POST', { country: country, fields: fields, results: res.filter(function (x) { return x.status !== 'pass'; }), hints: hints }).then(function (r) {
       if (!r || !r.fields) { out.innerHTML = '<p class="alert">수정안 실패: ' + esc((r && r.error) || '응답 없음') + '</p>'; return; }
@@ -269,7 +270,7 @@
       var KEY_KO = KEY_BY[country] || KEY_BY.JP;
       var labelRows = Object.keys(fixed).filter(function (k) { return fixed[k] && k !== 'country'; });
       var keyOf = function (k) { var kk = KEY_KO[k] || k, v = String(fixed[k] || ''); return v.indexOf(kk.split(' ')[0]) === 0 ? '' : kk; };   // 값에 칸 이름이 이미 있으면(此日期前最佳 …) 중복 표기 안 함
-      var labelHtml = '<div class="sheet"><h3>Label text (corrected draft) · ' + esc(LC.rules[country].name) + ' · ' + esc(meta.file || '') + '</h3><p class="muted">규칙 판정 뒤 고친 문안 · ' + LC.TODAY + '</p><table>' + labelRows.map(function (k) { return '<tr><th>' + esc(keyOf(k)) + '</th><td>' + esc(fixed[k]) + '</td></tr>'; }).join('') + '</table></div>';
+      var labelHtml = '<div class="sheet"><h3>Label text (corrected draft) · ' + esc(LC.rules[country].name) + ' · ' + esc(meta.file || '') + '</h3><p class="muted">Corrected draft after rule check · ' + LC.TODAY + '</p><table>' + labelRows.map(function (k) { return '<tr><th>' + esc(keyOf(k)) + '</th><td>' + esc(fixed[k]) + '</td></tr>'; }).join('') + '</table></div>';
       var labelTxt = labelRows.map(function (k) { var kk = keyOf(k); return (kk ? kk + ': ' : '') + fixed[k]; }).join('\n');
       var lctx = { product: P(), fixCount: s2.fix, checkCount: s2.check, aiFixed: keys.length };
       $('#lbl-fixpdf').onclick = function () { sendGate('라벨 수정안 PDF', meta.file || country, lctx).then(function (ok) { if (ok) downloadPdf('라벨수정안_' + (meta.file || country) + '_' + country, $('#lbl-fixcard').outerHTML); }); };
@@ -487,7 +488,7 @@
     return '<div class="pkg th"><table>' + pkgRow('ชื่ออาหาร', 'เนื้อขาปูหิมะแดงต้มแช่แข็ง') + pkgRow('เลขสารบบอาหาร', '<span class="th-fda">อย.</span> 00-0-00000-0-0000', 4) +
       pkgRow('ส่วนประกอบ', ing.map(function (i) { return (th[i.name_ko] || esc(i.name_ko)) + ' ' + i.pct + '%'; }).join(', '), 1) + pkgRow('วัตถุเจือปนอาหาร', 'วัตถุปรุงแต่งรสอาหาร (โมโนโซเดียมกลูตาเมต), วัตถุให้ความหวาน (ซอร์บิทอล), วัตถุเจือปนอาหาร (INS 412)', 2) +
       pkgRow('ข้อมูลสำหรับผู้แพ้อาหาร', 'มี ปู', 3) + pkgRow('น้ำหนักสุทธิ', esc((p.net || '').replace('g', 'กรัม'))) + pkgRow('ควรบริโภคก่อน', 'ดูที่บรรจุภัณฑ์') + pkgRow('วิธีเก็บรักษา', 'เก็บแช่แข็งที่ -18°C หรือต่ำกว่า') +
-      pkgRow('นำเข้าโดย', '(ชื่อและที่ตั้งผู้นำเข้าในประเทศไทย)', 5) + pkgRow('ผลิตโดย', esc(p.factory ? p.factory.name : '') + ', สาธารณรัฐเกาหลี') + '</table></div>';
+      pkgRow('นำเข้าโดย', '(ชื่อและที่ตั้งผู้นำเข้าในประเทศไทย)', 5) + pkgRow('ผลิตโดย', esc(p.factory ? (p.factory.name_en || p.factory.name) : '')) + '</table></div>';
   }
   var CITE_KIND = { law: '법령', notice: '고시·공고', guide: '공식 안내', own: '자사 자료' };
   function cite(L, fallback, short) {
@@ -800,7 +801,7 @@
       var raws = state.raw.filter(function (r) { return lot.raw.indexOf(r.id) >= 0; });
       var siblings = state.ledger.filter(function (l) { return l.lot !== lot.lot && l.raw.some(function (r) { return lot.raw.indexOf(r) >= 0; }); });
       var step = function (t, b) { return '<div class="stage done"><h4>' + t + '</h4><p class="muted">' + b + '</p></div>'; };
-      html += '<div class="card face-inside"><div class="pipeline trace" aria-label="추적 단계">' + step('원어 입고', raws.length ? raws.map(function (r) { return esc(r.id) + ' · ' + esc(r.vessel) + ' · ' + r.received; }).join('<br>') : '연결 없음') + step('가공·제조', lot.mfg + ' · ' + lot.qty_ct + ' C/T') + step('포장', esc(lot.lot) + (lot.company_code ? ' · 코드 ' + esc(lot.company_code) : '') + ' · 소비기한 ' + lot.expiry) + step('선적', shipped(lot) ? esc(lot.ship) + ' · ' + esc(lot.buyer) : '미선적 (재고)') + '</div><h3>회사 면 · 원어 로트와 출고처' + (lot.raw_by ? ' <small class="muted">연결 근거: ' + esc(lot.raw_by) + '</small>' : '') + '</h3><table><tr><th>원어 로트</th><th>어획일</th><th>선박</th><th>위판장</th><th>입고</th><th>kg</th></tr>' + raws.map(function (r) { return '<tr><td><a href="#lot/' + r.id + '">' + r.id + '</a></td><td>' + r.caught + '</td><td>' + esc(r.vessel) + '</td><td>' + esc(r.landing) + '</td><td>' + r.received + '</td><td>' + r.kg + '</td></tr>'; }).join('') + '</table>' +
+      html += impactCard(lot) + '<div class="card face-inside"><div class="pipeline trace" aria-label="추적 단계">' + step('원어 입고', raws.length ? raws.map(function (r) { return esc(r.id) + ' · ' + esc(r.vessel) + ' · ' + r.received; }).join('<br>') : '연결 없음') + step('가공·제조', lot.mfg + ' · ' + lot.qty_ct + ' C/T') + step('포장', esc(lot.lot) + (lot.company_code ? ' · 코드 ' + esc(lot.company_code) : '') + ' · 소비기한 ' + lot.expiry) + step('선적', shipped(lot) ? esc(lot.ship) + ' · ' + esc(lot.buyer) : '미선적 (재고)') + '</div><h3>회사 면 · 원어 로트와 출고처' + (lot.raw_by ? ' <small class="muted">연결 근거: ' + esc(lot.raw_by) + '</small>' : '') + '</h3><table><tr><th>원어 로트</th><th>어획일</th><th>선박</th><th>위판장</th><th>입고</th><th>kg</th></tr>' + raws.map(function (r) { return '<tr><td><a href="#lot/' + r.id + '">' + r.id + '</a></td><td>' + r.caught + '</td><td>' + esc(r.vessel) + '</td><td>' + esc(r.landing) + '</td><td>' + r.received + '</td><td>' + r.kg + '</td></tr>'; }).join('') + '</table>' +
         '<p><b>출고처</b> ' + esc(lot.buyer) + ' · ' + esc(lot.ship) + ' · ' + lot.country + '</p><p><b>같은 원어가 들어간 다른 로트</b> ' + (siblings.length ? siblings.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + '</a> (' + l.country + ' ' + esc(l.buyer) + ')'; }).join(', ') : '없음') + '</p>' +
         '<h4>클레임 종류별로 꺼낼 기록 (제조일 ' + lot.mfg + ')</h4><table><tr><th>클레임</th><th>먼저 볼 기록</th><th>원료(배) 추적</th></tr>' +
         LC.claimMap.map(function (c) { return '<tr><td>' + c.kind + '</td><td>' + esc(c.records.split('{mfg}').join(lot.mfg)) + '</td><td>' + (c.raw ? '필요 · 위 원어 로트 ' + raws.length + '건' : '불필요') + '</td></tr>'; }).join('') +
@@ -809,6 +810,9 @@
         '<div class="row"><label>클레임 종류 <select id="claim-kind">' + LC.claimMap.map(function (c) { return '<option>' + esc(c.kind) + '</option>'; }).join('') + '</select></label><button id="claim-go">대응 보고서 만들기</button></div></div><div id="claim-out"></div>';
     }
     out.innerHTML = html;
+    var inb = $('#impact-notice'), int = $('#impact-notice-txt');
+    if (inb) inb.onclick = function () { var r = impactNotice(lot, $('#impact-lang').value); sendGate('바이어 통지문', lot.lot + ' → ' + r.buyers.join(', '), { product: p, checkCount: 0 }).then(function (ok) { if (ok) downloadPdf('영향범위_통지문_' + lot.lot, r.html); }); };
+    if (int) int.onclick = function () { var r = impactNotice(lot, $('#impact-lang').value); sendGate('바이어 통지문 txt', lot.lot, { product: p }).then(function (ok) { if (ok) download('영향범위_통지문_' + lot.lot + '.txt', r.txt, 'text/plain;charset=utf-8'); }); };
     var cg = $('#claim-go');
     if (cg) cg.onclick = function () {
       var kind = $('#claim-kind').value;
@@ -816,6 +820,53 @@
       $('#claim-print').onclick = function () { var sh = document.querySelector('#claim-out'); if (sh && sh.innerHTML) downloadPdf('클레임대응보고서_' + (lot && lot.lot || ''), sh.innerHTML); else window.print(); };
       state.docs.push({ at: LC.TODAY, file: '클레임 보고서 ' + lot.lot, doc_type: '클레임대응', result: kind }); save();
     };
+  }
+  // ---------- 영향 범위(우리 쪽): 클레임 로트 → 같은 원료·같은 날 로트 → 나간 선적·바이어·수량, 창고 잔량. 바이어 이후 유통은 바이어 추적 범위 ----------
+  function shipNoOf(l) { var m = /^([A-Z]{1,3}-?\d{3,6})/.exec(String(l.ship || '')); return m ? m[1] : ''; }
+  function impactScope(lot) {
+    var rawIds = lot.raw || [];
+    var rows = state.ledger.filter(function (l) { return l.lot === lot.lot || (l.raw || []).some(function (r) { return rawIds.indexOf(r) >= 0; }) || (l.mfg && l.mfg === lot.mfg); })
+      .map(function (l) {
+        var why = l.lot === lot.lot ? '문의 로트' : ((l.raw || []).some(function (r) { return rawIds.indexOf(r) >= 0; }) ? '같은 원료' : '같은 날 생산');
+        var out = shipped(l); return { lot: l, why: why, shipped: out, shipNo: out ? shipNoOf(l) : '', buyer: out ? (l.buyer || '') : '', country: l.country || '' };
+      }).sort(function (a, b) { return (a.why === '문의 로트' ? 0 : 1) - (b.why === '문의 로트' ? 0 : 1) || String(a.lot.mfg).localeCompare(String(b.lot.mfg)); });
+    var sum = function (arr, k) { return arr.reduce(function (t, r) { return t + (+r.lot[k] || 0); }, 0); };
+    var outRows = rows.filter(function (r) { return r.shipped; }), inRows = rows.filter(function (r) { return !r.shipped; });
+    var uniq = function (arr) { return arr.filter(function (v, i, a) { return v && a.indexOf(v) === i; }); };
+    var raws = state.raw.filter(function (r) { return rawIds.indexOf(r.id) >= 0; });
+    var evidence = [['원료입고검사서', raws.length > 0], ['가공일지(제조일 ' + lot.mfg + ')', !!(state.processLog && state.processLog[lot.mfg]) || state.docs.some(function (d) { return d.doc_type === '가공일지'; })], ['포장일지', !!(lot.pack_rows && lot.pack_rows.length) || state.docs.some(function (d) { return d.doc_type === '포장일지'; })], ['패킹리스트(선적)', outRows.length ? state.shipments.some(function (sh) { return outRows.some(function (r) { return r.shipNo === sh.no; }); }) : null]];
+    return { rows: rows, out: outRows, inStock: inRows, ships: uniq(outRows.map(function (r) { return r.shipNo; })), buyers: uniq(outRows.map(function (r) { return r.buyer; })), ct_out: sum(outRows, 'qty_ct'), kg_out: sum(outRows, 'kg'), ct_in: sum(inRows, 'qty_ct'), kg_in: sum(inRows, 'kg'), raws: raws, evidence: evidence };
+  }
+  function impactCard(lot) {
+    var sc = impactScope(lot);
+    var tile = function (k, v, cls) { return '<div class="stat ' + (cls || '') + '"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; };
+    var rows = sc.rows.map(function (r) { var l = r.lot; return '<tr class="' + (r.why === '문의 로트' ? 'st-bad' : '') + '"><td><a href="#lot/' + esc(l.lot) + '">' + esc(l.lot) + '</a>' + (l.company_code ? ' <span class="muted">' + esc(l.company_code) + '</span>' : '') + '</td><td>' + esc(l.product) + '</td><td>' + esc(l.mfg) + '</td><td>' + esc(r.why) + '</td><td>' + (r.shipped ? '<span class="b bad">나감</span> ' + esc(r.shipNo) + ' ' + esc(r.buyer) + (r.country ? ' (' + esc(r.country) + ')' : '') : '<span class="b warn">창고</span> 격리 대상') + '</td><td class="num">' + (l.qty_ct || 0) + ' C/T' + (l.kg ? ' / ' + l.kg + ' kg' : '') + '</td></tr>'; }).join('');
+    var ev = sc.evidence.map(function (e) { return '<span class="tag">' + (e[1] === null ? '해당 없음' : (e[1] ? '있음' : '없음')) + ' · ' + esc(e[0]) + '</span>'; }).join(' ');
+    return '<div class="card" id="impact-card"><div class="sec-head"><h3>영향 범위 (우리 쪽)</h3><span class="muted">원장 데이터로만 계산. 바이어 이후 유통은 바이어 추적 범위</span></div>' +
+      '<div class="stats">' + tile('영향 로트', sc.rows.length + '<small>건</small>', sc.rows.length > 1 ? 'warn' : 'ok') + tile('나간 선적 · 바이어', sc.ships.length + '<small>건</small> · ' + sc.buyers.length + '<small>곳</small>', sc.out.length ? 'bad' : 'ok') + tile('나간 수량', sc.ct_out + '<small>C/T</small>' + (sc.kg_out ? ' <small>' + sc.kg_out.toLocaleString() + ' kg</small>' : ''), sc.out.length ? 'bad' : 'ok') + tile('창고 잔량(격리)', sc.ct_in + '<small>C/T</small>', sc.inStock.length ? 'warn' : 'ok') + '</div>' +
+      '<table><tr><th>로트</th><th>품목</th><th>제조일</th><th>왜 포함</th><th>어디에</th><th class="num">수량</th></tr>' + rows + '</table>' +
+      '<p><b>원인 쪽 기록</b> ' + ev + '</p>' +
+      '<div class="row"><button id="impact-notice">바이어 통지문 초안 (PDF)</button><button class="ghost" id="impact-notice-txt">통지문 .txt</button><select id="impact-lang"><option value="en">영어</option><option value="ja">일본어</option><option value="ko">한국어</option></select><span class="muted">값은 위 표 그대로, 문장은 템플릿. 보내기 전 담당자 확인</span></div></div>';
+  }
+  // 바이어 통지문(템플릿, AI 아님): 바이어별로 영향 로트·상자 코드·선적·수량, 요청 사항(격리·재고 확인·회신)
+  function impactNotice(lot, lang) {
+    var sc = impactScope(lot), p = (LC.products && LC.products[lot.product]) || LC.product, T = {
+      en: { title: 'Notice of potentially affected lots', intro: 'We are writing regarding lot {lot} of {prod}. Lots sharing the same raw material or production date are listed below so you can check your inventory by the lot code printed on each carton.', ask: 'Please (1) quarantine any listed cartons still in your stock, (2) confirm quantities on hand, and (3) reply by {due}. Downstream distribution after delivery to you is within your own traceability records.', hdr: ['Lot (carton code)', 'Product', 'Production date', 'Shipment', 'Quantity shipped'], none: 'No lot from this scope has been shipped to you.', stock: 'Cartons not yet shipped are held at our plant: {n} C/T.', sign: 'A Co., Export and Quality team' },
+      ja: { title: '影響の可能性があるロットのご連絡', intro: '{prod} のロット {lot} についてご連絡いたします。同一原料または同一製造日のロットを下記に示しますので、各カートンに印字されたロット記号で在庫をご確認ください。', ask: '(1) 該当カートンが在庫にあれば保管・隔離、(2) 在庫数量の確認、(3) {due} までにご回答をお願いいたします。貴社納品後の流通は貴社のトレーサビリティ記録の範囲となります。', hdr: ['ロット（カートン記号）', '商品', '製造日', '出荷', '出荷数量'], none: '本範囲のロットで貴社向け出荷はありません。', stock: '未出荷分は当社工場で保管しています: {n} C/T。', sign: 'A社 輸出・品質担当' },
+      ko: { title: '영향 가능 로트 통지', intro: '{prod} 로트 {lot} 건으로 연락드립니다. 같은 원료 또는 같은 제조일의 로트를 아래에 정리했으니 상자에 인쇄된 로트 기호로 재고를 확인해 주십시오.', ask: '(1) 해당 상자가 재고에 있으면 격리, (2) 재고 수량 확인, (3) {due}까지 회신 부탁드립니다. 귀사 납품 이후 유통은 귀사 추적 기록 범위입니다.', hdr: ['로트(상자 기호)', '품목', '제조일', '선적', '출하 수량'], none: '이 범위의 로트 중 귀사 출하분은 없습니다.', stock: '미출하분은 당사 공장에 보관 중입니다: {n} C/T.', sign: 'A사 수출·품질 담당' }
+    }[lang] || null; if (!T) T = arguments.callee(lot, 'en');
+    var due = addMonths ? (function () { var d = new Date(LC.TODAY + 'T00:00:00'); d.setDate(d.getDate() + 3); return d.toISOString().slice(0, 10); })() : LC.TODAY;
+    var fill = function (t) { return t.replace('{lot}', lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : '')).replace('{prod}', p.name_en + ' (' + p.code + ')').replace('{due}', due).replace('{n}', sc.ct_in); };
+    var byBuyer = {}; sc.out.forEach(function (r) { (byBuyer[r.buyer] = byBuyer[r.buyer] || []).push(r); });
+    var buyers = Object.keys(byBuyer); if (!buyers.length) buyers = [lot.buyer || '(바이어)'];
+    var html = buyers.map(function (bname) {
+      var rs = byBuyer[bname] || [];
+      return '<div class="sheet"><h3>' + esc(T.title) + '</h3><p class="muted">' + LC.TODAY + ' · To: ' + esc(bname) + ' · From: A사</p><p>' + esc(fill(T.intro)) + '</p>' +
+        (rs.length ? '<table><tr>' + T.hdr.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr>' + rs.map(function (r) { var l = r.lot; return '<tr><td>' + esc(l.lot) + (l.company_code ? ' / ' + esc(l.company_code) : '') + '</td><td>' + esc((LC.products[l.product] || {}).name_en || l.product) + '</td><td>' + esc(l.mfg) + '</td><td>' + esc(r.shipNo) + '</td><td>' + (l.qty_ct || 0) + ' C/T' + (l.kg ? ' / ' + l.kg + ' kg' : '') + '</td></tr>'; }).join('') + '</table>' : '<p>' + esc(T.none) + '</p>') +
+        '<p>' + esc(fill(T.ask)) + '</p>' + (sc.inStock.length ? '<p class="muted">' + esc(fill(T.stock)) + '</p>' : '') + '<p>' + esc(T.sign) + '</p></div>';
+    }).join('');
+    var txt = buyers.map(function (bname) { var rs = byBuyer[bname] || []; return T.title + '\n' + LC.TODAY + ' · To: ' + bname + '\n\n' + fill(T.intro) + '\n\n' + (rs.length ? rs.map(function (r) { var l = r.lot; return '- ' + l.lot + (l.company_code ? ' / ' + l.company_code : '') + ' | ' + l.product + ' | ' + l.mfg + ' | ' + r.shipNo + ' | ' + (l.qty_ct || 0) + ' C/T'; }).join('\n') : T.none) + '\n\n' + fill(T.ask) + (sc.inStock.length ? '\n' + fill(T.stock) : '') + '\n\n' + T.sign; }).join('\n\n----\n\n');
+    return { html: html, txt: txt, buyers: buyers, scope: sc };
   }
   // 클레임 대응 기록 한 장. 사실(기록 이름·날짜)만 적고 원인은 단정하지 않는다. 회신 문안은 템플릿(AI 아님)
   function claimReport(lot, kind) {
@@ -1292,17 +1343,18 @@
       if (b.lot && API) g('로트 ' + esc(b.lot.lot), [a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(b.lot.lot), '바이어 패키지 zip', ' download'), a(API + '/lot/' + encodeURIComponent(b.lot.lot) + '/qr.png', 'QR 라벨', ' target="_blank"')]);
       if (state.shipments.length && API) { var no = state.shipments[state.shipments.length - 1].no; g('선적 ' + esc(no), [a(API + '/shipdocs/pl?no=' + encodeURIComponent(no), '패킹리스트 초안', ' download'), a(API + '/shipdocs/mdl?no=' + encodeURIComponent(no), '제조일자 리스트', ' download'), a(API + '/shipdocs/cert?no=' + encodeURIComponent(no), '위생증명서 신청값', ' download')]); }
       var rds = requestedDocs(b), okDocs = rds.filter(function (d) { return d.ok; });
-      var req = rds.length ? '<div class="bd-g bd-req"><dt>바이어가 물은 것에 대한 서류</dt><dd>' + rds.map(function (d, j) { return d.ok ? btn('data-bd-doc="' + i + ':' + j + '"', d.title) : '<span class="bd-miss">' + esc(d.title) + ' <small>자료 필요</small></span>'; }).join('') + (okDocs.length ? btn('data-bd-docs="' + i + '"', '요청 서류 전부 zip', 'small ghost accent') : '') + '</dd></div>' : '';
+      var req = rds.length ? '<div class="bd-g bd-req"><dt>요청 서류</dt><dd>' + rds.map(function (d, j) { return d.ok ? btn('data-bd-doc="' + i + ':' + j + '"', d.title) : '<span class="bd-miss">' + esc(d.title) + ' <small>자료 필요</small></span>'; }).join('') + (okDocs.length ? btn('data-bd-docs="' + i + '"', '요청 서류 전부 zip', 'small ghost accent') : '') + '</dd></div>' : '';
       count += okDocs.length;
       var asked = b.reply && b.reply.answers ? b.reply.answers.map(function (x) { return x['주제'] || x.topic; }).filter(function (v, j, arr) { return v && arr.indexOf(v) === j; }) : [];
-      return '<article class="bundle">' +
+      var open = only ? true : i === 0;
+      return '<article class="bundle' + (open ? '' : ' fold') + '">' +
         '<header class="bd-head"><div class="bd-who"><b>' + esc(b.buyer) + '</b><span>' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ', 로트 ' + esc(b.lot.lot) : ', 로트 없음') + '</span>' + (asked.length ? '<span class="bd-ask">문의 항목: ' + esc(asked.join(', ')) + '</span>' : '') + '</div>' +
-        '<button class="bd-zip" data-bd-zip="' + i + '"><span>이 거래 서류 한 번에 받기</span><small>zip, ' + count + '건</small></button></header>' +
+        '<div class="bd-act"><button class="bd-zip" data-bd-zip="' + i + '"><span>이 거래 서류 한 번에 받기</span><small>zip, ' + count + '건</small></button><button class="ghost small bd-more" data-bd-more="' + i + '" aria-expanded="' + open + '">' + (open ? '낱개 접기' : '낱개 보기 ' + count + '건') + '</button></div></header>' +
         '<dl class="bd-groups">' + groups.join('') + req + '</dl></article>';
     });
     var cards = cardList.filter(function (_, i) { return !only || only.indexOf(i) >= 0; }).join('');
     if (only) return cards;
-    return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류</h3><p class="muted">파란 버튼 하나로 한 벌이 나오고, 낱개도 받을 수 있습니다. 보내기 전 검수창을 거칩니다.</p><div class="bundles">' + cards + '</div></div>';
+    return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류 <span class="muted">' + bs.length + '곳</span></h3><p class="muted">바이어마다 파란 버튼 하나로 한 벌(zip)이 나옵니다. 낱개가 필요하면 펼치세요. 보내기 전 검수창을 거칩니다.</p><div class="bundles">' + cards + '</div></div>';
   }
   // 홈: 가장 최근 바이어(문의가 온 쪽 우선) 한 장만. 전체는 한 번에 처리 3단계
   function homeDeal() {
@@ -1312,6 +1364,7 @@
   }
   function bindBundles() {
     var bs = bundleBuyers();
+    document.querySelectorAll('[data-bd-more]').forEach(function (el) { el.onclick = function () { var art = el.closest('.bundle'), fold = art.classList.toggle('fold'); el.setAttribute('aria-expanded', String(!fold)); el.textContent = fold ? el.textContent.replace('낱개 접기', '낱개 보기') : '낱개 접기'; if (fold && !/\d/.test(el.textContent)) el.textContent = '낱개 보기'; }; });
     var withProduct = function (b, fn) { var prev = state.productCode; setProduct(b.product); try { fn(); } finally { setProduct(prev); } };
     var prep = function (b) { var raw; withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); raw = buyerFormSheet.lastRaw; }); return translateMissing(formLang(state.specForms[b.buyer]), raw || {}); };
     document.querySelectorAll('[data-bd-pdf]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdPdf]; prep(b).then(function () { var html, ctx; withProduct(b, function () { html = buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); return sendGate('규격서 PDF', b.buyer + ' · ' + b.product, ctx).then(function (ok) { if (ok) downloadPdf('규격서_' + b.buyer + '_' + b.product + (b.lot ? '_' + b.lot.lot : ''), html); }); }); }; });
@@ -1377,12 +1430,12 @@
       '<h3 class="step">1. 서류 넣기</h3><div class="card"><div id="qk-guide">' + docGuide() + '</div>' + dropZone('qk') +
       (fx.length ? '<div class="row"><button id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기 (4월 서류 ' + g(0) + '종 · 사진 2장은 1종)</button><a href="#" id="qk-jun" class="muted">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="기록 비우고 시작">빈 상태로 시작</button></div>' +
       '<details class="docbox-wrap"><summary>서류함 (' + fx.length + ')</summary><div id="qk-docbox">' + docBox() + '</div></details>' : '') + '</div>' +
-      '<h3 class="step">2. 확인</h3><div class="card" id="qk-table"></div>' +
+      '<h3 class="step">2. 확인 <span class="muted">넣은 파일을 읽은 결과가 여기 표로 나옵니다</span></h3><div class="card" id="qk-table"></div>' +
       '<div id="qk-results">' + resultCards() + '</div>';
   };
   function renderQuick() {
     var box = $('#qk-table'); if (!box) return;
-    if (!intakeCards.length) { box.innerHTML = '<p class="muted">넣은 서류가 없습니다. 위에서 파일을 올리거나 "받은 파일 전부 넣기"를 누르세요.</p>'; }
+    if (!intakeCards.length) { box.innerHTML = '<p class="muted">아직 넣은 서류가 없습니다. 위에서 파일을 올리거나 "서류함 전부 열기"를 누르면 여기 표에 파일별로 종류·읽은 칸·대조 결과가 나오고, "전부 승인"을 누르면 아래 3. 보낼 서류에 바이어별 묶음이 생깁니다.</p>'; }
     else {
       var wait = intakeCards.filter(function (c) { return !c.done && !c.loading; }).length, loading = intakeCards.filter(function (c) { return c.loading; }).length;
       var tableHtml = '<table><tr><th>파일</th><th>종류</th><th class="num">읽은 칸</th><th>대조</th><th>상태</th></tr>' + intakeCards.map(quickRow).join('') + '</table>' +
@@ -1407,7 +1460,7 @@
     var a = $('#qk-all'); if (a) a.onclick = function () { EXPORTS.forEach(function (e, i) { setTimeout(function () { var rc = e[1](); download('라벨코스트_' + e[0] + '_' + LC.TODAY.replace(/-/g, '') + '.csv', csvText(rc[0], rc[1])); }, i * 400); }); toast('CSV ' + EXPORTS.length + '개 내려받는 중'); };
   }
   screens.quick.bind = function () {
-    bindDrop('qk', function (files) { Array.prototype.forEach.call(files, addFile); });
+    bindDrop('qk', function (files) { Array.prototype.forEach.call(files, addFile); var t = $('#qk-table'); if (t) setTimeout(function () { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200); toast(files.length + '건 넣음 → 아래 2. 확인 표에 나옵니다' + (API ? ' (AI가 읽는 데 10~30초)' : '')); });
     var addGroup = function (gi) { fixtures().forEach(function (f) { if (FX_GROUPS[gi][1](f) && !intakeCards.some(function (c) { return c.fixture === f; })) queueFixture(f); }); renderQuick(); };
     if ($('#qk-all9')) $('#qk-all9').onclick = function () { addGroup(0); };
     if ($('#qk-jun')) $('#qk-jun').onclick = function (e) { e.preventDefault(); addGroup(1); };

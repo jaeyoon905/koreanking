@@ -570,3 +570,24 @@ details.lbl-setup[open] > summary { margin-bottom: 16px; }
 #home-deal { margin-top: 16px; }
 #home-deal .bundle { border: 0; }
 #home-deal .bd-head { border-radius: var(--r-md); }
+
+/* 보낼 서류: 행 단위 목록, 바이어 접기 (2026-11-01, 재윤 허락) */
+.bd-head { grid-template-columns: minmax(0, 1fr) auto; }
+.bd-act { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.bd-act .bd-more { height: 32px; min-height: 32px; font-size: 13px; padding: 0 12px; }
+.bundle.fold .bd-groups { display: none; }
+.bundle.fold .bd-head { background: var(--surface); }
+.bd-groups { display: block; padding: 4px 24px 8px; }
+.bd-g { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 8px 16px; padding: 10px 0; }
+.bd-g:last-child { border-bottom: 0; }
+.bd-g dt { font-size: 14px; color: var(--ink-2); font-weight: 600; line-height: 1.3; }
+.bd-g dd { gap: 8px; }
+.bd-g dd a.btn, .bd-g dd button { width: auto; flex: 0 0 auto; }
+.bd-g.bd-req { padding-top: 12px; border-top: 1px dashed var(--hairline); margin-top: 4px; }
+.bd-g.bd-req dt { color: var(--primary); font-weight: 700; }
+@media (max-width: 700px) {
+  .bd-act { width: 100%; }
+  .bd-g { grid-template-columns: 1fr; gap: 6px; }
+  .bd-groups { padding: 4px 16px 8px; }
+}
+@media (max-width: 700px) { .bd-head { grid-template-columns: 1fr; } .bd-who b { font-size: 17px; } }
