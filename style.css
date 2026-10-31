@@ -640,3 +640,13 @@ details.lbl-setup[open] > summary { margin-bottom: 16px; }
   .acc-t td { border: 0; padding: 4px 0; }
   .acc-t td::before { content: attr(data-h); display: block; font-size: 12px; color: var(--ink-muted); }
 }
+
+/* 한 번에 처리 3단계: 수출 꾸러미와 같은 서류 카드 (2026-11-01, 재윤 요청) */
+.bundle .bd-body { padding: 16px 24px 20px; }
+.bundle.fold .bd-body { display: none; }
+button.pk-card { display: block; width: 100%; height: auto; min-height: 0; padding: 0; text-align: left; font: inherit; font-weight: 400; color: var(--ink); background: var(--surface); border: 1px solid var(--pass); border-radius: 12px; white-space: normal; cursor: pointer; }
+button.pk-card:hover { border-color: var(--primary); background: var(--surface); color: var(--ink); }
+.pk-card.need { border-style: dashed; } .pk-card.need .pk-meta span { color: var(--check-ink); }
+.pk-txt { white-space: pre-wrap; font-size: 12px; line-height: 1.5; margin: 0; padding: 0; background: none; color: var(--ink-2); }
+.bd-act .bd-more, .bd-act [data-bd-docs] { height: 32px; min-height: 32px; font-size: 13px; padding: 0 12px; }
+@media (max-width: 700px) { .bundle .bd-body { padding: 12px 16px 16px; } .bundle .pack { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .bundle .pk-thumb { height: 140px; } }

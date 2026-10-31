@@ -112,7 +112,9 @@ var LC = (typeof LC !== 'undefined') ? LC : {};
   // ---------- 포장일지 ----------
   function lotRows(o) { // 같은 제조일+품목 합산
     var m = {}, out = [];
+    var fb = (String(o.product || o.file || o.name || '').toUpperCase().match(/\b(LB|WF|SR|LEG|CL)\b/) || [])[1];   // 행에 품목이 없으면 문서 품목·파일 이름에서
     (o.rows || []).forEach(function (r) {
+      if (!r.product) r.product = fb || (LC.product && LC.product.code) || 'LB';
       var lot = ymd(r.mfg) + '-' + r.product;
       if (!m[lot]) { m[lot] = { lot: lot, company_code: r.lot_code, product: r.product, mfg: r.mfg, expiry: r.expiry, qty_ct: 0, buyer: r.buyer, parts: [] }; out.push(m[lot]); }
       m[lot].qty_ct += num(r.ct) || 0; m[lot].parts.push({ ct: num(r.ct) || 0, lot_code: r.lot_code, buyer: r.buyer, expiry: r.expiry });

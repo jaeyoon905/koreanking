@@ -1335,7 +1335,7 @@
     else if (topic === '알레르겐') rows = [[K.allergen, (p.allergens || []).map(function (a) { return a === 'crustacea' ? 'Crustacea (crab) / 甲殻類（かに）/ 甲殼類（蟹）' : a; }).join(', ') || K.none], [K.others, K.none], [K.ingredients, p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')]];
     else if (topic === '소비기한' || topic === '보존') rows = [[K.shelf, p.shelf_months + ' months / 개월'], [K.storage, p.storage], [K.basis, '제조일 기준 ' + p.shelf_months + '개월, 품목 규격서 기준']];
     else if (topic === '인증') rows = state.registry.filter(function (r) { return r.kind !== '선적별' && r.kind !== '참고' && !/^KR/.test(String(r.countries || '')); }).map(function (r) { return [r.name, (r.no || '') + (r.issuer ? ' · ' + r.issuer : '') + (r.expiry ? ' · ' + K.expiry + ' ' + r.expiry : '')]; });
-    else if (topic === '로트') { if (!lot) return null; var rl = state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }); rows = [[K.lot, lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : '')], [K.mfg, lot.mfg], [K.exp, lot.expiry], [K.qty, lot.qty_ct + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')]].concat(rl.length ? rl.map(function (r) { return [K.raw + ' ' + r.id, (r.vessel || '') + ' · ' + K.received + ' ' + (r.received || '') + (r.caught ? ' · ' + K.caught + ' ' + r.caught : '') + (r.landing ? ' · ' + r.landing : '')]; }) : [[K.raw, '입고 기록 연결 전']]); }
+    else if (topic === '로트') { if (!lot) return null; var rl = state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }); rows = [[T.lot || K.lot || 'Lot', lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : '')], [K.mfg, lot.mfg], [K.exp, lot.expiry], [K.qty, lot.qty_ct + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')]].concat(rl.length ? rl.map(function (r) { return [K.raw + ' ' + r.id, (r.vessel || '') + ' · ' + K.received + ' ' + (r.received || '') + (r.caught ? ' · ' + K.caught + ' ' + r.caught : '') + (r.landing ? ' · ' + r.landing : '')]; }) : [[K.raw, '입고 기록 연결 전']]); }
     else if (topic === '원산지') { var r0 = state.raw[0] || {}; rows = [[K.origin, 'Republic of Korea / 韓国 / 한국'], [K.species, p.species || r0.species || ''], [K.landing, r0.landing || '동해 연근해'], [K.vessel, lot && state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }).map(function (r) { return r.vessel; }).join(', ') || (r0.vessel || '')]]; }
     else if (topic === '원재료' || topic === '공정' || topic === '포장' || topic === '기타') rows = [[K.ingredients, p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')], [K.additives, p.ingredients.filter(function (i) { return i.type === 'additive'; }).map(function (i) { return i.func + ' ' + i.name_ko + ' (INS ' + i.ins + ')'; }).join(', ') || K.none], [K.process, p.process], [K.net, p.net], [K.pack, p.pack]];
     return rows.length ? rows : null;
@@ -1356,31 +1356,44 @@
     var vals = {}; docs.forEach(function (d) { (d.rows || []).forEach(function (r, i) { vals[d.topic + i] = String(r[1]); vals[d.topic + 'k' + i] = String(r[0]); }); });
     return translateMissing(docs.length ? docs[0].lang : 'en', vals);
   }
+  // ---------- 보낼 서류: 수출 꾸러미와 같은 '서류 카드'. 미리보기는 실제 서류 HTML 을 축소, 누르면 그 서류를 받는다(data-* 는 bindBundles 가 그대로 씀) ----------
+  function miniDoc(title, rows) { return '<div class="doc-mini"><h4>' + esc(title) + '</h4><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>'; }
+  function miniText(title, text) { return '<div class="doc-mini"><h4>' + esc(title) + '</h4><pre class="pk-txt">' + esc(String(text || '').split('\n').slice(0, 14).join('\n')) + '</pre></div>'; }
+  function pkCard(attr, title, sub, thumb) { var tag = /^href=/.test(attr) ? 'a' : 'button'; return '<' + tag + ' class="pk-card done" ' + attr + '><div class="pk-thumb"><div class="pk-scale">' + thumb + '</div></div><div class="pk-meta"><b>' + title + '</b><span>' + sub + '</span></div><span class="pk-ok">✓</span></' + tag + '>'; }
+  function pkNeed(title, sub) { return '<div class="pk-card need" title="자료가 없어 아직 못 만드는 서류"><div class="pk-thumb"><div class="sk-doc"><i class="sk-h"></i><span class="sk-row"><i></i><i></i></span><span class="sk-row"><i></i><i></i></span><span class="sk-row"><i></i><i></i></span></div></div><div class="pk-meta"><b>' + title + '</b><span>' + sub + '</span></div></div>'; }
   function bundleCards(only) {
     var bs = bundleBuyers(); if (!bs.length) return '';
-    var btn = function (attr, text, cls) { return '<button class="' + (cls || 'small ghost') + '" ' + attr + '>' + text + '</button>'; };
-    var a = function (href, text, attr) { return '<a class="btn small ghost dl" href="' + href + '"' + (attr || '') + '>' + text + '</a>'; };
+    var withP = function (b, fn) { var prev = state.productCode; setProduct(b.product); try { return fn(); } finally { setProduct(prev); } };
     var cardList = bs.map(function (b, i) {
-      var p = LC.products[b.product] || P(), groups = [], count = 0;
-      var g = function (name, items) { if (items.length) { groups.push('<div class="bd-g"><dt>' + name + '</dt><dd>' + items.join('') + '</dd></div>'); count += items.length; } };
-      if (b.form) g('규격서', [btn('data-bd-pdf="' + i + '"', 'PDF')].concat(b.form.form_b64 ? [btn('data-bd-xlsx="' + i + '"', '바이어 엑셀에 채움')] : []));
-      if (b.reply) g('답장', [btn('data-bd-reply="' + i + '"', '초안 .txt' + (b.reply.deadline ? ' <small>기한 ' + esc(b.reply.deadline) + '</small>' : ''))]);
-      if (state.lastFix && state.lastFix.fields) g('라벨', [btn('data-bd-label="' + i + '"', '고친 문안 PDF <small>' + esc(state.lastFix.country) + '</small>')]);
-      if (b.lot && API) g('로트 ' + esc(b.lot.lot), [a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(b.lot.lot), '바이어 패키지 zip', ' download')]);
-      if (state.shipments.length && API) { var no = state.shipments[state.shipments.length - 1].no; g('선적 ' + esc(no), [a(API + '/shipdocs/pl?no=' + encodeURIComponent(no), '패킹리스트 초안', ' download'), a(API + '/shipdocs/mdl?no=' + encodeURIComponent(no), '제조일자 리스트', ' download'), a(API + '/shipdocs/cert?no=' + encodeURIComponent(no), '위생증명서 신청값', ' download')]); }
+      var p = LC.products[b.product] || P(), lot = b.lot, cards = [];
+      if (b.form) {
+        var sheet; try { sheet = withP(b, function () { return buyerFormSheet(b.buyer, lot); }); } catch (e) { sheet = miniDoc('규격서', []); }
+        cards.push(pkCard('data-bd-pdf="' + i + '"', '규격서 PDF', esc(b.buyer) + ' 양식 그대로', sheet));
+        if (b.form.form_b64) cards.push(pkCard('data-bd-xlsx="' + i + '"', '바이어 엑셀에 채움', esc(b.form.form_name || '.xlsx'), sheet));
+      }
+      if (b.reply) cards.push(pkCard('data-bd-reply="' + i + '"', '답장 초안 .txt', b.reply.deadline ? '회신 기한 ' + esc(b.reply.deadline) : '문의 메일 답장', miniText(b.reply.subject || '답장', b.reply.reply_draft)));
+      if (state.lastFix && state.lastFix.fields) cards.push(pkCard('data-bd-label="' + i + '"', '고친 라벨 문안 PDF', esc(state.lastFix.country) + ' 규칙으로 고침', miniDoc('Label text (corrected draft)', Object.keys(state.lastFix.fields).slice(0, 8).map(function (k) { return [k, state.lastFix.fields[k]]; }))));
+      if (lot && API) cards.push(pkCard('href="' + API + '/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download', '로트 패키지 zip', esc(lot.lot) + ' · 규격서·LOT 정보·인증', miniDoc('LOT ' + lot.lot, [['LOT', lot.lot + (lot.company_code ? ' / ' + lot.company_code : '')], ['제조일', lot.mfg], ['소비기한', lot.expiry || ''], ['수량', (lot.qty_ct || 0) + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')], ['선적', lot.ship || '미선적'], ['인증', certList().join(', ')]])));
+      if (state.shipments.length && API) {
+        var sh = state.shipments[state.shipments.length - 1], items = (sh.items || []).slice(0, 6).map(function (x) { return [x.desc, x.ct + ' C/T · ' + x.kg + ' kg']; }).concat([['TOTAL', sh.total_ct + ' C/T · ' + sh.total_kg + ' kg']]);
+        var mdl = state.ledger.filter(function (l) { return l.ship && String(l.ship).indexOf(sh.no) === 0; }).map(function (l) { return [l.lot, l.mfg + ' · ' + l.qty_ct + ' C/T']; });
+        cards.push(pkCard('href="' + API + '/shipdocs/pl?no=' + encodeURIComponent(sh.no) + '" download', '패킹리스트 초안', '선적 ' + esc(sh.no), miniDoc('PACKING LIST · ' + sh.no, items)));
+        cards.push(pkCard('href="' + API + '/shipdocs/mdl?no=' + encodeURIComponent(sh.no) + '" download', '제조일자 리스트', '선적 ' + esc(sh.no), miniDoc('MANUFACTURE DATE LIST · ' + sh.no, mdl)));
+        cards.push(pkCard('href="' + API + '/shipdocs/cert?no=' + encodeURIComponent(sh.no) + '" download', '위생증명서 신청값', '수품원 신청용', miniDoc('위생증명서 신청 정보', [['수출자', p.factory ? (p.factory.name_en || p.factory.name) : ''], ['수입자', sh.buyer || ''], ['선박', sh.vessel || ''], ['구간', sh.route || ''], ['수량', sh.total_ct + ' C/T / ' + sh.total_kg + ' kg']])));
+      }
       var rds = requestedDocs(b), okDocs = rds.filter(function (d) { return d.ok; });
-      var req = rds.length ? '<div class="bd-g bd-req"><dt>요청 서류</dt><dd>' + rds.map(function (d, j) { return d.ok ? btn('data-bd-doc="' + i + ':' + j + '"', d.title) : '<span class="bd-miss">' + esc(d.title) + ' <small>자료 필요</small></span>'; }).join('') + (okDocs.length ? btn('data-bd-docs="' + i + '"', '요청 서류 전부 zip', 'small ghost accent') : '') + '</dd></div>' : '';
-      count += okDocs.length;
+      rds.forEach(function (d, j) { cards.push(d.ok ? pkCard('data-bd-doc="' + i + ':' + j + '"', esc(d.title), '바이어가 물은 것 · ' + esc(d.topic), reqDocHtml(d.topic, d.lang, p, lot, b.buyer, d.rows)) : pkNeed(esc(d.title), '자료 필요 · ' + esc(d.topic))); });
+      var count = cards.length - (rds.length - okDocs.length);
       var asked = b.reply && b.reply.answers ? b.reply.answers.map(function (x) { return x['주제'] || x.topic; }).filter(function (v, j, arr) { return v && arr.indexOf(v) === j; }) : [];
       var open = only ? true : i === 0;
       return '<article class="bundle' + (open ? '' : ' fold') + '">' +
-        '<header class="bd-head"><div class="bd-who"><b>' + esc(b.buyer) + '</b><span>' + esc(p.code + ' ' + p.name_ko) + (b.lot ? ', 로트 ' + esc(b.lot.lot) : ', 로트 없음') + '</span>' + (asked.length ? '<span class="bd-ask">문의 항목: ' + esc(asked.join(', ')) + '</span>' : '') + '</div>' +
-        '<div class="bd-act"><button class="bd-zip" data-bd-zip="' + i + '"><span>이 거래 서류 한 번에 받기</span><small>zip, ' + count + '건</small></button><button class="ghost small bd-more" data-bd-more="' + i + '" aria-expanded="' + open + '">' + (open ? '낱개 접기' : '낱개 보기 ' + count + '건') + '</button></div></header>' +
-        '<dl class="bd-groups">' + groups.join('') + req + '</dl></article>';
+        '<header class="bd-head"><div class="bd-who"><b>' + esc(b.buyer) + '</b><span>' + esc(p.code + ' ' + p.name_ko) + (lot ? ', 로트 ' + esc(lot.lot) : ', 로트 없음') + '</span>' + (asked.length ? '<span class="bd-ask">문의 항목: ' + esc(asked.join(', ')) + '</span>' : '') + '</div>' +
+        '<div class="bd-act"><button class="bd-zip" data-bd-zip="' + i + '"><span>이 거래 서류 한 번에 받기</span><small>zip, ' + count + '건</small></button>' + (okDocs.length ? '<button class="ghost small" data-bd-docs="' + i + '">요청 서류만 zip (' + okDocs.length + ')</button>' : '') + '<button class="ghost small bd-more" data-bd-more="' + i + '" aria-expanded="' + open + '">' + (open ? '서류 접기' : '서류 ' + count + '장 보기') + '</button></div></header>' +
+        '<div class="bd-body"><div class="pack">' + cards.join('') + '</div></div></article>';
     });
     var cards = cardList.filter(function (_, i) { return !only || only.indexOf(i) >= 0; }).join('');
     if (only) return cards;
-    return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류 <span class="muted">' + bs.length + '곳</span></h3><p class="muted">바이어마다 파란 버튼 하나로 한 벌(zip)이 나옵니다. 낱개가 필요하면 펼치세요. 보내기 전 검수창을 거칩니다.</p><div class="bundles">' + cards + '</div></div>';
+    return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류 <span class="muted">' + bs.length + '곳</span></h3><p class="muted">카드가 실제 서류 미리보기입니다. 누르면 그 서류를 받고, 파란 버튼은 한 벌(zip)입니다. 보내기 전 검수창을 거칩니다.</p><div class="bundles">' + cards + '</div></div>';
   }
   // 홈: 가장 최근 바이어(문의가 온 쪽 우선) 한 장만. 전체는 한 번에 처리 3단계
   function homeDeal() {
@@ -1390,7 +1403,7 @@
   }
   function bindBundles() {
     var bs = bundleBuyers();
-    document.querySelectorAll('[data-bd-more]').forEach(function (el) { el.onclick = function () { var art = el.closest('.bundle'), fold = art.classList.toggle('fold'); el.setAttribute('aria-expanded', String(!fold)); el.textContent = fold ? el.textContent.replace('낱개 접기', '낱개 보기') : '낱개 접기'; if (fold && !/\d/.test(el.textContent)) el.textContent = '낱개 보기'; }; });
+    document.querySelectorAll('[data-bd-more]').forEach(function (el) { el.onclick = function () { var art = el.closest('.bundle'), fold = art.classList.toggle('fold'); el.setAttribute('aria-expanded', String(!fold)); var n = art.querySelectorAll('.pk-card.done').length; el.textContent = fold ? '서류 ' + n + '장 보기' : '서류 접기'; }; });
     var withProduct = function (b, fn) { var prev = state.productCode; setProduct(b.product); try { fn(); } finally { setProduct(prev); } };
     var prep = function (b) { var raw; withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); raw = buyerFormSheet.lastRaw; }); return translateMissing(formLang(state.specForms[b.buyer]), raw || {}); };
     document.querySelectorAll('[data-bd-pdf]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdPdf]; prep(b).then(function () { var html, ctx; withProduct(b, function () { html = buyerFormSheet(b.buyer, b.lot); ctx = specCtx(b.buyer, b.lot); }); return sendGate('규격서 PDF', b.buyer + ' · ' + b.product, ctx).then(function (ok) { if (ok) downloadPdf('규격서_' + b.buyer + '_' + b.product + (b.lot ? '_' + b.lot.lot : ''), html); }); }); }; });
