@@ -394,8 +394,34 @@
       pkgRow('賞味期限', '枠外下部に記載') + pkgRow('保存方法', '−18℃以下で保存してください') + pkgRow('原産国名', '韓国', 2) + pkgRow('輸入者', esc(u ? u.code.replace('사', '社') : '輸入者') + '（日本国内の住所）', 3) + '</table>' +
       '<p class="pkg-al" data-mk="4"><span class="mk">4</span>アレルギー物質：<b>かに</b></p><div data-mk="5"><div class="mk-wrap"><span class="mk">5</span></div>' + nut + '</div></div>';
   }
+  function nutBox(title, rows, foot) { return '<div data-mk="5"><div class="mk-wrap"><span class="mk">5</span></div><div class="pkg-nut"><div class="pn-h">' + title + '</div><table>' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td></tr>'; }).join('') + '</table>' + (foot ? '<p>' + foot + '</p>' : '') + '</div></div>'; }
+  function tagHK(p) {
+    return '<div class="pkg hk"><table>' + pkgRow('食品名稱 Name', '冷凍熟紅雪蟹腿碎肉<br>' + esc(p.name_en || '')) + pkgRow('配料 Ingredients', '紅雪蟹 Red snow crab、水 Water、鹽 Salt、' + esc(additiveBy.HK), 1) +
+      pkgRow('致敏物質 Allergen', esc(allergenBy.HK), 2) + pkgRow('淨重 Net weight', esc(p.net || '')) + pkgRow('此日期前最佳<br>Best before', 'DD/MM/YYYY', 3) + pkgRow('貯存方法 Storage', '-18°C或以下冷藏 Keep frozen at -18°C or below') +
+      pkgRow('製造商 Manufacturer', esc(p.factory ? p.factory.name : '') + ', Korea', 4) + pkgRow('原產地 Origin', '韓國 Korea') + '</table>' +
+      (p.nutrition100 ? nutBox('營養標籤 Nutrition Information <small>每100克 Per 100g</small>', nutritionBy.HK()) : '') + '</div>';
+  }
+  function tagTW(p) {
+    return '<div class="pkg tw"><table>' + pkgRow('品名', '冷凍熟紅雪蟹腿碎肉') + pkgRow('內容物名稱', '紅雪蟹、水、食鹽、' + esc(additiveBy.TW), 1) + pkgRow('過敏原資訊', '本產品含有螃蟹，不適合對其過敏體質者食用', 2) +
+      pkgRow('淨重', esc(p.net || '')) + pkgRow('有效日期', '標示於包裝', 3) + pkgRow('保存方法', '-18°C以下冷凍保存') + pkgRow('原產地', '韓國') + pkgRow('國內負責廠商', '（台灣進口商名稱·電話·地址）', 4) + '</table>' +
+      (p.nutrition100 ? nutBox('營養標示 <small>每100公克</small>', nutritionBy.TW()) : '') + '</div>';
+  }
   function bubbles(list) { return '<ol class="bubbles">' + list.map(function (b, i) { return '<li class="bubble" data-mk="' + (i + 1) + '"><span class="mk">' + (i + 1) + '</span><b>' + b[0] + '</b><p>' + b[1] + '</p><span class="ref">' + esc(b[2]) + '</span></li>'; }).join('') + '</ol>'; }
   var TAG_WHY = {
+    HK: function () { var r = LC.rules.HK.short; return [
+      ['첨가물은 기능 분류 + 명칭·INS 번호', '"增味劑(621)"처럼 기능 분류와 INS 번호를 같이 적어요. 일본식 직역 표기는 안 돼요.', r],
+      ['알레르겐은 중·영문으로', '갑각류(蟹)를 "含甲殼類動物（蟹）/ Contains crustacea (crab)"로 적어요. 다른 제품에서 복사한 밀·대두 선언은 빼요.', r],
+      ['此日期前最佳 / Best before', '"有効日期 / Expiration date"는 규정 문구가 아니에요. 날짜는 일·월·년 순서를 밝혀요.', r],
+      ['제조자 또는 포장자 이름·주소', '수입자만 적으면 부족해요. 제조자(A사) 또는 포장자의 이름·주소를 넣어요.', r],
+      ['영양표시 1+7', '열량 + 단백질·총지방·포화지방·트랜스지방·탄수화물·당·나트륨 7종이 의무예요.', r]
+    ]; },
+    TW: function () { var r = LC.rules.TW.short; return [
+      ['첨가물은 명칭 + 용도', '"D-山梨醇（甜味劑）"처럼 첨가물 이름 옆에 용도를 함께 적어요.', r],
+      ['알레르기 경고 문구', '"本產品含有螃蟹，不適合對其過敏體質者食用"처럼 들어 있는 알레르기 원료와 경고를 적어요.', r],
+      ['번체 한자로', '일본 한자(産·有効)를 쓰면 안 돼요. 產地·有效期限처럼 번체로 바꿔요.', r],
+      ['대만 수입업자 명·전화·주소', '국내(대만) 책임 업체의 이름·전화·주소가 모두 있어야 해요.', r],
+      ['영양 8항목', '열량·단백질·지방·포화지방·트랜스지방·탄수화물·당·나트륨 8항목을 적어요.', r]
+    ]; },
     CN: function () { return [
       ['원료는 많이 든 순서, 첨가물은 기능+이름', '配料表에 함량이 많은 원료부터 적고, 첨가물은 "增味剂（谷氨酸钠）"처럼 기능 분류와 통용 명칭을 함께 써요.', srcOf('CN', 'ingredients') + ' · ' + srcOf('CN', 'additive')],
       ['알레르기 유발물질을 따로 알림', '게는 甲壳纲类로 묶어 "本品含有甲壳纲类（蟹）"로 따로 표시해요.', srcOf('CN', 'allergen')],
@@ -411,36 +437,44 @@
       ['나트륨 대신 식염상당량', '영양은 5항목(熱量·たんぱく質·脂質·炭水化物·食塩相当量). 나트륨 mg를 식염상당량 g로 바꿔요(× 2.54 ÷ 1000).', '食品表示基準 · 栄養成分表示']
     ]; }
   };
-  var TAG_CTRY = [['JP', '일본', '食品表示基準', tagJP], ['CN', '중국', 'GB 7718-2025 · GB 28050-2025', tagCN]];   // 앞이 위(오른쪽 위), 뒤가 아래
+  var TAG_CTRY = [['JP', '일본', '食品表示基準', tagJP], ['CN', '중국', 'GB 7718-2025 · GB 28050-2025', tagCN], ['HK', '홍콩', 'Cap.132W', tagHK], ['TW', '대만', '식품안전위생관리법', tagTW]];
   screens.tags = function () {
-    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 중국·일본 라벨이에요. 라벨을 누르면 맨 위로 오고, 바꾼 이유가 순서대로 나와요.</p>' +
+    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 마우스를 대면 그 라벨이 앞으로 오고, 누르면 맨 앞으로 정렬돼요.</p>' +
       '<div class="row">' + productSelect('tg-prod') + '</div>' +
       '<div class="tagview"><section><h3 class="tv-h">한국 원본 <span class="muted">식품등의 표시기준</span></h3><div id="tg-kr"></div></section>' +
-      '<section><h3 class="tv-h">나라별 라벨 <span class="muted">눌러서 맨 위로</span></h3><div class="tag-stack" id="tg-stack"></div></section>' +
-      '<section><h3 class="tv-h" id="tg-why-h"></h3><div id="tg-why"></div></section></div>';
+      '<section><div class="tag-deck" id="tg-deck"></div><h3 class="tv-h" id="tg-why-h"></h3><div id="tg-why"></div></section></div>';
   };
   screens.tags.bind = function () {
     bindProductSelect('tg-prod');
-    var p = P(), order = TAG_CTRY.map(function (c) { return c[0]; });
+    var p = P(), order = TAG_CTRY.map(function (c) { return c[0]; }), main = order[0];
     $('#tg-kr').innerHTML = tagKR(p);
-    $('#tg-stack').innerHTML = TAG_CTRY.map(function (c, i) { return '<div class="tag-card pos' + i + '" data-c="' + c[0] + '" tabindex="0" role="button" aria-label="' + c[1] + ' 라벨 맨 위로"><span class="tc-tab">' + c[1] + '</span>' + c[3](p) + '</div>'; }).join('');
-    var cards = Array.prototype.slice.call(document.querySelectorAll('.tag-card'));
-    function hl(n) { cards.forEach(function (el) { Array.prototype.forEach.call(el.querySelectorAll('[data-mk]'), function (r) { r.classList.toggle('hl', !!n && el.dataset.c === order[0] && r.dataset.mk === n); }); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-why .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
-    function show(code) {
-      order = [code].concat(order.filter(function (c) { return c !== code; }));
-      cards.forEach(function (el) { var k = order.indexOf(el.dataset.c); el.style.zIndex = String(10 - k); el.classList.toggle('top', k === 0); });
+    var deck = $('#tg-deck');
+    deck.innerHTML = TAG_CTRY.map(function (c) { return '<div class="tag-card" data-c="' + c[0] + '" tabindex="0" role="button" aria-label="' + c[1] + ' 라벨 맨 앞으로"><span class="tc-tab">' + c[1] + '</span>' + c[3](p) + '</div>'; }).join('');
+    var card = function (code) { return deck.querySelector('[data-c="' + code + '"]'); };
+    function hl(n) { Array.prototype.forEach.call(deck.querySelectorAll('[data-mk]'), function (r) { r.classList.toggle('hl', !!n && r.closest('.tag-card').dataset.c === main && r.dataset.mk === n); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-why .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
+    function setMain(code) {   // 대면 메인: 앞으로 + 바꾼 이유
+      if (main === code && $('#tg-why').innerHTML) return;
+      main = code;
+      order.forEach(function (c, i) { var el = card(c); el.style.zIndex = String(c === main ? 50 : 40 - i); el.classList.toggle('main', c === main); });
       var c = TAG_CTRY.filter(function (x) { return x[0] === code; })[0];
       $('#tg-why-h').innerHTML = c[1] + '에서 바꾼 이유 <span class="muted">' + esc(c[2]) + '</span>';
       $('#tg-why').innerHTML = bubbles(TAG_WHY[code]());
     }
-    cards.forEach(function (el) {
-      el.onclick = function () { show(el.dataset.c); };
-      el.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(el.dataset.c); } };
+    function sortTo(code) {    // 누르면 정렬: 누른 라벨이 맨 앞, 나머지는 원래 순서대로
+      order = [code].concat(order.filter(function (c) { return c !== code; }));
+      order.forEach(function (c) { deck.appendChild(card(c)); });
+      main = null; setMain(code);
+    }
+    Array.prototype.forEach.call(deck.children, function (el) {
+      el.onmouseenter = function () { setMain(el.dataset.c); };
+      el.onclick = function () { sortTo(el.dataset.c); };
+      el.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sortTo(el.dataset.c); } };
+      el.onfocus = function () { setMain(el.dataset.c); };
     });
     var root = $('.tagview');
-    root.onmouseover = function (e) { var t = e.target.closest('.bubble, .tag-card.top [data-mk]'); hl(t ? t.dataset.mk : null); };
+    root.onmouseover = function (e) { var t = e.target.closest('.bubble, .tag-card.main [data-mk]'); hl(t ? t.dataset.mk : null); };
     root.onmouseleave = function () { hl(null); };
-    show(order[0]);
+    main = null; setMain(order[0]);
   };
 
   function renderProductOut() {
