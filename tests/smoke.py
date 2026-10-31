@@ -27,6 +27,13 @@ def static_checks():
     try: ok = all(x['status'] == 'pass' for x in json.loads(r.stdout)); note = [x['item'] for x in json.loads(r.stdout) if x['status'] != 'pass']
     except Exception as e: ok, note = False, str(e)
     check('A judge.js JP U사 라벨 전부 pass', ok, note)
+    r = run(['node', '-e', "global.window={};var fs=require('fs');eval(fs.readFileSync('data.js','utf8'));eval(fs.readFileSync('apply.js','utf8'));"
+             "var s={ledger:[],raw:[],registry:[],shipments:[],nutritionSources:[],docs:[],specForms:{},labels:[]};"
+             "var o={buyer:'T사',form_title:'Spec',fields:['Product Name','Lot No','Remarks'],mapping:{'Product Name':'product.name_en','Lot No':'lot.lot','Remarks':null}};"
+             "var msg=LC.applyDoc?LC.applyDoc('규격서양식',o,s):null; var f=s.specForms['T사']; process.stdout.write(JSON.stringify([!!(f&&f.mapping&&f.mapping['Lot No']==='lot.lot'), msg]))"])
+    try: ok, msg = json.loads(r.stdout)
+    except Exception as e: ok, msg = False, (r.stderr or str(e))[-200:]
+    check('A 바이어 양식 mapping 저장(applyDoc 규격서양식)', ok and '짝 2칸' in str(msg), msg)
     banned = [x[::-1] for x in ['웅세', '호성삼', '노에우', '다모토', '이레산', 'IHSOYENAK', 'NEROYG', 'yraicifeneB', '0-851']]  # 뒤집어 보관(소스 자체가 검사에 걸리지 않게)
     for f in ['app.js', 'data.js', 'fixtures.js', 'apply.js', 'import.js', 'index.html', 'style.css']:
         p = ROOT / f

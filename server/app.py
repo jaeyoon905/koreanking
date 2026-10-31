@@ -104,6 +104,8 @@ def extract(body):
             r = r if isinstance(r, dict) else {}
             src = r.pop('_src', {}); src = src if isinstance(src, dict) else {}
             fields = [{'k': k, 'label': k, 'v': v, 'src': src.get(k, '')} for k, v in r.items()]
+            if t == '규격서양식' and r.get('fields'):   # 새 바이어 양식: 칸 ↔ 우리 데이터 짝짓기(AI 제안). 승인 뒤 규격서 화면이 이 짝으로 채운다
+                fields.append({'k': 'mapping', 'label': '칸 ↔ 우리 데이터 (AI 제안, 승인 전 확인)', 'v': graph.map_fields(r['fields']), 'src': 'AI'})
             return dict({'doc_type': t, 'mode': 'llm', 'blocked': False, 'fields': fields}, **extra)
         if work and OCR:                                  # 키 없음 → 로컬 OCR(인쇄 서류). 손글씨는 fields 가 비어 fixture 로 넘어간다
             try:

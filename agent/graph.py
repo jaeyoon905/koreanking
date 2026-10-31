@@ -36,7 +36,7 @@ SCHEMAS = {
 }
 # 파일명으로 먼저 맞춰 보고(공짜), 안 맞으면 LLM 분류. 앞에 있는 것이 이긴다 → 수입 힌트를 '인보이스' 보다 앞에
 NAME_HINTS = [('Declaration', '수입신고서'), ('선하증권', 'BL'), ('KMTCISI', 'BL'), ('B/L', 'BL'), ('DHL', '운송장'), ('운송장', '운송장'), ('NCSEW', '수입인보이스'),
-              ('영양', '영양성적서'), ('성적서', '영양성적서'), ('規格書', '규격서양식'), ('규격서', '규격서양식'), ('仕様書', '바이어지시'),
+              ('영양', '영양성적서'), ('성적서', '영양성적서'), ('規格書', '규격서양식'), ('규격서', '규격서양식'), ('Specification', '규격서양식'), ('Spec', '규격서양식'), ('spec', '규격서양식'), ('仕様書', '바이어지시'),
               ('表示案', '바이어지시'), ('패킹', '패킹리스트'), ('인보이스', '패킹리스트'), ('입고', '입고검사서'), ('가공일지', '가공일지'),
               ('포장', '포장일지'), ('위생증명', '위생증명서'), ('HACCP', 'HACCP인증서'), ('라벨', '라벨'), ('제품사진', '라벨'), ('메일', '메일'),
               ('고시', '고시문'), ('告示', '고시문'), ('基準', '고시문')]
@@ -57,6 +57,9 @@ FORM_HINTS = {
     '패킹리스트': ('수출 PACKING LIST / COMMERCIAL INVOICE. SHIPPER·CONSIGNEE·INVOICE NO & DATE·DEPARTURE DATE·VESSEL/FLIGHT·FROM/TO, '
                   '품목 행은 DESCRIPTION OF GOODS·QUANTITY(C/T)·NET WEIGHT·GROSS WEIGHT. items 는 {desc, ct, net_kg}. '
                   '단가(UNIT PRICE)·금액(AMOUNT)·계좌(Account, Bank, SWIFT)는 절대 추출하지 말고, 보이면 해당 칸 값을 "가림" 으로 적는다.'),
+    '규격서양식': ('바이어가 보낸 상품규격서 양식(xlsx·PDF). fields 는 양식의 입력 칸 라벨을 원문 그대로, 위→아래 순서대로 배열(예시값·설명문 말고 칸 이름만). '
+                  '표 섹션(配合·調味液·重点管理·包装資材, Ingredients table 등)은 섹션 제목 하나를 라벨로 넣는다. buyer 는 양식을 보낸 바이어 이름(표제·파일명 기준), form_title 은 표제. '
+                  '예시값이 채워져 있으면 recipe·seasoning·qc·packaging 도 뽑는다.'),
     '수입신고서': ('일본 정부 "Declaration for the import into the Republic of Korea of Food from Japan". Consignment Code, Declaration Number(NS…KR…), '
                   '제품명·포장 수·순중량, 승선지(embarked at)·승선일·선박, 제조소(establishment 이름·주소), 체크박스 3개 중 어느 것인지(prefecture_flag: "2011-03-11 이전" / "17개 도현 외" / "17개 도현 내, 검사함"), '
                   '시료 채취일(sampled)·분석일(analyzed)·검사기관(lab)·보고서 번호(report_no), 발급 기관·일자(issued). 한 장에 제품 하나다.'),
@@ -189,12 +192,32 @@ def reconcile(s: S) -> S:  # 원장·품목 마스터와 대조. 계산은 코�
 
 
 # ---------- 작성부 ----------
+# 우리가 가진 데이터 칸. 바이어 양식의 칸을 이 중 하나에 짝짓는다(값은 app.js oursValues 가 채운다). 여기 없는 건 null → 노란 빈칸
+OURS = {
+    'buyer.name': '바이어(양식을 보낸 회사) 이름', 'doc.date': '작성일(오늘)', 'doc.issuer': '작성자·공급자(우리 회사)',
+    'product.name_ko': '제품명(한국어)', 'product.name_en': '제품명(영어)', 'product.name_ja': '제품명(일본어)', 'product.code': '우리 품목 코드',
+    'product.species': '원료 어종·학명', 'product.origin': '원산지', 'product.ingredients': '원재료 배합(이름·비율)', 'product.additives': '식품첨가물(용도·이름·INS)',
+    'product.allergen': '알레르겐', 'product.nutrition': '영양성분 100g', 'product.shelf_life_months': '소비(상미)기한 개월 수', 'product.net': '내용량(1팩)',
+    'product.pack': '포장 단위·입수(荷姿)', 'product.process': '제조 공정', 'product.storage': '보존 방법·온도',
+    'factory.name': '제조자·공장 이름', 'factory.lic': '영업등록 번호', 'factory.haccp': 'HACCP 인증 번호·기한', 'factory.registrations': '해외 등록(FDA·GACC 등) 목록',
+    'lot.lot': 'LOT 번호', 'lot.company_code': '회사 로트 코드', 'lot.mfg': '제조일', 'lot.expiry': '소비기한(날짜)', 'lot.qty_ct': '수량 C/T', 'lot.kg': '중량 kg',
+    'lot.raw': '원료 입고분(어선·입고일)', 'lot.ship': '선적', 'lot.cert': '위생증명서 번호',
+}
+
+
+def map_fields(fields: list) -> dict:  # 양식 칸 라벨 → OURS 키 또는 null. AI 제안이고 사람이 승인 카드에서 확인한다
+    labels = [f if isinstance(f, str) else str(f.get('label', f)) for f in fields or []]
+    if not labels: return {}
+    r = llm('바이어 규격서 양식의 칸 라벨 목록과 우리 데이터 칸을 짝지어라. 뜻이 같을 때만 짝짓고 애매하면 null. 표 섹션(배합·조미액·중점관리·포장자재) 라벨은 null. '
+            f'양식 칸: {labels} / 우리 데이터 칸(키: 뜻): {OURS} / 출력: {{"양식 칸 라벨": "우리 키 또는 null", ...}} 라벨 전부 빠짐없이.')
+    r = r if isinstance(r, dict) else {}
+    r.pop('_src', None)
+    return {k: (v if v in OURS else None) for k, v in r.items() if k in labels}
+
+
 def map_form(s: S) -> S:  # 바이어 양식 칸 ↔ 우리 필드. LLM이 제안, 사람이 승인, 그 뒤엔 저장된 매핑으로 채움
-    ours = ['product.name_ja', 'product.name_ko', 'product.code', 'product.ingredients', 'product.additives', 'product.allergen', 'product.nutrition', 'product.shelf_life_months',
-            'product.net_g', 'product.pack', 'product.process', 'product.recipe', 'product.seasoning', 'product.storage', 'factory.name', 'factory.lic', 'factory.haccp',
-            'lot.lot', 'lot.company_code', 'lot.mfg', 'lot.expiry', 'lot.qty_ct', 'lot.kg', 'lot.raw', 'lot.ship', 'lot.cert', 'qc.thaw_yield', 'qc.foreign_matter', 'qc.micro', 'packaging.materials']
-    r = llm(f'바이어 양식의 칸 목록(fields)과 우리 필드 {ours} 를 짝지어라. {{"buyer":..., "mapping": {{"양식 칸 라벨": "우리 필드 또는 null"}}, "unmapped": [...]}}', s['path'])
-    return {'mapping': r, 'log': [f'map_form: {len(r.get("mapping", {}))}칸 매핑, 미매핑 {len(r.get("unmapped", []))}']}
+    m = map_fields((s.get('extracted') or {}).get('fields') or [])
+    return {'mapping': m, 'log': [f'map_form: {sum(1 for v in m.values() if v)}칸 매핑, 미매핑 {sum(1 for v in m.values() if not v)}']}
 
 
 def draft(s: S) -> S:  # 확인(check) 항목의 질의문·일본어 문구 초안. 판정 아님

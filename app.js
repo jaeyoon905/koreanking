@@ -287,18 +287,35 @@
     return '<div class="sheet"><h3>' + (lot ? '로트 규격서 (出荷ロット規格書)' : '품목 규격서 (原材料規格書・製造工程表)') + '</h3><p class="muted">바이어 양식 템플릿 기준 · 발행일 ' + LC.TODAY + '</p><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>';
   }
   // 바이어 양식 규격서: 서류 넣기에서 승인한 양식(state.specForms[buyer])의 칸 순서 그대로. 우리 데이터에 없는 값은 노란 빈칸
+  // 우리 데이터를 agent/graph.py OURS 키로 펼친다. 바이어 양식 칸은 승인된 mapping(라벨 → 키)으로 여기서 값을 가져간다
+  function oursValues(p, lot, buyer) {
+    var adds = p.ingredients.filter(function (i) { return i.type === 'additive'; }), certs = certList();
+    var v = { 'buyer.name': buyer, 'doc.date': LC.TODAY, 'doc.issuer': 'A사',
+      'product.name_ko': p.name_ko, 'product.name_en': p.name_en, 'product.name_ja': p.name_ja || '', 'product.code': p.code,
+      'product.species': (p.ingredients[0] || {}).name_ko || '', 'product.origin': '韓国 / 한국산',
+      'product.ingredients': p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', '),
+      'product.additives': adds.map(function (i) { return i.func + ' ' + i.name_ko + ' INS ' + i.ins; }).join(', '),
+      'product.allergen': Array.isArray(p.allergens) ? p.allergens.join(', ') : (p.allergens || '甲殻類(かに) / 갑각류(게)'),
+      'product.nutrition': p.nutrition100 ? nutritionBy.JP().slice(0, 5).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : '',
+      'product.shelf_life_months': p.shelf_months + '개월 (' + Math.round(p.shelf_months / 12) + '年間)', 'product.net': p.net, 'product.pack': p.pack, 'product.process': p.process, 'product.storage': p.storage,
+      'factory.name': p.factory.name, 'factory.lic': p.factory.lic, 'factory.haccp': certs.filter(function (c) { return /HACCP/i.test(c); }).join(' · '), 'factory.registrations': certs.join(' · ') };
+    if (lot) { v['lot.lot'] = lot.lot; v['lot.company_code'] = lot.company_code || ''; v['lot.mfg'] = lot.mfg; v['lot.expiry'] = lot.expiry; v['lot.qty_ct'] = lot.qty_ct + ' C/T'; v['lot.kg'] = lot.kg + ' kg'; v['lot.raw'] = lot.raw_by || lot.raw || ''; v['lot.ship'] = lot.ship || ''; v['lot.cert'] = lot.cert || ''; }
+    return v;
+  }
   function buyerFormSheet(buyer, lot) {
     var f = state.specForms[buyer] || {}, p = (lot && LC.products && LC.products[lot.product]) || P(), miss = ' style="background:#fff3bf"';
+    var mp = f.mapping || {}, ours = oursValues(p, lot, buyer);
     var code = (String(f.spec || '').match(/商品コード\s*([\w\-－]+)/) || [])[1] || '';
     var val = { '会社名': buyer, '作成日': LC.TODAY, '韓国商品名': p.name_en, '日本商品名': p.name_ja || '', '商品コード': code, '工場': 'A사', '規格': p.pack,
       '賞味期限': p.shelf_months + '개월 (' + Math.round(p.shelf_months / 12) + '年間)', '単位': 'ケース', '形態': p.note || '' };
     if (lot) { val['LOT'] = lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : ''); val['製造日'] = lot.mfg; val['賞味期限'] = lot.expiry; }
     var gf = function (x) { return typeof x === 'string' ? x : x.name + (x.g != null ? ' ' + x.g + 'g' : '') + (x.pct != null ? ' (' + x.pct + '%)' : ''); };
-    var td = function (k) { var v = val[k]; return '<tr><th>' + esc(k) + '</th><td' + (v ? '' : miss) + '>' + esc(v || '') + '</td></tr>'; };
-    var list = function (title, arr) { return '<tr><th colspan="2">' + title + '</th></tr>' + (arr && arr.length ? arr.map(function (x, i) { return '<tr><td>' + (i + 1) + '</td><td>' + esc(gf(x)) + '</td></tr>'; }).join('') : '<tr><td colspan="2"' + miss + '></td></tr>'); };
+    var td = function (k) { var v = mp[k] && ours[mp[k]] ? ours[mp[k]] : val[k]; return '<tr><th>' + esc(k) + '</th><td' + (v ? '' : miss) + '>' + esc(v || '') + '</td></tr>'; };
+    var list = function (title, arr) { if ((f.fields || []).indexOf(title) < 0 && !(arr && arr.length)) return ''; return '<tr><th colspan="2">' + title + '</th></tr>' + (arr && arr.length ? arr.map(function (x, i) { return '<tr><td>' + (i + 1) + '</td><td>' + esc(gf(x)) + '</td></tr>'; }).join('') : '<tr><td colspan="2"' + miss + '></td></tr>'); };
     var sections = ['重点管理', '配合', '調味液', '包装資材'], basic = (f.fields || Object.keys(val)).filter(function (k) { return sections.indexOf(k) < 0; });
     if (lot) basic = basic.concat(['LOT', '製造日']);
-    return '<div class="sheet"><h3>' + esc(f.form_title || '商品規格書') + ' — ' + esc(buyer) + '</h3><p class="muted">' + esc(buyer) + ' 양식 칸 순서 그대로 · 노란 칸은 우리 데이터에 없는 값 · 발행일 ' + LC.TODAY + '</p><table>' +
+    var hit = Object.keys(mp).filter(function (k) { return mp[k] && ours[mp[k]]; }).length;
+    return '<div class="sheet"><h3>' + esc(f.form_title || '商品規格書') + ' — ' + esc(buyer) + '</h3><p class="muted">' + esc(buyer) + ' 양식 칸 순서 그대로 · 노란 칸은 우리 데이터에 없는 값' + (f.mapping ? ' · AI가 짝지은 칸 ' + hit + '/' + Object.keys(mp).length + ' (승인됨)' : '') + ' · 발행일 ' + LC.TODAY + '</p><table>' +
       basic.map(td).join('') + list('重点管理', f.qc) + list('配合', f.recipe) + list('調味液', f.seasoning) + list('包装資材', f.packaging) + '</table></div>';
   }
   function formSelect(id) {
@@ -521,6 +538,7 @@
       return '<details><summary>' + v.length + '행</summary><table><tr>' + ks.map(function (k) { return '<th>' + esc(k) + '</th>'; }).join('') + '</tr>' +
         v.map(function (r) { return '<tr>' + ks.map(function (k) { return '<td>' + esc(r[k]) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table></details>';
     }
+    if (v && typeof v === 'object') return Object.keys(v).map(function (k) { return esc(k) + ' → ' + (v[k] ? '<b>' + esc(v[k]) + '</b>' : '<span class="muted">(우리 데이터 없음 → 빈칸)</span>'); }).join('<br>');
     return esc(v);
   }
   var DIFF = { ok: ['통과', 'ok'], add: ['추가', 'warn'], check: ['확인', 'warn'], bad: ['불일치', 'bad'] };

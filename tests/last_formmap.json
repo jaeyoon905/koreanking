@@ -1,0 +1,115 @@
+{
+ "doc_type": "규격서양식",
+ "mode": "llm",
+ "blocked": false,
+ "fields": [
+  {
+   "k": "buyer",
+   "label": "buyer",
+   "v": "T Trading Co., Ltd.",
+   "src": "Spec Sheet!A2"
+  },
+  {
+   "k": "form_title",
+   "label": "form_title",
+   "v": "PRODUCT SPECIFICATION SHEET",
+   "src": "Spec Sheet!A1"
+  },
+  {
+   "k": "fields",
+   "label": "fields",
+   "v": [
+    "Supplier",
+    "Date",
+    "Product Name (English)",
+    "Product Name (Local)",
+    "Item Code",
+    "Species / Scientific Name",
+    "Country of Origin",
+    "Ingredients (with %)",
+    "Food Additives",
+    "Allergens",
+    "Net Weight per Pack",
+    "Packing (per carton)",
+    "Shelf Life",
+    "Storage Condition",
+    "Manufacturing Process",
+    "Manufacturer",
+    "Manufacturer License No.",
+    "HACCP Certificate No.",
+    "Overseas Registrations (FDA/GACC)",
+    "Lot No.",
+    "Production Date",
+    "Best Before",
+    "Nutrition Facts (per 100g)",
+    "Target Retail Price",
+    "Remarks"
+   ],
+   "src": "Spec Sheet!A4:A28"
+  },
+  {
+   "k": "recipe",
+   "label": "recipe",
+   "v": null,
+   "src": "no example values filled in"
+  },
+  {
+   "k": "seasoning",
+   "label": "seasoning",
+   "v": null,
+   "src": "no example values filled in"
+  },
+  {
+   "k": "qc",
+   "label": "qc",
+   "v": null,
+   "src": "no example values filled in"
+  },
+  {
+   "k": "packaging",
+   "label": "packaging",
+   "v": null,
+   "src": "no example values filled in"
+  },
+  {
+   "k": "note",
+   "label": "note",
+   "v": null,
+   "src": ""
+  },
+  {
+   "k": "mapping",
+   "label": "칸 ↔ 우리 데이터 (AI 제안, 승인 전 확인)",
+   "v": {
+    "Supplier": "doc.issuer",
+    "Date": "doc.date",
+    "Product Name (English)": "product.name_en",
+    "Product Name (Local)": null,
+    "Item Code": "product.code",
+    "Species / Scientific Name": "product.species",
+    "Country of Origin": "product.origin",
+    "Ingredients (with %)": "product.ingredients",
+    "Food Additives": "product.additives",
+    "Allergens": "product.allergen",
+    "Net Weight per Pack": "product.net",
+    "Packing (per carton)": "product.pack",
+    "Shelf Life": "product.shelf_life_months",
+    "Storage Condition": "product.storage",
+    "Manufacturing Process": "product.process",
+    "Manufacturer": "factory.name",
+    "Manufacturer License No.": "factory.lic",
+    "HACCP Certificate No.": "factory.haccp",
+    "Overseas Registrations (FDA/GACC)": "factory.registrations",
+    "Lot No.": "lot.lot",
+    "Production Date": "lot.mfg",
+    "Best Before": "lot.expiry",
+    "Nutrition Facts (per 100g)": "product.nutrition",
+    "Target Retail Price": null,
+    "Remarks": null
+   },
+   "src": "AI"
+  }
+ ],
+ "redacted": false,
+ "redact_found": 0
+}
