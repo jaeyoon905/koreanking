@@ -1509,6 +1509,24 @@
       '<div class="cols"><div><h4>바이어가 많이 묻는 것</h4>' + tbl(topics, top(topics, 6), '항목', '회') + '</div><div><h4>자료가 없어 못 답한 것 → 보강 우선순위</h4>' + tbl(lacking, top(lacking, 6), '항목', '회') + '</div><div><h4>양식에서 못 채운 칸</h4>' + tbl(gaps, top(gaps, 6), '칸', '양식 수') + '</div></div>' +
       '<p class="muted">문의·양식·발행이 쌓일수록 정확해집니다. 못 답한 항목을 품목대장·성적서로 채우면 준비도가 올라갑니다.</p></div>';
   }
+  // 쌓이는 데이터: 지금 원장 수치 → 한 해 추정(기록 날짜 범위로 환산). 다음 단계는 "되는 조건"을 붙여 사실대로
+  function accrualCard() {
+    // 환산 기준은 첫 달(회사 원본 4월) 기록만: 가상 7월분을 섞으면 기간만 늘어나 실제보다 적게 나온다
+    var realLots = state.ledger.filter(function (l) { return !(LC.products[l.product] || {}).demo; });
+    var months = realLots.map(function (l) { return String(l.mfg).slice(0, 7); }).sort(), m0 = months[0] || '';
+    var base = realLots.filter(function (l) { return String(l.mfg).indexOf(m0) === 0; }), baseRaw = state.raw.filter(function (r) { return String(r.received).indexOf(m0) === 0; });
+    var dates = base.map(function (l) { return l.mfg; }).concat(baseRaw.map(function (r) { return r.received; })).filter(Boolean).sort();
+    var days = dates.length > 1 ? Math.max(7, (new Date(dates[dates.length - 1]) - new Date(dates[0])) / 864e5 + 1) : 7;
+    var yr = function (n) { return Math.round(n / days * 365 / 10) * 10; };
+    var judged = state.docs.filter(function (d) { d = d || {}; return d.doc_type === '라벨' || /라벨/.test(String(d.result)); }).length;
+    var tile = function (k, v, s) { return '<div class="stat"><span class="k">' + k + '</span><span class="v">' + v + '</span>' + (s ? '<span class="muted">' + s + '</span>' : '') + '</div>'; };
+    return '<div class="card" id="accrual-card"><div class="sec-head"><h3>쌓이는 데이터</h3><span class="muted">한 해 추정은 ' + (m0 ? +m0.slice(5) + '월 ' : '') + '기록 ' + Math.round(days) + '일치를 단순 환산</span></div>' +
+      '<div class="stats">' + tile('로트', realLots.length + '<small>건</small>', '한 해 약 ' + yr(base.length) + '건') + tile('원료 입고', state.raw.length + '<small>건</small>', '한 해 약 ' + yr(baseRaw.length) + '건') + tile('라벨 판정', judged + '<small>건</small>', '나라 규칙 ' + Object.keys(LC.rules).length + '개') + tile('바이어 양식 · 문의', Object.keys(state.specForms || {}).length + ' · ' + (state.replies || []).length + '<small>건</small>', '규정 감시 ' + (state.regwatch || []).length + '곳') + '</div>' +
+      '<table class="acc-t"><tr><th style="width:38%">쌓이면 되는 것</th><th>되는 조건</th><th>지금</th></tr>' +
+      '<tr><td data-h="쌓이면 되는 것"><b>회사 안</b> 수율, 원료 시기별 품질, 재고 만료, 클레임 원인</td><td data-h="되는 조건">바이어가 한 곳이어도 생산 기록은 매일 쌓임</td><td data-h="지금">월별 집계·재고·영향 범위 있음</td></tr>' +
+      '<tr><td data-h="쌓이면 되는 것"><b>모든 회사 공통</b> 나라 규칙 정밀도, 실제 지적 사례, 개정 영향</td><td data-h="되는 조건">쓰는 회사 수와 시간에 비례. 바이어 수와 무관</td><td data-h="지금">규칙 파일·규정 감시·판정 기록 있음</td></tr>' +
+      '<tr><td data-h="쌓이면 되는 것"><b>겹칠 때</b> 바이어 양식 재사용, 같은 산지 원료 경보</td><td data-h="되는 조건">같은 바이어나 같은 산지를 쓰는 회사가 있어야 함 <span class="b warn">회사 확인 필요</span></td><td data-h="지금">양식 짝짓기 저장은 됨, 공유는 다음 단계</td></tr></table></div>';
+  }
   screens.stats = function () {
     if (typeof LC.stats !== 'function') return '<h2>집계</h2><p class="muted">stats.js 없음</p>';
     if (!state.ledger.length) return '<h2>집계</h2>' + emptyLedger();
@@ -1523,7 +1541,7 @@
     var buyers = '<table><tr><th>바이어</th><th class="num">선적</th><th class="num">C/T</th><th class="num">kg</th><th>마지막</th><th class="num">평균 간격(일)</th></tr>' + st.buyers.map(function (b) { return '<tr><td>' + esc(b.buyer) + '</td><td class="num">' + b.shipments + '</td><td class="num">' + fmt(b.ct) + '</td><td class="num">' + fmt(b.kg) + '</td><td>' + fmt(b.last) + '</td><td class="num">' + fmt(b.avg_gap_days) + '</td></tr>'; }).join('') + '</table>';
     var lt = st.lead_times, lead = '<table><tr><th></th><th class="num">평균(일)</th><th class="num">최대(일)</th></tr><tr><td>입고 → 제조</td><td class="num">' + fmt(lt.raw_to_mfg.avg) + '</td><td class="num">' + fmt(lt.raw_to_mfg.max) + '</td></tr><tr><td>제조 → 선적</td><td class="num">' + fmt(lt.mfg_to_ship.avg) + '</td><td class="num">' + fmt(lt.mfg_to_ship.max) + '</td></tr></table>';
     var dc = st.docs, docs = '<table><tr><th>서류 종류</th><th class="num">건수</th></tr>' + Object.keys(dc.by_type || {}).map(function (k) { return '<tr><td>' + esc(k) + '</td><td class="num">' + dc.by_type[k] + '</td></tr>'; }).join('') + '</table><p class="muted">반려 ' + (dc.rejected || 0) + '건 · 마지막 처리 ' + fmt(dc.last) + '</p>';
-    return '<h2>집계</h2><p class="sub">원장에서 바로 계산한 월별 생산·재고·수율과, 쌓인 거래 데이터로 아는 것.</p>' + insightsCard() + '<div class="cols">' +
+    return '<h2>집계</h2><p class="sub">원장에서 바로 계산한 월별 생산·재고·수율과, 쌓인 거래 데이터로 아는 것.</p>' + insightsCard() + accrualCard() + '<div class="cols">' +
       cardOf('monthly', '월별 입고·생산·선적', monthly, LC.stats.toCSV(st.monthly)) + cardOf('inventory', '재고 (생산 − 선적)', inv, LC.stats.toCSV(st.inventory)) +
       cardOf('yield', '입고분별 수율', yld, LC.stats.toCSV(st.yield.rows)) + cardOf('buyers', '바이어별 선적', buyers, LC.stats.toCSV(st.buyers)) +
       cardOf('lead', '리드타임', lead, LC.stats.toCSV(lt.lots)) + cardOf('docs', '처리 기록', docs, LC.stats.toCSV(Object.keys(dc.by_type || {}).map(function (k) { return { doc_type: k, count: dc.by_type[k] }; }))) + '</div>' +

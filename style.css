@@ -617,3 +617,12 @@ details.lbl-setup[open] > summary { margin-bottom: 16px; }
 @media (max-width: 700px) { .bd-head { grid-template-columns: 1fr; } .bd-who b { font-size: 17px; } }
 /* 나라별 라벨: 나라 칩 줄 아래에 라벨 탭(46px)이 들어갈 자리 */
 #tg-ctry { margin-bottom: 56px; }
+
+/* 집계: 쌓이는 데이터 표, 좁은 화면에서는 줄 단위 */
+@media (max-width: 700px) {
+  .acc-t, .acc-t tbody, .acc-t tr, .acc-t td { display: block; width: auto; }
+  .acc-t tr:first-child { display: none; }
+  .acc-t tr { padding: 8px 0; border-bottom: 1px solid var(--hairline); }
+  .acc-t td { border: 0; padding: 4px 0; }
+  .acc-t td::before { content: attr(data-h); display: block; font-size: 12px; color: var(--ink-muted); }
+}
