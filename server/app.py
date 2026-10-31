@@ -93,6 +93,8 @@ def regwatch_check(force=False):
                     new_items = [x for x in items if x not in prev_items] if prev_items else []
                     if prev_items and new_items:
                         status, changed_at = 'changed', now(); note = '새 제목 ' + str(len(new_items)) + '건: ' + ' / '.join(new_items[:3])
+                        c.execute('create table if not exists regwatch_new(url text primary key, items text, triage text, at text)')
+                        c.execute('insert into regwatch_new(url,items,triage,at) values(?,?,?,?) on conflict(url) do update set items=excluded.items, triage=null, at=excluded.at', (s['url'], json.dumps(new_items[:20], ensure_ascii=False), None, now()))
                     elif changed_at and not (prev_note or '').startswith('확인함'):
                         status, note = 'changed', prev_note or '변경 감지(확인 전)'
                     elif not prev_items: status, note = 'new', '기준선 저장(제목 ' + str(len(items)) + '건)'
@@ -105,11 +107,33 @@ def regwatch_check(force=False):
     return out
 
 
+def regwatch_triage(url):
+    """변경 감지된 출처의 새 제목을 AI가 1차 분류: 식품 표시·수출 관련인지, 걸릴 수 있는 품목·항목. 결과는 저장(재호출 시 재사용). 확정은 사람이 링크를 열어 고시문을 올린 뒤"""
+    with db() as c:
+        c.execute('create table if not exists regwatch_new(url text primary key, items text, triage text, at text)')
+        row = c.execute('select items, triage from regwatch_new where url=?', (url,)).fetchone()
+    if not row: return {'items': [], 'triage': [], 'note': '새 제목 없음'}
+    items = json.loads(row['items'] or '[]')
+    if row['triage']: return {'items': items, 'triage': json.loads(row['triage'])}
+    if not os.environ.get('ANTHROPIC_API_KEY'): return {'items': items, 'triage': [], 'note': 'API 키 없음 → 제목만 표시'}
+    src = next((s for s in REG_SOURCES if s['url'] == url), {})
+    r = graph.llm('다음은 ' + src.get('country', '') + ' 정부 공식 페이지(' + src.get('name', '') + ')에 새로 올라온 공지 제목 목록이다. 우리 회사는 한국의 수산 가공식품(냉동 자숙 홍게살: 다리살·플레이크·믹스살) 수출업체다. '
+                  '제목마다 (a) 식품 표시(라벨)·식품 기준·수입식품 요건과 관련이 있는지 related(true/false), (b) 관련이면 걸릴 수 있는 표시 항목(예: 알레르겐, 영양표시, 소비기한, 첨가물, 원산지, 수입자 표시, 등록번호)과 한 줄 이유 why(한국어), (c) 긴급도 urgency(high/medium/low)를 적어라. 제목만으로 판단하므로 확신이 없으면 related=true 로 두고 why 에 "확인 필요"라고 써라(놓치는 쪽보다 과잉 표시가 낫다). '
+                  '출력 {"triage": [{"title": 원문 제목, "related": bool, "items": [..], "why": "...", "urgency": "..."}]} JSON.\n' + json.dumps(items, ensure_ascii=False))
+    tri = (r or {}).get('triage') or []
+    tri = [t for t in tri if isinstance(t, dict)]
+    with db() as c: c.execute('update regwatch_new set triage=? where url=?', (json.dumps(tri, ensure_ascii=False), url))
+    return {'items': items, 'triage': tri}
+
+
 def regwatch_status():
     with db() as c:
         c.execute('create table if not exists regwatch(url text primary key, country text, name text, hash text, head text, checked_at text, changed_at text, note text)')
         rows = {r['url']: r for r in c.execute('select * from regwatch').fetchall()}
-    return [{'country': s['country'], 'name': s['name'], 'url': s['url'], 'status': ('manual' if s.get('manual') else ('changed' if rows.get(s['url']) and rows[s['url']]['changed_at'] else ('ok' if rows.get(s['url']) else 'never'))),
+    try:
+        with db() as c2: newrows = {r['url']: r for r in c2.execute('select url, items, triage from regwatch_new').fetchall()}
+    except Exception: newrows = {}
+    return [{'country': s['country'], 'name': s['name'], 'url': s['url'], 'new_count': len(json.loads(newrows[s['url']]['items'] or '[]')) if newrows.get(s['url']) else 0, 'triaged': bool(newrows.get(s['url']) and newrows[s['url']]['triage']), 'status': ('manual' if s.get('manual') else ('changed' if rows.get(s['url']) and rows[s['url']]['changed_at'] else ('ok' if rows.get(s['url']) else 'never'))),
              'checked_at': rows[s['url']]['checked_at'] if rows.get(s['url']) else None, 'changed_at': rows[s['url']]['changed_at'] if rows.get(s['url']) else None, 'note': rows[s['url']]['note'] if rows.get(s['url']) else ''} for s in REG_SOURCES]
 
 
@@ -313,6 +337,8 @@ class H(BaseHTTPRequestHandler):
             return self.send_json(200, {'sources': regwatch_status()})
         if p == '/api/regwatch/check':    # 지금 점검
             return self.send_json(200, {'sources': regwatch_check()})
+        if p.startswith('/api/regwatch/triage'):
+            q = urllib.parse.parse_qs(qs); return self.send_json(200, regwatch_triage(q.get('url', [''])[0]))
         if p.startswith('/api/regwatch/ack'):
             q = urllib.parse.parse_qs(qs); regwatch_ack(q.get('url', [''])[0]); return self.send_json(200, {'ok': True})
         if p == '/api/health':
