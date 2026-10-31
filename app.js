@@ -361,8 +361,15 @@
     return '<h2>LOT 조회</h2><p class="sub">LOT 번호나 회사 코드를 넣으세요.</p>' +
       (state.ledger.length ? '' : emptyLedger()) +
       '<div class="row"><input id="lot-q" list="lot-list" placeholder="LOT · 회사 코드(AJ) · 입고 ID(R-…)" value="' + esc(arg || '') + '" size="34" aria-label="LOT 검색">' + lotDatalist() + '<button id="lot-go" aria-label="조회">조회</button>' +
-      '<span class="tabs" role="tablist"><button class="tab' + (lotInside ? ' ghost' : '') + '" id="lot-tab-buyer" role="tab" aria-selected="' + !lotInside + '">바이어 면</button><button class="tab' + (lotInside ? '' : ' ghost') + '" id="lot-tab-inside" role="tab" aria-selected="' + lotInside + '">회사 면(내부)</button></span></div><div id="lot-out"></div>';
+      '<span class="tabs" role="tablist"><button class="tab' + (lotInside ? ' ghost' : '') + '" id="lot-tab-buyer" role="tab" aria-selected="' + !lotInside + '">바이어 면</button><button class="tab' + (lotInside ? '' : ' ghost') + '" id="lot-tab-inside" role="tab" aria-selected="' + lotInside + '">회사 면(내부)</button></span></div><div id="lot-out">' + (arg ? '' : recentLots()) + '</div>';
   };
+  // 검색 전: 최근 LOT 표. 누르면 바로 조회
+  function recentLots() {
+    if (!state.ledger.length) return '';
+    var rows = state.ledger.slice(-10).reverse();
+    return '<div class="card"><h3>최근 LOT</h3><table><tr><th>LOT</th><th>회사 코드</th><th>제조일</th><th>바이어</th><th>선적</th></tr>' +
+      rows.map(function (l) { return '<tr><td><a href="#lot/' + l.lot + '">' + l.lot + '</a></td><td>' + esc(l.company_code || '') + '</td><td>' + l.mfg + '</td><td>' + esc(l.buyer) + '</td><td>' + (shipped(l) ? '<span class="b ok">선적됨</span> ' + esc(String(l.ship).split(' / ')[0]) : '<span class="b warn">미선적</span>') + '</td></tr>'; }).join('') + '</table></div>';
+  }
   var lotInside = false;   // 바이어 면 / 회사 면 탭
   function renderLot(q, inside) {
     var out = $('#lot-out');
