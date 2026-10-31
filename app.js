@@ -192,7 +192,7 @@
       var lab = c ? Object.keys(LC.sampleLabels).filter(function (k) { return LC.sampleLabels[k].country === c; }).map(function (k) { return summarize(judge(c, LC.sampleLabels[k].fields)).fix; }) : [];
       var docs = [['규격서', true], ['패킹리스트', !!(sh.items && sh.items.length)], ['제조일자 리스트', true], ['위생증명서', !!sh.cert], ['라벨', lab.length && lab.every(function (f) { return !f; })]], done = docs.filter(function (d) { return d[1]; }).length;
       var miss = docs.filter(function (d) { return !d[1]; }).map(function (d) { return d[0]; });
-      return '<tr><td><a href="#pack"><b>' + esc(sh.no) + '</b></a><br><span class="muted">' + esc(sh.buyer) + '</span></td><td class="muted">' + esc(sh.etd || sh.date || '') + '<br>' + esc(sh.route || '') + '</td>' +
+      return '<tr><td><a href="#ship"><b>' + esc(sh.no) + '</b></a><br><span class="muted">' + esc(sh.buyer) + '</span></td><td class="muted">' + esc(sh.etd || sh.date || '') + '<br>' + esc(sh.route || '') + '</td>' +
         '<td><div class="prog"><i style="width:' + Math.round(done / docs.length * 100) + '%"></i></div><span class="muted">서류 ' + done + ' / ' + docs.length + (miss.length ? ' · ' + esc(miss.join(', ')) + ' 남음' : ' · 준비 끝') + '</span></td></tr>';
     }).join('');
     return '<div class="page-head"><h2>홈</h2><span class="muted">' + LC.TODAY + '</span></div>' +
@@ -209,7 +209,7 @@
       '<div class="formula" aria-label="한국 라벨 1장과 종이 일지로 5개국 라벨과 수출 서류 9종">' +
         '<div class="f-in"><b>한국 라벨 1장</b><span>품목 원본</span></div><span class="f-op">+</span><div class="f-in"><b>종이 일지·서류</b><span>사진·PDF</span></div><span class="f-op f-arrow">→</span>' +
         '<div class="f-out"><b>5개국 라벨</b><span>일본·중국·홍콩·대만·태국</span></div><span class="f-op">+</span><div class="f-out"><b>수출 서류 9종</b><span>규격서·패킹리스트·수정 요청서</span></div></div>' +
-      '<a class="btn lg hero-go" href="#pack/go">수출 꾸러미 만들어 보기</a></section>' +
+      '<a class="btn lg hero-go" href="#quick/go">한 번에 처리 해 보기</a></section>' +
       '<div class="big-nums">' +
         '<div><span class="bn-v">50~100<small>만원</small></span><span class="bn-k">라벨 1장 외부 컨설팅 비용</span><span class="bn-s">업계 설명 · 쿡앤셰프뉴스 2026-06-10</span></div>' +
         '<div><span class="bn-v">20~30<small>분</small> → 즉시</span><span class="bn-k">규격서 1건 작성 시간</span><span class="bn-s">A사 업무 기준</span></div>' +
@@ -580,46 +580,24 @@
     var rows = ''; for (var i = 0; i < 7; i++) rows += '<span class="sk-row"><i></i><i></i></span>';
     return '<div class="pk-card skel" aria-hidden="true"><div class="pk-thumb"><div class="sk-doc"><i class="sk-h"></i>' + rows + '<i class="sk-box"></i></div></div><div class="pk-meta"><i class="sk-t"></i><i class="sk-s"></i></div></div>';
   }
-  screens.pack = function () {
-    var ps = LC.products || { LB: LC.product };
-    return '<h2>수출 꾸러미</h2><p class="sub">한국 라벨을 넣으면 나라별 라벨과 바이어에게 보낼 서류를 만듭니다.</p>' +
-      '<div class="card pk-in">' +
-        '<label class="pk-drop" id="pk-drop"><input type="file" id="pk-file" accept=".pdf,image/*,.xlsx,.xls"><b id="pk-file-name">한국 라벨 PDF 넣기</b><span>PDF · 사진 · 엑셀</span></label>' +
-        '<div class="pk-or">또는</div>' +
-        '<label class="pk-sample">임시 데이터<select id="pk-sample">' + Object.keys(ps).map(function (k) { return '<option value="' + k + '"' + (k === state.productCode ? ' selected' : '') + '>' + k + ' · ' + esc(ps[k].name_ko) + '</option>'; }).join('') + '</select></label>' +
-        '<button class="lg" id="pk-go">꾸러미 만들기</button>' +
-      '</div>' +
-      '<div class="pack-bar"><span class="pk-count" id="pk-count">9종</span><span class="muted" id="pk-time">만들 서류</span></div>' +
-      '<div class="pack" id="pk">' + Array(9).join('x').split('x').map(skelCard).join('') + '</div>';
-  };
-  screens.pack.bind = function (arg) {
-    var file = null;
-    $('#pk-file').onchange = function (e) { file = e.target.files[0] || null; $('#pk-file-name').textContent = file ? file.name : '한국 라벨 PDF 넣기'; $('#pk-drop').classList.toggle('has', !!file); };
-    function build() {
-      setProduct($('#pk-sample').value);
-      var p = P(), lot = state.ledger[state.ledger.length - 1], sh = state.shipments[state.shipments.length - 1];
-      var hk = LC.sampleLabels.HK ? judge('HK', LC.sampleLabels.HK.fields).filter(function (x) { return x.status !== 'pass'; }) : [];
-      var doc = function (title, rows) { return '<div class="doc-mini"><h4>' + title + '</h4><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>'; };
-      return TAG_CTRY.map(function (c) { return [c[1] + ' 라벨', c[2], '#tags/' + c[0], c[3](p)]; }).concat([
-        ['규격서', '바이어 양식', '#spec', specSheet(lot)],
-        ['수정 요청서', '홍콩 라벨 · 수정 ' + hk.filter(function (x) { return x.status === 'fix'; }).length + ' · 확인 ' + hk.filter(function (x) { return x.status === 'check'; }).length, '#label', doc('라벨 수정 요청서 · 홍콩', hk.map(function (x) { return [x.item, x.fix || x.msg]; }))],
-        ['패킹리스트', sh ? sh.no : '선적 없음', '#ship', doc('PACKING LIST' + (sh ? ' · ' + sh.no : ''), sh ? sh.items.slice(0, 6).map(function (i) { return [i.desc, i.ct + ' C/T · ' + i.kg + ' kg']; }).concat([['TOTAL', sh.total_ct + ' C/T · ' + sh.total_kg + ' kg']]) : [])],
-        ['위생증명서 신청값', '수품원', '#ship', doc('위생증명서 신청 정보', sh ? [['수출자', p.factory ? p.factory.name : ''], ['수입자', sh.buyer], ['선박', sh.vessel], ['구간', sh.route], ['HS', sh.hs || ''], ['수량', sh.total_ct + ' C/T / ' + sh.total_kg + ' kg']] : [])]
-      ]);
-    }
-    $('#pk-go').onclick = function () {
-      var cards = build(), els = Array.prototype.slice.call(document.querySelectorAll('#pk .pk-card')), n = 0;
-      $('#pk-time').textContent = file ? file.name + ' · ' + $('#pk-sample').selectedOptions[0].textContent : $('#pk-sample').selectedOptions[0].textContent;
-      var tick = setInterval(function () {   // 회색 틀 자리에 실제 서류가 하나씩 들어옴
-        if (n >= cards.length) { clearInterval(tick); return; }
-        var c = cards[n], a = document.createElement('a');
-        a.className = 'pk-card done'; a.href = c[2];
-        a.innerHTML = '<div class="pk-thumb"><div class="pk-scale">' + c[3] + '</div></div><div class="pk-meta"><b>' + c[0] + '</b><span>' + esc(c[1]) + '</span></div><span class="pk-ok">✓</span>';
-        els[n].replaceWith(a); n++; $('#pk-count').textContent = n + ' / ' + cards.length;
-      }, 100);   // 9장 0.9초
-    };
-    if (arg === 'go') $('#pk-go').click();
-  };
+  // 수출 꾸러미 9종(나라별 라벨 5 + 규격서·수정 요청서·패킹리스트·위생증명서 신청값). 한 번에 처리 3단계 맨 위에 나온다
+  function packDocs() {
+    var p = P(), lot = state.ledger[state.ledger.length - 1], sh = state.shipments[state.shipments.length - 1];
+    var hk = LC.sampleLabels.HK ? judge('HK', LC.sampleLabels.HK.fields).filter(function (x) { return x.status !== 'pass'; }) : [];
+    var doc = function (title, rows) { return '<div class="doc-mini"><h4>' + title + '</h4><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>'; };
+    return TAG_CTRY.map(function (c) { return [c[1] + ' 라벨', c[2], '#tags/' + c[0], c[3](p)]; }).concat([
+      ['규격서', '바이어 양식', '#spec', specSheet(lot)],
+      ['수정 요청서', '홍콩 라벨 · 수정 ' + hk.filter(function (x) { return x.status === 'fix'; }).length + ' · 확인 ' + hk.filter(function (x) { return x.status === 'check'; }).length, '#label', doc('라벨 수정 요청서 · 홍콩', hk.map(function (x) { return [x.item, x.fix || x.msg]; }))],
+      ['패킹리스트', sh ? sh.no : '선적 없음', '#ship', doc('PACKING LIST' + (sh ? ' · ' + sh.no : ''), sh ? sh.items.slice(0, 6).map(function (i) { return [i.desc, i.ct + ' C/T · ' + i.kg + ' kg']; }).concat([['TOTAL', sh.total_ct + ' C/T · ' + sh.total_kg + ' kg']]) : [])],
+      ['위생증명서 신청값', '수품원', '#ship', doc('위생증명서 신청 정보', sh ? [['수출자', p.factory ? p.factory.name : ''], ['수입자', sh.buyer], ['선박', sh.vessel], ['구간', sh.route], ['HS', sh.hs || ''], ['수량', sh.total_ct + ' C/T / ' + sh.total_kg + ' kg']] : [])]
+    ]).map(function (c) { return '<a class="pk-card done" href="' + c[2] + '"><div class="pk-thumb"><div class="pk-scale">' + c[3] + '</div></div><div class="pk-meta"><b>' + c[0] + '</b><span>' + esc(c[1]) + '</span></div><span class="pk-ok">✓</span></a>'; });
+  }
+  // 승인 전(pend)에는 회색 틀 9장
+  function packBlock(pend) {
+    var p = P();
+    return '<div class="card" id="pack-card"><h3>수출 꾸러미 <span class="muted">' + esc(p.code + ' ' + p.name_ko) + ' · 9종</span></h3>' + (pend ? '<p class="muted">전부 승인을 누르면 여기 채워집니다.</p>' : '') +
+      '<div class="pack" id="qk-pack">' + (pend ? Array(10).join(skelCard()) : packDocs().join('')) + '</div></div>';
+  }
 
   // 규정 근거: 나라별 라벨에서 쓴 조항을 나라별로 모아 원문 링크와 함께
   screens.laws = function () {
@@ -1290,10 +1268,10 @@
       state.docs.push({ file: c.name, doc_type: c.doc_type, at: LC.TODAY, result: result });
       if (API) api('/docs', 'POST', { file: c.name, doc_type: c.doc_type, mode: c.mode, decision: '승인', result: result, fields: c.fields }).catch(function () {});
     });
-    qkShown = intakeCards.length; if (done) qkOk = qkOkDrawn = qkBd = qkBdDrawn = 0;
+    qkShown = intakeCards.length; if (done) qkOk = qkOkDrawn = qkPk = qkPkDrawn = qkBd = qkBdDrawn = 0;
     save(); renderQuick();
-    // 카드가 초록 ✓로 바뀌는 걸 본 뒤 보낼 서류로 내려감
-    setTimeout(function () { var bc = $('#bundle-card') || $('#qk-results'); if (bc) bc.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, qkTick ? intakeCards.length * 100 + 150 : 150);
+    // 카드가 초록 ✓로 바뀌는 걸 본 뒤 보낼 서류(수출 꾸러미 → 바이어별)로 내려감
+    setTimeout(function () { var bc = $('#qk-results'); if (bc) bc.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, qkTick ? intakeCards.length * 100 + 150 : 150);
     toast('승인 ' + done + '건 반영' + (skipped ? ' · 건너뜀 ' + skipped + '건(가림 미확인·종류 미확인)' : '') + ' → ' + intakeSummary());
   }
   // 바이어별 서류 묶음: 바이어가 보낸 양식·문의마다 "보낼 것" 한 줄 (규격서 PDF·엑셀, 답장, 라벨 문안, 로트 패키지, 선적 서류)
@@ -1434,7 +1412,7 @@
   }
   function resultCards() {
     var pend = intakeCards.length && !intakeCards.some(function (c) { return c.done; }), slot = pend ? bundleSkel() : bundleCards();
-    if (!state.ledger.length) return pend ? '<h3 class="step">3. 보낼 서류</h3>' + slot : '';
+    if (!state.ledger.length) return pend ? '<h3 class="step">3. 보낼 서류</h3>' + packBlock(pend) + slot : '';
     var ymd = LC.TODAY.replace(/-/g, '');
     var card = function (href, title, body) { return '<div class="card result"><h3>' + title + (href ? ' <a class="more" href="' + href + '">자세히 보기</a>' : '') + '</h3>' + body + '</div>'; };
     var lots = state.ledger.slice(-5).reverse();
@@ -1461,21 +1439,22 @@
     if (state.shipments.length) { var last = state.shipments[state.shipments.length - 1]; sd = card('#ship', '선적 서류 · ' + esc(last.no), shipDocLinks(last.no) + (API && state.ledger.filter(shipped).length ? '<p><a href="/api/shipdocs/buyer?lot=' + encodeURIComponent(state.ledger.filter(shipped)[0].lot) + '" download>바이어 패키지 zip (' + esc(state.ledger.filter(shipped)[0].lot) + ')</a></p>' : '')); }
     var ntf = API ? '<details id="qk-notify"><summary class="muted">알림 미리보기 (만료·수입 미완, 매일 08:00 메일용)</summary><pre id="qk-notify-txt" class="muted">불러오는 중…</pre></details>' : '';
     var all = card('#export', '전체 CSV 묶음', '<button id="qk-all" aria-label="CSV 7개 전부 받기">CSV ' + EXPORTS.length + '개 전부 받기</button><p class="muted">로트원장·입고분·선적·만료·영양출처·수입체크·처리기록 (파일명 라벨코스트_표_' + ymd + ')</p>');
-    return '<h3 class="step">3. 보낼 서류</h3>' + (slot || '<p class="muted">바이어 양식이나 문의 메일을 올려 승인하면 바이어별로 보낼 서류가 여기 모입니다.</p>') + '<details class="fold-sec"><summary>회사 내부 기록 (로트 원장 · 선적 서류 · 클레임 · 대시보드 · 수입 · 내보내기)</summary><div class="grid4">' + ledger + link + spec + claim + dash + imp + sd + pub + all + '</div>' + ntf + '</details>';
+    return '<h3 class="step">3. 보낼 서류</h3>' + packBlock(pend) + (slot || '<p class="muted">바이어 양식이나 문의 메일을 올려 승인하면 바이어별로 보낼 서류가 여기 모입니다.</p>') + '<details class="fold-sec"><summary>회사 내부 기록 (로트 원장 · 선적 서류 · 클레임 · 대시보드 · 수입 · 내보내기)</summary><div class="grid4">' + ledger + link + spec + claim + dash + imp + sd + pub + all + '</div>' + ntf + '</details>';
   }
   // 받은 서류도 수출 꾸러미처럼 카드로: 회색 틀 → 100ms마다 하나씩 채움 → 전부 승인 누르면 하나씩 초록 ✓ → 바이어 카드.
   // renderQuick 이 통째로 다시 그려도(서버 응답마다) "몇 개까지 보였나"만 기억하면 끊기지 않는다
-  var qkShown = 0, qkDrawn = 0, qkOk = Infinity, qkOkDrawn = Infinity, qkBd = Infinity, qkBdDrawn = Infinity, qkTick = null;
+  var qkShown = 0, qkDrawn = 0, qkOk = Infinity, qkOkDrawn = Infinity, qkPk = Infinity, qkPkDrawn = Infinity, qkBd = Infinity, qkBdDrawn = Infinity, qkTick = null;
   var BD_SK = '<article class="bundle bd-sk" aria-hidden="true"><header class="bd-head"><div class="bd-who"><i class="sk-t"></i><i class="sk-s"></i></div><i class="sk-box"></i></header></article>';
   function bundleSkel() { return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류</h3><p class="muted">전부 승인을 누르면 여기 채워집니다.</p><div class="bundles">' + Array((bundleBuyers().length || 3) + 1).join(BD_SK) + '</div></div>'; }
   function qkFill() {
-    var done = function () { clearInterval(qkTick); qkTick = null; qkShown = qkDrawn = intakeCards.length; qkOk = qkOkDrawn = qkBd = qkBdDrawn = Infinity; };
-    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { qkShown = intakeCards.length; qkOk = qkBd = Infinity; return; }
+    var done = function () { clearInterval(qkTick); qkTick = null; qkShown = qkDrawn = intakeCards.length; qkOk = qkOkDrawn = qkPk = qkPkDrawn = qkBd = qkBdDrawn = Infinity; };
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { qkShown = intakeCards.length; qkOk = qkPk = qkBd = Infinity; return; }
     if (qkTick) return;
     qkTick = setInterval(function () {
       if (!$('#qk-table')) return done();   // 다른 화면으로 가면 멈춤
       if (qkShown < intakeCards.length) qkShown++;
       else if (qkOk < intakeCards.length) qkOk++;
+      else if (qkPk < document.querySelectorAll('#qk-pack .pk-card').length) qkPk++;
       else if (qkBd < document.querySelectorAll('#qk-results article.bundle').length) qkBd++;
       else return done();
       renderQuick();
@@ -1509,7 +1488,7 @@
     var box = $('#qk-table'); if (!box) return;
     var n = intakeCards.length, bar, cards, table = '';
     if (qkShown > n) qkShown = qkDrawn = n;
-    if (qkShown < n || qkOk !== Infinity || qkBd !== Infinity) qkFill();
+    if (qkShown < n || qkOk !== Infinity || qkPk !== Infinity || qkBd !== Infinity) qkFill();
     if (!n) {
       var n9 = fixtures().filter(FX_GROUPS[0][1]).length || 9;
       bar = '<span class="pk-count">' + n9 + '종</span><span class="muted">받은 서류를 넣거나 서류함 전부 열기를 누르면 여기 채워집니다</span>';
@@ -1535,6 +1514,8 @@
     if ($('#qk-docbox')) { $('#qk-docbox').innerHTML = docBox(); bindDocBox(renderQuick); }
     if ($('#qk-guide')) $('#qk-guide').innerHTML = docGuide(!!($('#qk-guide details') || {}).open);
     $('#qk-results').innerHTML = resultCards();
+    if (qkPk !== Infinity) document.querySelectorAll('#qk-pack .pk-card').forEach(function (a, i) { if (i >= qkPk) a.outerHTML = skelCard(); else if (i >= qkPkDrawn) a.classList.add('qk-in'); });
+    qkPkDrawn = qkPk;
     if (qkBd !== Infinity) document.querySelectorAll('#qk-results article.bundle').forEach(function (a, i) { if (i >= qkBd) a.outerHTML = BD_SK; else if (i >= qkBdDrawn) a.classList.add('qk-in'); });
     qkBdDrawn = qkBd;
     bindResults(); bindBundles();
@@ -1715,7 +1696,7 @@
   // ---------- 라우팅 ----------
   // 첫 줄: 묶음 6개. 둘째 줄: 현재 묶음 안의 화면들
   var NAV_MAIN = [['home', '홈', '오늘 할 일'], ['quick', '한 번에 처리', '서류 넣기 → 확인 → 결과물'], ['label', '라벨', '라벨 판정 · 품목 · 규격서'], ['ship', '생산·LOT', '선적·원장 · LOT 조회'], ['intake', '서류', '서류 넣기 · 대시보드 · 수입 체크 · 내보내기']];
-  var NAV_SUB = { quick: [['quick', '한 번에 처리'], ['pack', '수출 꾸러미']], label: [['label', '라벨 판정'], ['tags', '나라별 라벨'], ['laws', '규정 근거'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
+  var NAV_SUB = { label: [['label', '라벨 판정'], ['tags', '나라별 라벨'], ['laws', '규정 근거'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
   function groupOf(name) { for (var g in NAV_SUB) if (NAV_SUB[g].some(function (x) { return x[0] === name; })) return g; return name; }
   function navLink(x, on) { return '<a href="#' + x[0] + '" class="' + (on ? 'on' : '') + '" title="' + esc(x[2] || x[1]) + '"' + (on ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }
   var NAV_ICON = (function () {   // 선 아이콘 (사이드바)

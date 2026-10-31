@@ -373,6 +373,7 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .bd-sk i { display: block; background: var(--hairline); border-radius: 4px; }
 .bd-sk .sk-t { height: 18px; width: 40%; } .bd-sk .sk-s { height: 12px; width: 60%; margin-top: 8px; } .bd-sk .sk-box { width: 220px; height: 56px; }
 .pk-card.qk-in, .bundle.qk-in { animation: pk-in .25s ease-out; }
+#qk-results .pk-card.done:not(.qk-in) { animation: none; }   /* 100ms마다 다시 그려도 이미 나온 카드는 깜빡이지 않게 */
 @media (prefers-reduced-motion: reduce) { .pk-card.qk-in, .bundle.qk-in { animation: none; } }
 
 /* 라벨 위에서 보기: 틀린 칸은 빨간 취소선, 고칠 문구는 초록 */
