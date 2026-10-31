@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>라벨코스트 디자인 기준</title>
+<style>
+/* design.md 토큰 그대로. style.css 정리 때 이 :root 를 옮긴다 */
+:root {
+  --primary: #0b3d6b; --primary-hover: #0e4f8a; --primary-soft: #e5eef7; --on-primary: #fff;
+  --ink: #161616; --ink-muted: #525252; --ink-subtle: #8c8c8c;
+  --canvas: #f4f4f4; --surface: #fff; --surface-alt: #f4f4f4;
+  --hairline: #e0e0e0; --hairline-strong: #8d8d8d;
+  --fix: #da1e28; --fix-soft: #fff1f1; --check: #f1c21b; --check-soft: #fcf4d6; --pass: #198038; --pass-soft: #defbe6;
+  --ai: #6929c4; --ai-soft: #f6f2ff; --focus: #0f62fe;
+  --font: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --code: "SF Mono", Consolas, "D2Coding", monospace;
+  --r: 2px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); font-size: 15px; line-height: 1.55; color: var(--ink); background: var(--canvas); }
+a { color: var(--primary); text-decoration: none; } a:hover { text-decoration: underline; }
+
+/* ---------- 가이드 페이지 틀 ---------- */
+.guide-top { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 28px 24px 20px; }
+.guide-top .in, .wrap { max-width: 1240px; margin: 0 auto; }
+.guide-top h1 { margin: 0 0 6px; font-size: 32px; font-weight: 600; }
+.guide-top p { margin: 0; color: var(--ink-muted); max-width: 760px; }
+.toc { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 16px; font-size: 13px; }
+.wrap { padding: 0 24px 64px; }
+section.g { padding: 40px 0 8px; border-bottom: 1px solid var(--hairline); }
+section.g > h2 { font-size: 13px; font-weight: 600; color: var(--ink-muted); letter-spacing: .04em; margin: 0 0 4px; }
+section.g > h3 { font-size: 24px; font-weight: 600; margin: 0 0 8px; }
+section.g > p.lead { color: var(--ink-muted); margin: 0 0 20px; max-width: 760px; }
+.label { font-size: 12px; font-weight: 600; color: var(--ink-muted); margin: 20px 0 8px; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 860px) { .g2, .g3, .g4 { grid-template-columns: 1fr; } }
+.code { font-family: var(--code); font-size: 12px; color: var(--ink-muted); }
+.key { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px 24px; }
+.key li { padding-left: 14px; position: relative; } .key li::before { content: ""; position: absolute; left: 0; top: 10px; width: 6px; height: 6px; background: var(--primary); }
+
+/* 색 견본 */
+.sw { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r); }
+.sw .chip { height: 72px; border-bottom: 1px solid var(--hairline); }
+.sw .t { padding: 8px 10px; font-size: 13px; } .sw .t b { display: block; font-weight: 600; }
+/* 글꼴 사다리 */
+.type-row { display: grid; grid-template-columns: 160px 1fr; gap: 16px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+/* 간격·모서리 */
+.space { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.space div { background: var(--primary-soft); border: 1px solid var(--primary); }
+.space span { display: block; font-size: 12px; color: var(--ink-muted); margin-top: 6px; text-align: center; }
+
+/* ---------- 앱 컴포넌트 (design.md 6장, 이 이름 그대로 style.css 로) ---------- */
+.app { background: var(--canvas); border: 1px solid var(--hairline); }
+header.ah { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 0 20px; display: flex; align-items: flex-end; gap: 28px; }
+header.ah .logo { font-size: 16px; font-weight: 600; padding: 14px 0; }
+header.ah .mode { margin-left: auto; font-size: 13px; color: var(--ink-subtle); padding: 14px 0; }
+.nav-main { display: flex; gap: 24px; }
+.nav-main a { display: block; padding: 14px 0 11px; font-weight: 600; color: var(--ink-muted); border-bottom: 3px solid transparent; text-decoration: none; }
+.nav-main a.on { color: var(--ink); border-bottom-color: var(--primary); }
+.nav-sub { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 6px 20px; display: flex; gap: 4px; }
+.nav-sub a { font-size: 13px; padding: 4px 10px; border-radius: var(--r); color: var(--ink-muted); text-decoration: none; }
+.nav-sub a.on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.amain { padding: 20px; }
+.amain h2 { font-size: 24px; font-weight: 600; margin: 0 0 16px; }
+
+.verdict { border-left: 6px solid; padding: 12px 16px; font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+.verdict.bad { border-color: var(--fix); background: var(--fix-soft); }
+.verdict.warn { border-color: var(--check); background: var(--check-soft); }
+.verdict.ok { border-color: var(--pass); background: var(--pass-soft); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 16px; max-width: 720px; }
+.stat { background: var(--surface); border: 1px solid var(--hairline); border-top: 3px solid var(--hairline-strong); border-radius: var(--r); padding: 10px 14px; display: block; color: var(--ink); text-decoration: none; }
+.stat .k { display: block; font-size: 13px; color: var(--ink-muted); }
+.stat .v { display: block; font-size: 32px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: 14px; color: var(--ink-muted); font-weight: 400; margin-left: 4px; }
+.stat.bad { border-top-color: var(--fix); } .stat.warn { border-top-color: var(--check); } .stat.ok { border-top-color: var(--pass); }
+
+.b { display: inline-block; white-space: nowrap; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: var(--r); line-height: 1.5; }
+.b.bad { background: var(--fix); color: #fff; } .b.warn { background: var(--check); color: var(--ink); } .b.ok { background: var(--pass); color: #fff; }
+.tag { display: inline-block; white-space: nowrap; font-size: 12px; padding: 1px 7px; border: 1px solid var(--hairline-strong); border-radius: var(--r); color: var(--ink-muted); background: var(--surface); }
+.ai { display: inline-block; font-size: 12px; padding: 1px 6px; border-radius: var(--r); background: var(--ai-soft); color: var(--ai); font-weight: 600; }
+.ref { font-family: var(--code); font-size: 12px; color: var(--primary); white-space: nowrap; }
+
+.card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r); padding: 16px 20px; margin: 0 0 16px; }
+.card h3 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
+
+table.t { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--surface); }
+table.t th { background: var(--surface-alt); color: var(--ink-muted); font-size: 12px; font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--hairline-strong); }
+table.t td { padding: 8px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+table.t tr:hover td { background: var(--primary-soft); }
+table.t tr.st-bad td { background: var(--fix-soft); } table.t tr.st-check td { background: var(--check-soft); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.clip { display: block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-muted); }
+
+button, .btn { font: inherit; font-size: 14px; font-weight: 600; height: 36px; padding: 0 16px; border-radius: var(--r); border: 1px solid var(--primary); background: var(--primary); color: var(--on-primary); cursor: pointer; display: inline-flex; align-items: center; }
+button:hover { background: var(--primary-hover); }
+button.ghost { background: var(--surface); color: var(--ink); border-color: var(--hairline-strong); }
+button.ghost:hover { background: var(--surface-alt); }
+button.small { height: 28px; font-size: 12px; padding: 0 10px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ink-muted); }
+input, select { font: inherit; font-size: 14px; height: 36px; padding: 0 10px; border: 1px solid var(--hairline); border-bottom-color: var(--hairline-strong); border-radius: var(--r); background: var(--surface); color: var(--ink); }
+.row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+
+.alert { border-left: 4px solid var(--check); background: var(--check-soft); padding: 8px 12px; font-size: 14px; margin: 0 0 12px; }
+.alert.ok { border-color: var(--pass); background: var(--pass-soft); } .alert.bad { border-color: var(--fix); background: var(--fix-soft); }
+
+.pipeline { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--hairline); background: var(--surface); }
+.stage { padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--ink-subtle); border-bottom: 3px solid transparent; }
+.stage + .stage { border-left: 1px solid var(--hairline); }
+.stage.done { color: var(--pass); } .stage.done::before { content: "✓ "; }
+.stage.now { color: var(--ink); border-bottom-color: var(--primary); }
+
+.drop { border: 1px dashed var(--hairline-strong); background: var(--surface); padding: 24px; text-align: center; color: var(--ink-muted); border-radius: var(--r); }
+.drop p { margin: 0 0 10px; }
+.empty { text-align: center; padding: 28px; color: var(--ink-muted); } .empty p { margin: 0 0 10px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+.doc { background: var(--surface-alt); border: 1px solid var(--hairline); height: 220px; display: flex; align-items: center; justify-content: center; color: var(--ink-subtle); font-size: 13px; }
+.hero { font-size: 18px; font-weight: 600; margin: 0 0 4px; } .hero-sub { color: var(--ink-muted); margin: 0 0 12px; }
+
+/* 하지 말 것 예시 (일부러 나쁜 모양) */
+.bad-ex { background: #eef3f7; padding: 14px; border-radius: 12px; }
+.bad-ex .pill { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #dce8f4; color: #0b3d6b; font-weight: 600; margin: 0 4px 6px 0; font-size: 13px; }
+.bad-ex .pill.on { background: #0b3d6b; color: #fff; }
+.bad-ex .sh { background: #fff; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 12px; margin-top: 8px; font-size: 13px; }
+.bad-ex .sh .sh { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.bad-ex .grad { background: linear-gradient(90deg,#5b3fb8,#1b5fb8); color: #fff; border-radius: 999px; padding: 6px 14px; display: inline-block; font-size: 13px; }
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } @media (max-width: 860px) { .vs { grid-template-columns: 1fr; } }
+.vs h4 { margin: 0 0 8px; font-size: 14px; } .vs .no h4 { color: var(--fix); } .vs .yes h4 { color: var(--pass); }
+.dd { list-style: none; padding: 0; margin: 0; } .dd li { padding: 6px 0; border-bottom: 1px solid var(--hairline); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="guide-top"><div class="in">
+  <h1>라벨코스트 디자인 기준</h1>
+  <p>design.md를 화면으로 옮긴 것. 수출 식품 공장 사무실에서 매일 여는 업무 도구처럼. IBM Carbon 계열 규제 문서형: 흰 패널, 남색 하나, 모서리 2px, 그림자 없음. 색이 의미를 가지는 곳은 판정 세 가지뿐.</p>
+  <div class="toc">
+    <a href="#overview">개요</a><a href="#color">색</a><a href="#type">글꼴</a><a href="#layout">간격·모서리</a>
+    <a href="#comp">컴포넌트</a><a href="#screen">화면 예시: 라벨 판정</a><a href="#home">화면 예시: 홈</a><a href="#intake">화면 예시: 서류 넣기</a><a href="#voice">문구</a><a href="#dodont">해야 할 것 / 하지 말 것</a>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+<section class="g" id="overview">
+  <h2>01 · 개요</h2>
+  <h3>결론 먼저, 근거는 옆에</h3>
+  <p class="lead">판정 화면은 언제나 판정 띠 → 숫자 → 근거가 붙은 표. 우승작 TARA(판정 띠·숫자 카드), CrossBeam(색 배지 3개·근거 링크·내려받기 하나), FoodSteps(단계별 추적 표)에서 가져왔다.</p>
+  <ul class="key">
+    <li>흰 패널 + 옅은 회색 바탕 + 검정 글자가 95%</li>
+    <li>강조색은 남색 하나</li>
+    <li>판정 색: 수정 빨강 · 확인 노랑 · 통과 초록</li>
+    <li>모서리 2px, 그림자·그라데이션 없음</li>
+    <li>화면의 주인공은 표. 카드 안에 카드 금지</li>
+    <li>숫자는 고정폭, 표에서는 오른쪽 정렬</li>
+  </ul>
+</section>
+
+<section class="g" id="color">
+  <h2>02 · 색</h2>
+  <h3>남색 하나와 판정 세 가지</h3>
+  <div class="label">기본</div>
+  <div class="grid g4">
+    <div class="sw"><div class="chip" style="background:#0b3d6b"></div><div class="t"><b>primary</b><span class="code">#0b3d6b</span> 버튼·링크·현재 메뉴</div></div>
+    <div class="sw"><div class="chip" style="background:#e5eef7"></div><div class="t"><b>primary-soft</b><span class="code">#e5eef7</span> 선택된 행</div></div>
+    <div class="sw"><div class="chip" style="background:#161616"></div><div class="t"><b>ink</b><span class="code">#161616</span> 본문</div></div>
+    <div class="sw"><div class="chip" style="background:#525252"></div><div class="t"><b>ink-muted</b><span class="code">#525252</span> 표 머리·보조</div></div>
+    <div class="sw"><div class="chip" style="background:#8c8c8c"></div><div class="t"><b>ink-subtle</b><span class="code">#8c8c8c</span> 날짜·출처</div></div>
+    <div class="sw"><div class="chip" style="background:#f4f4f4"></div><div class="t"><b>canvas</b><span class="code">#f4f4f4</span> 페이지 바탕</div></div>
+    <div class="sw"><div class="chip" style="background:#fff"></div><div class="t"><b>surface</b><span class="code">#ffffff</span> 패널·표</div></div>
+    <div class="sw"><div class="chip" style="background:#e0e0e0"></div><div class="t"><b>hairline</b><span class="code">#e0e0e0</span> 선</div></div>
+  </div>
+  <div class="label">판정 (의미 고정, 다른 용도 금지)</div>
+  <div class="grid g3">
+    <div class="sw"><div class="chip" style="background:linear-gradient(90deg,#da1e28 50%,#fff1f1 50%)"></div><div class="t"><b>수정 · fix</b><span class="code">#da1e28 / #fff1f1</span> 이대로 나가면 규정 위반</div></div>
+    <div class="sw"><div class="chip" style="background:linear-gradient(90deg,#f1c21b 50%,#fcf4d6 50%)"></div><div class="t"><b>확인 · check</b><span class="code">#f1c21b / #fcf4d6</span> 사람 확인 필요. 글자는 검정</div></div>
+    <div class="sw"><div class="chip" style="background:linear-gradient(90deg,#198038 50%,#defbe6 50%)"></div><div class="t"><b>통과 · pass</b><span class="code">#198038 / #defbe6</span> 규정 충족</div></div>
+  </div>
+  <div class="label">특수</div>
+  <div class="grid g4">
+    <div class="sw"><div class="chip" style="background:#6929c4"></div><div class="t"><b>ai</b><span class="code">#6929c4</span> AI가 읽은 값 표시에만</div></div>
+    <div class="sw"><div class="chip" style="background:#0f62fe"></div><div class="t"><b>focus</b><span class="code">#0f62fe</span> 키보드 포커스</div></div>
+  </div>
+</section>
+
+<section class="g" id="type">
+  <h2>03 · 글꼴</h2>
+  <h3>시스템 한글 글꼴, 외부 글꼴 없음</h3>
+  <p class="lead">Apple SD Gothic Neo / 맑은 고딕. LOT·조항 번호는 고정폭. 굵게는 제목·표 머리·판정 띠·배지에만.</p>
+  <div class="type-row"><span class="code">page-title 24/600</span><span style="font-size:24px;font-weight:600">라벨 판정</span></div>
+  <div class="type-row"><span class="code">section 18/600</span><span style="font-size:18px;font-weight:600">수출 라벨 규정 위반을 선적 전에 잡습니다</span></div>
+  <div class="type-row"><span class="code">panel-title 16/600</span><span style="font-size:16px;font-weight:600">바이어별 영양값</span></div>
+  <div class="type-row"><span class="code">body 15/400</span><span>홍콩은 열량과 단백질·총지방 등 7종 표시가 의무예요.</span></div>
+  <div class="type-row"><span class="code">table 14/400</span><span style="font-size:14px">냉동 자숙 홍게 다리 파살 (LB) · 250 g</span></div>
+  <div class="type-row"><span class="code">small 13/400</span><span style="font-size:13px;color:var(--ink-muted)">홍콩_LABEL_CNEN_11.1.xlsx · 2026-10-31</span></div>
+  <div class="type-row"><span class="code">caption 12/600</span><span><span class="b bad">■ 수정</span> <span class="b warn">▲ 확인</span> <span class="b ok">● 통과</span></span></div>
+  <div class="type-row"><span class="code">stat-value 32/600</span><span style="font-size:32px;font-weight:600;font-variant-numeric:tabular-nums">734 <small style="font-size:14px;color:var(--ink-muted);font-weight:400">C/T</small></span></div>
+  <div class="type-row"><span class="code">code 12</span><span class="ref">20260410-LB · Cap.132W 附表5 · GB 7718-2025 4.3.1</span></div>
+</section>
+
+<section class="g" id="layout">
+  <h2>04 · 간격 · 모서리 · 깊이</h2>
+  <h3>4px 단위, 모서리 두 가지, 그림자 0</h3>
+  <div class="label">간격</div>
+  <div class="space">
+    <div><div style="width:4px;height:4px"></div><span>xs 4</span></div>
+    <div><div style="width:8px;height:8px"></div><span>sm 8</span></div>
+    <div><div style="width:12px;height:12px"></div><span>md 12</span></div>
+    <div><div style="width:16px;height:16px"></div><span>lg 16</span></div>
+    <div><div style="width:24px;height:24px"></div><span>xl 24</span></div>
+    <div><div style="width:32px;height:32px"></div><span>xxl 32</span></div>
+  </div>
+  <div class="label">모서리 · 깊이</div>
+  <div class="row">
+    <div class="card" style="margin:0;width:200px"><b>2px</b><br><span class="code">패널·버튼·입력·배지</span></div>
+    <div style="background:#fff;border:1px solid var(--hairline);padding:16px 20px;width:200px"><b>0</b><br><span class="code">표·판정 띠</span></div>
+    <div style="background:#fff;border:1px solid var(--hairline);padding:16px 20px;width:200px"><b>그림자 없음</b><br><span class="code">구분은 선과 바탕색</span></div>
+  </div>
+</section>
+
+<section class="g" id="comp">
+  <h2>05 · 컴포넌트</h2>
+  <h3>app.js는 이 클래스 이름만 쓴다</h3>
+
+  <div class="label">머리와 메뉴 · header / .nav-main / .nav-sub</div>
+  <div class="app">
+    <header class="ah"><span class="logo">라벨코스트</span>
+      <nav class="nav-main"><a href="#">홈</a><a href="#">한 번에 처리</a><a href="#" class="on">라벨</a><a href="#">생산·LOT</a><a href="#">서류</a></nav>
+      <span class="mode">서버 · 2026-10-31</span></header>
+    <div class="nav-sub"><a href="#" class="on">라벨 판정</a><a href="#">품목</a><a href="#">규격서</a></div>
+  </div>
+
+  <div class="label">판정 띠 · .verdict.bad / .warn / .ok</div>
+  <div class="verdict bad">수출 전 수정 필요 · 4항목</div>
+  <div class="verdict warn">확인 필요 · 2항목</div>
+  <div class="verdict ok">통과 · 홍콩 규정 7항목 충족</div>
+
+  <div class="label">숫자 카드 · .stats > .stat(.bad/.warn/.ok)</div>
+  <div class="stats">
+    <a class="stat bad" href="#"><span class="k">수정</span><span class="v">4</span></a>
+    <a class="stat warn" href="#"><span class="k">확인</span><span class="v">2</span></a>
+    <a class="stat ok" href="#"><span class="k">통과</span><span class="v">1</span></a>
+    <div class="stat"><span class="k">FDA 등록 만료</span><span class="v">D-61</span></div>
+  </div>
+
+  <div class="label">배지 · 태그 · AI 표시 · 근거</div>
+  <div class="row" style="align-items:center">
+    <span class="b bad">■ 수정</span><span class="b warn">▲ 확인</span><span class="b ok">● 통과</span>
+    <span class="tag">선적됨</span><span class="tag">대기</span><span class="tag">승인</span>
+    <span class="ai">AI 읽음</span>
+    <a class="ref" href="#">Cap.132W 附表5</a>
+  </div>
+
+  <div class="label">버튼 · 입력</div>
+  <div class="row">
+    <label class="field">도착국<select><option>홍콩</option><option>대만</option></select></label>
+    <label class="field">라벨 기준일<input type="date" value="2026-01-15"></label>
+    <button>판정</button><button class="ghost">예시 데이터로 되돌리기</button><button class="small ghost">펼치기</button>
+  </div>
+
+  <div class="label">알림 · .alert / .alert.ok / .alert.bad (한 화면에 하나)</div>
+  <div class="alert bad">같은 제품, 바이어별 열량 76 · 40 · 42 kcal — 자사 성적서는 다른 제품(68.3 kcal)</div>
+  <div class="alert">확인 항목 2개는 검사기관·대행사에 물어볼 목록으로 모았어요</div>
+  <div class="alert ok">원장에 3건 넣었어요</div>
+
+  <div class="label">단계 표시 · .pipeline > .stage(.done/.now)</div>
+  <div class="pipeline"><div class="stage done">접수</div><div class="stage done">읽기</div><div class="stage now">검증</div><div class="stage">승인</div></div>
+
+  <div class="label">업로드 · 빈 상태</div>
+  <div class="grid g2">
+    <div class="drop"><p>서류 사진이나 PDF를 끌어다 놓으세요</p><button class="ghost">파일 선택</button></div>
+    <div class="card empty" style="margin:0"><p>아직 조회한 LOT이 없어요</p><button class="ghost">최근 LOT 보기</button></div>
+  </div>
+</section>
+
+<section class="g" id="screen">
+  <h2>06 · 화면 예시</h2>
+  <h3>라벨 판정 (주인공 화면)</h3>
+  <p class="lead">판정 띠 → 숫자 → 근거 표 → 수정 요청서. 바이어별 영양값 불일치는 경쟁 서비스에 없는 기능이라 위로 끌어올린다.</p>
+  <div class="app">
+    <header class="ah"><span class="logo">라벨코스트</span>
+      <nav class="nav-main"><a href="#">홈</a><a href="#">한 번에 처리</a><a href="#" class="on">라벨</a><a href="#">생산·LOT</a><a href="#">서류</a></nav>
+      <span class="mode">서버 · 2026-10-31</span></header>
+    <div class="nav-sub"><a href="#" class="on">라벨 판정</a><a href="#">품목</a><a href="#">규격서</a></div>
+    <div class="amain">
+      <h2>라벨 판정</h2>
+      <div class="row" style="margin-bottom:16px">
+        <label class="field">받은 파일<select><option>홍콩 — 홍콩_LABEL_CNEN_11.1.xlsx</option></select></label>
+        <label class="field">도착국<select><option>홍콩</option></select></label>
+        <label class="field">라벨 기준일<input type="date"></label>
+        <button>판정</button>
+      </div>
+      <div class="verdict bad">수출 전 수정 필요 · 4항목</div>
+      <div class="stats">
+        <a class="stat bad" href="#"><span class="k">수정</span><span class="v">4</span></a>
+        <a class="stat warn" href="#"><span class="k">확인</span><span class="v">2</span></a>
+        <a class="stat ok" href="#"><span class="k">통과</span><span class="v">1</span></a>
+      </div>
+      <div class="alert bad">같은 제품, 바이어별 열량 76 · 40 · 42 kcal — 자사 성적서는 다른 제품(68.3 kcal)</div>
+      <div class="card" style="padding:0">
+        <table class="t">
+          <tr><th>항목</th><th>판정</th><th>근거</th><th>현재</th><th>고칠 것</th></tr>
+          <tr class="st-bad"><td>영양표시 1+7</td><td><span class="b bad">■ 수정</span></td><td><a class="ref" href="#">Cap.132W 附表5</a></td><td><span class="clip">영양표시 없음. 홍콩은 열량 + 단백질·총지방·포화지방·트랜스지방·탄수화물·당·나트륨 7종 의무</span></td><td>품목 영양값으로 1+7 표 생성</td></tr>
+          <tr class="st-bad"><td>알레르겐</td><td><span class="b bad">■ 수정</span></td><td><a class="ref" href="#">Cap.132W 附表3</a></td><td><span class="clip">성분에 없는 밀·대두·닭고기를 알레르겐으로 선언</span></td><td>含甲殼類動物（蟹）/ Contains crustacea (crab)</td></tr>
+          <tr class="st-bad"><td>첨가물 표기</td><td><span class="b bad">■ 수정</span></td><td><a class="ref" href="#">Cap.132W 附表3</a></td><td><span class="clip">기능분류 + 명칭 또는 INS 번호 필요. 일본식 직역 흔적</span></td><td>增味劑(621) / flavour enhancer (621)</td></tr>
+          <tr class="st-bad"><td>유통기한 문구</td><td><span class="b bad">■ 수정</span></td><td><a class="ref" href="#">Cap.132W 附表3 §8</a></td><td><span class="clip">"有効日期"는 규정 문구 아님</span></td><td>此日期前最佳 / Best before</td></tr>
+          <tr class="st-check"><td>제조자·포장자 주소</td><td><span class="b warn">▲ 확인</span></td><td><a class="ref" href="#">Cap.132W 附表3</a></td><td><span class="clip">수입자만 기재. 대체 가능 조건 확인 필요</span></td><td>제조자 A사 주소 추가 또는 조건 확인</td></tr>
+          <tr class="st-check"><td>한자 표기</td><td><span class="b warn">▲ 확인</span></td><td><a class="ref" href="#">Cap.132W</a></td><td><span class="clip">일본 한자(原産·有効) 사용</span></td><td>原產地 · 有效</td></tr>
+          <tr><td>품명·내용량·보존·원산지</td><td><span class="b ok">● 통과</span></td><td><a class="ref" href="#">Cap.132W 附表3</a></td><td>기재됨</td><td></td></tr>
+        </table>
+      </div>
+      <div class="row" style="justify-content:flex-end"><button class="ghost">읽은 값 보기</button><button>수정 요청서 PDF</button></div>
+    </div>
+  </div>
+  <p class="code" style="margin-top:8px">※ 근거 조항 표기는 예시. 실제 값은 data.js 규칙의 src에서 가져오고, 모르는 조항은 법령명만 쓴다.</p>
+</section>
+
+<section class="g" id="home">
+  <h2>07 · 화면 예시</h2>
+  <h3>홈</h3>
+  <p class="lead">가치 한 줄 + 예시로 보기(MaestrIA 패턴) → 오늘 할 일 → 최근 LOT. 주 버튼은 하나.</p>
+  <div class="app">
+    <header class="ah"><span class="logo">라벨코스트</span>
+      <nav class="nav-main"><a href="#" class="on">홈</a><a href="#">한 번에 처리</a><a href="#">라벨</a><a href="#">생산·LOT</a><a href="#">서류</a></nav>
+      <span class="mode">서버 · 2026-10-31</span></header>
+    <div class="amain">
+      <div class="card">
+        <p class="hero">수출 라벨 규정 위반을 선적 전에 잡습니다</p>
+        <p class="hero-sub">홍콩 · 대만 · 태국 · 일본 · 중국 규칙 파일로 항목별 판정, 공장 LOT 기록까지 한 줄로.</p>
+        <div class="row"><button>예시로 보기</button><button class="ghost">한 번에 처리</button></div>
+      </div>
+      <div class="stats" style="max-width:none">
+        <div class="stat bad"><span class="k">수정 필요한 라벨</span><span class="v">1</span></div>
+        <div class="stat"><span class="k">FDA 등록 만료</span><span class="v">D-61</span></div>
+        <div class="stat"><span class="k">규정 개정 시행</span><span class="v">D-136</span></div>
+        <div class="stat warn"><span class="k">성적서 없는 품목</span><span class="v">2</span></div>
+      </div>
+      <div class="card" style="padding:0">
+        <table class="t">
+          <tr><th style="width:90px">상태</th><th>오늘 할 일</th><th style="width:120px"></th></tr>
+          <tr><td><span class="b bad">■ 수정</span></td><td>홍콩 라벨 4항목 수정 필요</td><td><a href="#">라벨 판정 →</a></td></tr>
+          <tr><td><span class="b warn">▲ 확인</span></td><td>미국 FDA 식품시설등록 갱신 · D-61</td><td><a href="#">대시보드 →</a></td></tr>
+          <tr><td><span class="b warn">▲ 확인</span></td><td>GB 7718-2025 시행 D-136 · 영향 라벨 확인</td><td><a href="#">라벨 판정 →</a></td></tr>
+          <tr><td><span class="tag">대기</span></td><td>승인 기다리는 서류 2건</td><td><a href="#">서류 넣기 →</a></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="g" id="intake">
+  <h2>08 · 화면 예시</h2>
+  <h3>서류 넣기 — 원본과 읽은 값 나란히</h3>
+  <p class="lead">AI가 무엇을 읽었는지 보이게(Wrench Board·MaestrIA 패턴). 사람이 승인해야 기록에 들어간다.</p>
+  <div class="app"><div class="amain">
+    <div class="pipeline" style="margin-bottom:16px"><div class="stage done">접수</div><div class="stage done">읽기</div><div class="stage now">검증</div><div class="stage">승인</div></div>
+    <div class="cols">
+      <div class="card" style="margin:0"><h3>원본 · 7-1.원료입고검사서.pdf</h3><div class="doc">원본 미리보기</div></div>
+      <div class="card" style="margin:0"><h3>읽은 값</h3>
+        <table class="t">
+          <tr><th>칸</th><th>값</th><th></th></tr>
+          <tr><td>어종</td><td>붉은대게</td><td><span class="ai">AI 읽음</span></td></tr>
+          <tr><td>입고일</td><td>2026-04-08</td><td><span class="ai">AI 읽음</span></td></tr>
+          <tr><td>박스</td><td class="num">58</td><td><span class="ai">AI 읽음</span></td></tr>
+          <tr class="st-check"><td>총중량</td><td class="num">17,400 kg</td><td><span class="b warn">▲ 확인</span></td></tr>
+        </table>
+        <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="ghost">반려</button><button>승인</button></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<section class="g" id="voice">
+  <h2>09 · 문구</h2>
+  <h3>짧게, 판정 어휘는 세 개로 고정</h3>
+  <div class="card" style="padding:0">
+    <table class="t">
+      <tr><th>지금</th><th>바꿀 말</th></tr>
+      <tr><td>시드로 복원 / 시연 초기화(빈 원장)</td><td>예시 데이터로 되돌리기 / 모두 비우기</td></tr>
+      <tr><td>추출된 필드</td><td>읽은 값</td></tr>
+      <tr><td>서버 연결 · AI 추출 꺼짐</td><td>서버 / 오프라인</td></tr>
+      <tr><td>원장 반영</td><td>기록에 넣기</td></tr>
+      <tr><td>오류 · 경고 · 주의 · 실패</td><td>수정 · 확인 · 통과 만</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="g" id="dodont" style="border-bottom:0">
+  <h2>10 · 해야 할 것 / 하지 말 것</h2>
+  <h3>"AI가 만든 티" 지우기</h3>
+  <div class="vs">
+    <div class="no"><h4>✕ 지금 같은 모양</h4>
+      <div class="bad-ex">
+        <span class="pill">① 라벨 판정</span><span class="pill on">② 품목·4개국</span><span class="pill">③ 규격서</span><span class="pill">④ 선적·원장</span>
+        <div class="sh">라벨 파일을 올리거나 받은 파일을 고르고 도착국을 정하면 규칙 파일로 항목별 판정. 추출만 자동, 판정은 규칙, 최종 확인은 사람.
+          <div class="sh"><span class="grad">받은 파일로 시연: 7-1.원료입고검사서.pdf</span> <span class="grad">받은 파일로 시연: 7-2.가공일지.pdf</span></div>
+        </div>
+      </div>
+      <ul class="dd" style="margin-top:12px">
+        <li>원문자 번호, 알약 모양 메뉴</li><li>화면 위 개발 원칙 설명문</li><li>그림자·카드 안 카드</li><li>같은 버튼 나열, 그라데이션, 강조색 여러 개</li>
+      </ul>
+    </div>
+    <div class="yes"><h4>✓ 이렇게</h4>
+      <div class="app">
+        <header class="ah"><span class="logo">라벨코스트</span><nav class="nav-main"><a href="#" class="on">라벨</a><a href="#">생산·LOT</a></nav></header>
+        <div class="amain"><h2 style="font-size:18px">라벨 판정</h2><div class="verdict bad" style="font-size:15px">수출 전 수정 필요 · 4항목</div>
+          <table class="t"><tr><th>서류</th><th>상태</th><th></th></tr><tr><td>7-1.원료입고검사서.pdf</td><td><span class="tag">대기</span></td><td><button class="small ghost">열기</button></td></tr><tr><td>7-2.가공일지.pdf</td><td><span class="tag">승인</span></td><td><button class="small ghost">열기</button></td></tr></table>
+        </div>
+      </div>
+      <ul class="dd" style="margin-top:12px">
+        <li>글자 탭 + 밑줄, 번호 없음</li><li>결론 한 줄(판정 띠)부터</li><li>선과 바탕색으로만 구분</li><li>버튼 나열 대신 표 + [열기]</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
