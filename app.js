@@ -67,7 +67,7 @@
   // ---------- 판정 엔진 ----------
   function judge(country, fields) {
     var r = LC.rules[country];
-    return r.checks.map(function (c) { var out = c.run(fields, P()); out.item = c.item; out.id = c.id; return out; });
+    return r.checks.map(function (c) { var out = c.run(fields, P()); out.item = c.item; out.id = c.id; out.src = c.src; return out; });
   }
   function summarize(results) {
     var s = { pass: 0, fix: 0, check: 0 };
@@ -146,17 +146,20 @@
     if (noNut.length) out.push({ cls: 'warn', text: '성적서 없는 품목 ' + noNut.length + '건 · ' + noNut.join(', '), href: '#product', go: '품목' });
     return out;
   }
+  function listRow(href, badge, main, meta) { return '<a class="list-row" href="' + href + '">' + badge + '<span class="lr-main">' + main + '</span>' + (meta ? '<span class="lr-meta">' + meta + '</span>' : '') + '<span class="chev">›</span></a>'; }
   screens.home = function () {
     var items = todos(), recent = state.ledger.slice(-3).reverse();
-    var first = !localStorage.getItem('lc.visited');
-    try { localStorage.setItem('lc.visited', '1'); } catch (e) {}
-    return '<h2>오늘 할 일 · ' + LC.TODAY + '</h2>' +
-      (first ? '<p class="sub">서류를 넣고 승인하면 원장이 생깁니다.</p>' : '') +
-      '<div class="card">' + (items.length ? '<ul class="log todo">' + items.map(function (t) { return '<li><span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '급함' : '확인') + '</span> ' + esc(t.text) + ' · <a href="' + t.href + '">' + t.go + ' ›</a></li>'; }).join('') + '</ul>' : '<p class="muted">오늘 할 일 없음</p>') + '</div>' +
-      '<p class="muted">' + (recent.length ? '최근 로트: ' + recent.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + (l.company_code ? '(' + l.company_code + ')' : '') + '</a> ' + (shipped(l) ? '선적됨' : '미선적'); }).join(' · ') : '로트 없음') + monthLine() + '</p>' +
-      '<div class="card"><h3>시작하기</h3><div class="row"><a class="btn" href="#quick" aria-label="한 번에 처리로 이동">한 번에 처리 (서류 넣기 → 결과물)</a>' +
-      '<label>LOT 찾기 <input id="home-q" list="lot-list" placeholder="LOT 번호 또는 회사 코드(AJ)" size="28"></label><button id="home-go" aria-label="LOT 조회">찾기</button>' + lotDatalist() +
-      '<a class="btn ghost" href="#export" aria-label="내보내기로 이동">내보내기</a></div></div>';
+    var k0 = LC.sampleLabels.HK ? 'HK' : Object.keys(LC.sampleLabels)[0], l0 = LC.sampleLabels[k0], s0 = summarize(judge(l0.country, l0.fields)), go0 = '#label/' + k0 + '/' + l0.country;
+    return '<div class="home"><div>' +
+      '<p class="hero">수출 라벨 규정 위반을<br><em>선적 전에</em> 잡습니다</p>' +
+      '<p class="hero-sub">홍콩 · 대만 · 태국 · 일본 · 중국 규칙으로 항목별 판정, 공장 LOT 기록까지 한 줄로.</p>' +
+      '<div class="search"><input id="home-q" list="lot-list" placeholder="LOT 번호나 회사 코드로 찾기 (예: 20260410-LB)" aria-label="LOT 찾기"><button id="home-go" aria-label="LOT 조회">찾기</button></div>' + lotDatalist() +
+      '<div class="panel feature"><a class="lead-tile" href="' + go0 + '"><span class="lt-k">라벨 판정 · ' + esc(LC.rules[l0.country].name) + ' 라벨</span><span class="lt-v">' + (s0.fix ? '수정 ' + s0.fix + '항목' : '통과') + '</span><span class="lt-d">확인 ' + s0.check + ' · 통과 ' + s0.pass + ' · ' + esc(l0.file) + '</span></a>' +
+      '<div class="list">' + listRow('#quick', '', '한 번에 처리', '서류 → 판정 → 기록') + listRow('#lot', '', 'LOT 조회', '원어 입고까지') + listRow('#intake', '', '서류 넣기', '사진·PDF 읽기') + '</div></div>' +
+      '</div><div class="card"><div class="sec-head"><h3>오늘 할 일</h3><span class="muted">' + LC.TODAY + '</span></div>' +
+      (items.length ? '<div class="list">' + items.map(function (t) { var badge = t.href === '#intake' ? '<span class="tag">대기</span>' : '<span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '수정' : '확인') + '</span>'; return listRow(t.href, badge, esc(t.text), t.go); }).join('') + '</div>' : '<p class="muted">오늘 할 일 없음</p>') +
+      '<p class="muted home-recent">' + (recent.length ? '최근 LOT ' + recent.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + '</a>'; }).join(' · ') : 'LOT 없음') + monthLine() + '</p>' +
+      '<a class="btn lg" href="' + go0 + '">예시로 보기</a></div></div>';
   };
   // 이달(없으면 데이터가 있는 마지막 달) 생산·선적 한 줄
   function monthLine() {
@@ -183,11 +186,12 @@
     var la = labelArg(arg);
     var sel = Object.keys(LC.sampleLabels).map(function (k) { var sl = LC.sampleLabels[k]; return '<option value="' + k + '"' + (k === la.key ? ' selected' : '') + '>' + ((LC.rules[sl.country] || LC.rules[k] || {}).name || sl.country) + ' — ' + sl.file + '</option>'; }).join('');
     return '<h2>라벨 판정</h2><p class="sub">라벨 파일과 도착국을 고르세요.</p>' +
+      '<div class="card no-print"><div class="chips" id="lbl-countries">' + Object.keys(LC.rules).map(function (k) { return '<button class="chip" data-ctry="' + k + '" aria-label="' + esc(LC.rules[k].name) + ' 규칙으로 판정">' + esc(LC.rules[k].name) + '</button>'; }).join('') + '</div>' +
       '<div class="row"><label>받은 파일 <select id="lbl-sample">' + sel + '</select></label>' +
       '<label>또는 엑셀 업로드 <input type="file" id="lbl-file" accept=".xlsx,.xls"></label>' +
       '<label>도착국 <select id="lbl-country">' + Object.keys(LC.rules).map(function (k) { return '<option value="' + k + '">' + LC.rules[k].name + '</option>'; }).join('') + '</select></label>' +
-      '<label>라벨 기준일 <input type="date" id="lbl-made"></label><button id="lbl-run">판정</button></div>' +
-      '<div class="row" id="lbl-countries"><span class="muted">나라 바꿔 보기</span> ' + Object.keys(LC.rules).map(function (k) { return '<button class="ghost small" data-ctry="' + k + '" aria-label="' + esc(LC.rules[k].name) + ' 규칙으로 판정">' + esc(LC.rules[k].name) + '</button>'; }).join(' ') + '</div><div id="lbl-out"></div>' + nutritionSourceTable();
+      '<label>라벨 기준일 <input type="date" id="lbl-made"></label><button class="ghost" id="lbl-run">판정</button></div></div>' +
+      '<div id="lbl-out"></div>' + nutritionSourceTable();
   };
   // 영양값 출처: 바이어마다 다른 추정값이 어디서 왔는지. 비어 있으면 안 그림
   function nutritionSourceTable() {
@@ -197,18 +201,29 @@
       ns.map(function (x) { return '<tr><td>' + esc(x.buyer) + '</td><td>' + esc(x.product) + '</td><td>' + esc(x.kcal) + '</td><td>' + esc(x.protein) + '</td><td>' + esc(x.salt_g) + '</td><td>' + esc(x.basis) + '</td><td class="muted">' + esc(x.source) + '</td></tr>'; }).join('') +
       '</table><p class="muted">값이 다른 건 바이어마다 조미액이 달라서. 라벨 값은 바이어 제공, 자사 성적서는 조미 전 다른 제품.</p></div>';
   }
+  function nutritionAlert() {
+    var ns = state.nutritionSources || [], own = ns.filter(function (x) { return /성적서/.test(x.buyer); })[0], buy = ns.filter(function (x) { return x !== own && x.kcal != null; });
+    var kc = buy.map(function (x) { return x.kcal; }).filter(function (k, i, a) { return a.indexOf(k) === i; });
+    if (kc.length < 2) return '';
+    return '<p class="alert bad">같은 제품인데 바이어별 열량이 <b>' + kc.map(esc).join(' · ') + ' kcal</b>로 달라요.' + (own ? ' 자사 성적서는 다른 제품(' + esc(own.kcal) + ' kcal)이에요.' : '') + '</p>';
+  }
   function renderJudge(country, fields, meta) {
     var res = judge(country, fields); var s = summarize(res); var r = LC.rules[country];
     var rev = LC.revisions.filter(function (v) { return v.country === country && meta.made && meta.made < v.effective; });
-    var html = '<div class="card"><div class="badges"><span class="b bad">수정 ' + s.fix + '</span><span class="b warn">확인 ' + s.check + '</span><span class="b ok">통과 ' + s.pass + '</span>' +
-      '<span class="muted">' + esc(r.name) + ' · ' + esc(r.law) + ' · 라벨 기준일 ' + fmtDate(meta.made) + (meta.file ? ' · ' + esc(meta.file) : '') + '</span></div>' +
-      (rev.length ? '<p class="alert">고시 개정 이후 라벨: ' + rev.map(function (v) { return esc(v.title) + ' (시행 ' + v.effective + ')'; }).join(', ') + ' → 재검토 필요</p>' : '') +
-      '<table><tr><th>항목</th><th>판정</th><th>현재</th><th>고칠 것</th></tr>' +
-      res.map(function (x) { return '<tr><td>' + esc(x.item) + '</td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td>' + fold(x.msg, 60) + '</td><td>' + fold(x.fix || '', 60) + '</td></tr>'; }).join('') +
+    var ref = function (x) { return x.src || r.short || r.law; };
+    var v = s.fix ? ['bad', '수출 전 수정 필요 · ' + s.fix + '항목'] : s.check ? ['warn', '확인 필요 · ' + s.check + '항목'] : ['ok', '통과 · ' + r.name + ' 규정 ' + s.pass + '항목 충족'];
+    var stat = function (cls, k, n) { return '<div class="stat ' + cls + '"><span class="k">' + k + '</span><span class="v">' + n + '<small>항목</small></span></div>'; };
+    var html = '<div class="verdict ' + v[0] + '">' + v[1] + '<span class="v-sub">' + esc(r.name) + ' ' + esc(r.short || '') + ' 기준 · 라벨 기준일 ' + fmtDate(meta.made) + '</span></div>' +
+      '<div class="stats">' + stat('bad', '수정', s.fix) + stat('warn', '확인', s.check) + stat('ok', '통과', s.pass) + '</div>' +
+      (rev.length ? '<p class="alert">고시 개정 이후 라벨이에요: ' + rev.map(function (x) { return esc(x.title) + ' (시행 ' + x.effective + ')'; }).join(', ') + '</p>' : '') + nutritionAlert() +
+      '<table><tr><th>항목</th><th>판정</th><th>근거</th><th>현재</th><th>고칠 것</th></tr>' +
+      res.map(function (x) { return '<tr class="' + (x.status === 'fix' ? 'st-bad' : x.status === 'check' ? 'st-check' : '') + '"><td><b>' + esc(x.item) + '</b></td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td><span class="ref" title="' + esc(ref(x)) + '">' + esc(ref(x)) + '</span></td><td class="muted">' + fold(x.msg, 40) + '</td><td class="fixto">' + fold(x.fix || '', 40) + '</td></tr>'; }).join('') +
       '</table>' +
-      '<details><summary>추출된 필드</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details></div>';
+      '<div class="actions"><details class="no-print"><summary>읽은 값</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details><button class="lg" id="lbl-pdf">수정 요청서 PDF</button></div>';
     $('#lbl-out').innerHTML = html;
     state.lastLabel = { country: country, made: meta.made, file: meta.file, summary: s };
+    $('#lbl-pdf').onclick = function () { window.print(); };
+    document.querySelectorAll('[data-ctry]').forEach(function (b) { b.classList.toggle('on', b.dataset.ctry === country); });
   }
   screens.label.bind = function (arg) {
     var sampleSel = $('#lbl-sample'), la = labelArg(arg);
@@ -480,11 +495,10 @@
     var soon = state.registry.filter(function (r) { return r.expiry && daysTo(r.expiry) <= 90; }).length;
     var rev = LC.revisions.filter(function (v) { return daysTo(v.effective) >= 0 && LC.rules[v.country] && affectedLabels(v).length; }).length;
     var need = state.registry.filter(function (r) { return /확인/.test(String(r.no) + ' ' + String(r.note)) && r.kind !== '참고'; }).length;
-    var stat = function (n, label, cls, href) { return '<a class="stat ' + cls + '" href="' + href + '"><b>' + n + '</b><span>' + label + '</span></a>'; };
+    var stat = function (n, label, cls, href) { return '<a class="stat ' + cls + '" href="' + href + '"><span class="k">' + label + '</span><span class="v">' + n + '</span></a>'; };
     return '<div class="stats">' + stat(soon, '만료 임박', soon ? 'warn' : 'ok', '#dash') + stat(rev, '개정 대응', rev ? 'warn' : 'ok', '#dash') + stat(need, '확인 필요', need ? 'warn' : 'ok', '#dash') + '</div>';
   }
   screens.dash = function () {
-    var cnt = dashCounts();
     var sorted = state.registry.slice().sort(function (a, b) { var da = a.expiry ? daysTo(a.expiry) : 1e9, db = b.expiry ? daysTo(b.expiry) : 1e9; return da - db; });   // 급한 것 위, 만료일 없는 행은 아래
     var rows = sorted.map(function (r) {
       var d = r.expiry ? daysTo(r.expiry) : null; var cls = d == null ? '' : d <= r.lead || d <= 30 ? 'bad' : d <= 90 ? 'warn' : 'ok';
@@ -495,7 +509,6 @@
       return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + revisionLabels(v) + '</td><td class="muted">' + fold(v.note) + '</td></tr>';
     }).join('');
     return '<h2>대시보드</h2>' + dashStats() +
-      '<div class="badges"><span class="b bad">30일 이내 ' + cnt.bad + '</span><span class="b warn">90일 이내 ' + cnt.warn + '</span><span class="b ok">여유 ' + cnt.ok + '</span></div>' +
       '<div class="card"><h3>등록·인증 레지스트리 (오늘 ' + LC.TODAY + ')</h3><table><tr><th>층</th><th>종류</th><th>번호</th><th>발급</th><th>만료</th><th>D-day</th><th>국가</th><th>비고</th></tr>' + rows + '</table></div>' +
       '<div class="card"><h3>고시 개정 → 영향받는 라벨</h3><table><tr><th>국</th><th>고시</th><th>시행일</th><th>재검토 라벨</th><th>비고</th></tr>' + rev + '</table></div>' +
       '<div class="card" id="pub-card"><h3>식약처 공공데이터 조회</h3>' +
@@ -893,8 +906,8 @@
 
   // ---------- 라우팅 ----------
   // 첫 줄: 묶음 6개. 둘째 줄: 현재 묶음 안의 화면들
-  var NAV_MAIN = [['home', '홈', '오늘 할 일'], ['quick', '한 번에 처리', '서류 넣기 → 확인 → 결과물'], ['label', '라벨', '라벨 판정 · 품목 · 규격서'], ['ship', '생산·LOT', '선적·원장 · LOT 조회'], ['intake', '서류', '서류 넣기 · 대시보드 · 수입 체크 · 내보내기'], ['stats', '집계', '월별 생산·선적·재고·수율']];
-  var NAV_SUB = { label: [['label', '라벨 판정'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['export', '내보내기']] };
+  var NAV_MAIN = [['home', '홈', '오늘 할 일'], ['quick', '한 번에 처리', '서류 넣기 → 확인 → 결과물'], ['label', '라벨', '라벨 판정 · 품목 · 규격서'], ['ship', '생산·LOT', '선적·원장 · LOT 조회'], ['intake', '서류', '서류 넣기 · 대시보드 · 수입 체크 · 내보내기']];
+  var NAV_SUB = { label: [['label', '라벨 판정'], ['product', '품목'], ['spec', '규격서']], ship: [['ship', '선적·원장'], ['lot', 'LOT 조회']], intake: [['intake', '서류 넣기'], ['dash', '대시보드'], ['import', '수입 체크'], ['stats', '집계'], ['export', '내보내기']] };
   function groupOf(name) { for (var g in NAV_SUB) if (NAV_SUB[g].some(function (x) { return x[0] === name; })) return g; return name; }
   function navLink(x, on) { return '<a href="#' + x[0] + '" class="' + (on ? 'on' : '') + '" title="' + esc(x[2] || x[1]) + '"' + (on ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }
   function route() {
