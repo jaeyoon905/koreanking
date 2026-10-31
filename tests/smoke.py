@@ -106,7 +106,7 @@ def offline_checks():
             n = len(pg.inner_text('#main')) if pg.query_selector('#main') else 0
             check(f'B 렌더 {h}', n >= 100, f'{n}자')
         pg.goto(url + '#intake'); pg.wait_for_timeout(400)
-        a = click_btn(pg, '빈 원장'); b_ = open_doc(pg, '7-3'); approve_all(pg, 1)
+        a = click_btn(pg, '모두 비우기'); b_ = open_doc(pg, '7-3'); approve_all(pg, 1)
         check('B 오프라인 7-3 승인 → 로트 5건', a and b_ and '로트 5건' in summary(pg), summary(pg))
     errs = browser_session(fn)
     check('B 오프라인 콘솔·페이지 오류 0', not errs, errs[:3])
@@ -160,7 +160,7 @@ def server_checks():
             pg.goto(B + '/#intake'); pg.wait_for_timeout(900)
             badge = pg.inner_text('#mode') if pg.query_selector('#mode') else ''
             check('C 모드 배지 서버', badge.startswith('서버'), badge)
-            click_btn(pg, '빈 원장', 800)
+            click_btn(pg, '모두 비우기', 800)
             files = [DOCS / '7-3.포장 일지.pdf', DOCS / '7-1.원료입고검사서.pdf', DOCS / '7-2.가공일지.pdf', DOCS / '5-2.패킹리스트.png']
             missing = [f.name for f in files if not f.exists()]
             if missing: check('C 업로드 파일 존재', False, missing); return
