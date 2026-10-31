@@ -206,9 +206,9 @@
   screens.intro = function () {   // 서비스 소개: 처음 보는 사람용 (공식·숫자·근거)
     var nLaw = LC.laws ? Object.keys(LC.laws).length : 0;
     return '<section class="hero-block"><p class="hero">수출 라벨 규정 위반을 <em>선적 전에</em> 잡습니다</p>' +
-      '<div class="formula" aria-label="한국 라벨 1장과 종이 일지로 5개국 라벨과 수출 서류 9종">' +
+      '<div class="formula" aria-label="한국 라벨 1장과 종이 일지로 5개국 라벨과 바이어별 서류 한 벌">' +
         '<div class="f-in"><b>한국 라벨 1장</b><span>품목 원본</span></div><span class="f-op">+</span><div class="f-in"><b>종이 일지·서류</b><span>사진·PDF</span></div><span class="f-op f-arrow">→</span>' +
-        '<div class="f-out"><b>5개국 라벨</b><span>일본·중국·홍콩·대만·태국</span></div><span class="f-op">+</span><div class="f-out"><b>수출 서류 9종</b><span>규격서·패킹리스트·수정 요청서</span></div></div>' +
+        '<div class="f-out"><b>5개국 라벨</b><span>일본·중국·홍콩·대만·태국</span></div><span class="f-op">+</span><div class="f-out"><b>바이어별 서류 한 벌</b><span>규격서·답장·선적 서류</span></div></div>' +
       '<a class="btn lg hero-go" href="#quick/go">한 번에 처리 해 보기</a></section>' +
       '<div class="big-nums">' +
         '<div><span class="bn-v">50~100<small>만원</small></span><span class="bn-k">라벨 1장 외부 컨설팅 비용</span><span class="bn-s">업계 설명 · 쿡앤셰프뉴스 2026-06-10</span></div>' +
@@ -453,29 +453,35 @@
     return '<div class="pkg kr"><table>' + pkgRow('제품명', esc(p.name_ko)) + pkgRow('식품유형', '기타수산물가공품') + pkgRow('내용량', esc(p.net || '')) + pkgRow('원재료명', ing) +
       pkgRow('알레르기', '게 함유') + pkgRow('보관방법', esc(p.storage || '')) + pkgRow('소비기한', '제조일로부터 ' + (p.shelf_months || '') + '개월') + pkgRow('제조원', esc(p.factory ? p.factory.name : '')) + '</table>' + nut + '</div>';
   }
+  var ING_TOK = {
+    CN: [['홍게 다리 파살', '红雪蟹腿碎肉'], ['홍게 다리살', '红雪蟹腿肉'], ['홍게 집게살', '红雪蟹钳肉'], ['홍게 몸살', '红雪蟹体肉'], ['홍게 살 플레이크', '红雪蟹肉碎'], ['플레이크', '蟹肉碎'], ['홍게 다리', '红雪蟹腿'], ['조미액', '调味液'], ['홍게', '红雪蟹'], ['정제수', '水'], ['정제소금', '食用盐'], ['소금', '食用盐'], ['물', '水'], ['살', '肉']],
+    TH: [['홍게 다리 파살', 'เนื้อขาปูหิมะแดง (ชิ้น)'], ['홍게 다리살', 'เนื้อขาปูหิมะแดง'], ['홍게 집게살', 'เนื้อก้ามปูหิมะแดง'], ['홍게 몸살', 'เนื้อลำตัวปูหิมะแดง'], ['홍게 살 플레이크', 'เนื้อปูหิมะแดงฝอย'], ['플레이크', 'เนื้อปูฝอย'], ['홍게 다리', 'ขาปูหิมะแดง'], ['조미액', 'น้ำปรุงรส'], ['홍게', 'ปูหิมะแดง'], ['정제수', 'น้ำ'], ['정제소금', 'เกลือ'], ['소금', 'เกลือ'], ['물', 'น้ำ'], ['살', 'เนื้อ']]
+  };
+  function ingLocal(i, ctry) { var s = String(i.name_ko || ''); (ING_TOK[ctry] || []).forEach(function (t) { s = s.split(t[0]).join(t[1]); }); s = s.replace(/\([^)]*[가-힣][^)]*\)/g, '').trim(); return /[가-힣]/.test(s) ? (i.name_en || s.replace(/[가-힣]+/g, '').trim() || s) : s; }
+  var NUT_NEED = { JP: '栄養成分：試験成績書 待ち', CN: '营养成分：待检测报告', HK: '營養資料：待檢測報告', TW: '營養標示：待檢驗報告', TH: 'ข้อมูลโภชนาการ: รอผลตรวจ' };
   function tagCN(p) {
     var n = p.nutrition100, kj = n ? Math.round(n.kcal * 4.184) : null;
     var raws = (p.ingredients || []).filter(function (i) { return i.type !== 'additive'; }).sort(function (a, b) { return (b.pct || 0) - (a.pct || 0); });
     var cnName = { '홍게 다리살': '红雪蟹腿肉', '정제수': '水', '정제소금': '食用盐' };
-    var cfg = raws.map(function (i) { return cnName[i.name_ko] || esc(i.name_ko); }).join('、') + '、' + esc(additiveBy.CN.split(' (')[0]);
+    var cfg = raws.map(function (i) { return cnName[i.name_ko] || esc(ingLocal(i, 'CN')); }).join('、') + '、' + esc(additiveBy.CN.split(' (')[0]);
     var nut = n ? '<div class="pkg-nut"><div class="pn-h">营养成分表</div><table><tr><td><b>项目</b></td><td class="num"><b>每100克</b></td><td class="num"><b>NRV%</b></td></tr>' +
       [['能量', kj + ' 千焦', pct(kj, CN_NRV.kj)], ['蛋白质', n.protein + ' 克', pct(n.protein, CN_NRV.protein)], ['脂肪', n.fat + ' 克', pct(n.fat, CN_NRV.fat)], ['—饱和脂肪', n.satfat + ' 克', pct(n.satfat, CN_NRV.satfat)], ['碳水化合物', n.carb + ' 克', pct(n.carb, CN_NRV.carb)], ['—糖', n.sugar + ' 克', ''], ['钠', n.sodium_mg + ' 毫克', pct(n.sodium_mg, CN_NRV.sodium_mg)]]
-        .map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td><td class="num">' + r[2] + '</td></tr>'; }).join('') + '</table><p>儿童青少年应避免过量摄入盐油糖</p></div>' : '<div class="pkg-nut"><div class="pn-h">营养成分表</div><p>성적서 필요</p></div>';
+        .map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td><td class="num">' + r[2] + '</td></tr>'; }).join('') + '</table><p>儿童青少年应避免过量摄入盐油糖</p></div>' : '<div class="pkg-nut"><div class="pn-h">营养成分表</div><p>' + NUT_NEED.CN + '</p></div>';
     return '<div class="pkg cn"><table>' + pkgRow('产品名称', '冷冻熟红雪蟹腿碎肉') + pkgRow('配料表', cfg, 1) + pkgRow('致敏物质提示', '本品含有甲壳纲类（蟹）', 2) + pkgRow('净含量', esc(p.net || '')) +
       pkgRow('生产日期', '见包装标示', 3) + pkgRow('保质期至', '见包装标示') + pkgRow('贮存条件', '-18℃以下冷冻保存') + pkgRow('原产国', '韩国') + pkgRow('进口商', '（中国境内进口商名称·地址·电话）', 4) + '</table>' +
       '<div data-mk="5"><div class="mk-wrap"><span class="mk">5</span></div>' + nut + '</div></div>';
   }
   function tagJP(p) {
     var n = p.nutrition100;
-    var nut = n ? '<div class="pkg-nut jp"><div class="pn-h">栄養成分表示（100gあたり）</div><table>' + nutritionBy.JP().filter(function (r) { return r[1]; }).map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td></tr>'; }).join('') + '</table><p>この表示値は、目安です。</p></div>' : '<div class="pkg-nut jp"><div class="pn-h">栄養成分表示</div><p>성적서 필요</p></div>';
+    var nut = n ? '<div class="pkg-nut jp"><div class="pn-h">栄養成分表示（100gあたり）</div><table>' + nutritionBy.JP().filter(function (r) { return r[1]; }).map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td></tr>'; }).join('') + '</table><p>この表示値は、目安です。</p></div>' : '<div class="pkg-nut jp"><div class="pn-h">栄養成分表示</div><p>' + NUT_NEED.JP + '</p></div>';
     var ad = additiveBy.JP.split('／'), u = (LC.buyers || []).filter(function (b) { return b.country === 'JP'; })[0], who = String(LC.tagBuyer || (u ? u.code : '輸入者')).replace(/사$/, '社');
-    return '<div class="pkg jp"><table>' + pkgRow('名称', esc(p.name_ja || p.name_ko)) + pkgRow('原材料名', '紅ずわいがに、' + esc(ad[0]) + '<b class="sep">／</b>' + esc(ad[1] || ''), 1) + pkgRow('内容量', esc(p.net || '')) +
+    return '<div class="pkg jp"><table>' + pkgRow('名称', esc(p.name_ja || p.name_en || p.name_ko)) + pkgRow('原材料名', '紅ずわいがに、' + esc(ad[0]) + '<b class="sep">／</b>' + esc(ad[1] || ''), 1) + pkgRow('内容量', esc(p.net || '')) +
       pkgRow('賞味期限', '枠外下部に記載') + pkgRow('保存方法', '−18℃以下で保存してください') + pkgRow('原産国名', '韓国', 2) + pkgRow('輸入者', esc(who) + '（日本国内の住所）', 3) + pkgRow('識別表示', 'プラ トレー:PP／袋:PE,PA') + '</table>' +
       '<p class="pkg-al" data-mk="4"><span class="mk">4</span>アレルギー物質：<b>かに</b></p><div data-mk="5"><div class="mk-wrap"><span class="mk">5</span></div>' + nut + '</div></div>';
   }
   function nutBox(title, rows, foot) { return '<div data-mk="5"><div class="mk-wrap"><span class="mk">5</span></div><div class="pkg-nut"><div class="pn-h">' + title + '</div><table>' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td></tr>'; }).join('') + '</table>' + (foot ? '<p>' + foot + '</p>' : '') + '</div></div>'; }
   function tagHK(p) {
-    return '<div class="pkg hk"><table>' + pkgRow('食品名稱 Name', '冷凍熟紅雪蟹腿碎肉<br>' + esc(p.name_en || '')) + pkgRow('配料 Ingredients', '紅雪蟹 Red snow crab、水 Water、鹽 Salt、' + esc(additiveBy.HK), 1) +
+    return '<div class="pkg hk"><table>' + pkgRow('食品名稱 Name', '冷凍熟紅雪蟹腿碎肉<br>' + esc(/[가-힣]/.test(String(p.name_en || '')) ? '' : (p.name_en || ''))) + pkgRow('配料 Ingredients', '紅雪蟹 Red snow crab、水 Water、鹽 Salt、' + esc(additiveBy.HK), 1) +
       pkgRow('致敏物質 Allergen', esc(allergenBy.HK), 2) + pkgRow('淨重 Net weight', esc(p.net || '')) + pkgRow('此日期前最佳<br>Best before', 'DD/MM/YYYY', 3) + pkgRow('貯存方法 Storage', '-18°C或以下冷藏 Keep frozen at -18°C or below') +
       pkgRow('製造商 Manufacturer', esc(p.factory ? (p.factory.name_en || p.factory.name) : ''), 4) + pkgRow('原產地 Origin', '韓國 Korea') + '</table>' +
       (p.nutrition100 ? nutBox('營養標籤 Nutrition Information <small>每100克 Per 100g</small>', nutritionBy.HK()) : '') + '</div>';
@@ -489,7 +495,7 @@
   function tagTH(p) {
     var ing = (p.ingredients || []).filter(function (i) { return i.type !== 'additive'; }), th = { '홍게 다리살': 'เนื้อขาปูหิมะแดง', '정제수': 'น้ำ', '정제소금': 'เกลือ' };
     return '<div class="pkg th"><table>' + pkgRow('ชื่ออาหาร', 'เนื้อขาปูหิมะแดงต้มแช่แข็ง') + pkgRow('เลขสารบบอาหาร', '<span class="th-fda">อย.</span> 00-0-00000-0-0000', 4) +
-      pkgRow('ส่วนประกอบ', ing.map(function (i) { return (th[i.name_ko] || esc(i.name_ko)) + ' ' + i.pct + '%'; }).join(', '), 1) + pkgRow('วัตถุเจือปนอาหาร', 'วัตถุปรุงแต่งรสอาหาร (โมโนโซเดียมกลูตาเมต), วัตถุให้ความหวาน (ซอร์บิทอล), วัตถุเจือปนอาหาร (INS 412)', 2) +
+      pkgRow('ส่วนประกอบ', ing.map(function (i) { return (th[i.name_ko] || esc(ingLocal(i, 'TH'))) + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', '), 1) + pkgRow('วัตถุเจือปนอาหาร', 'วัตถุปรุงแต่งรสอาหาร (โมโนโซเดียมกลูตาเมต), วัตถุให้ความหวาน (ซอร์บิทอล), วัตถุเจือปนอาหาร (INS 412)', 2) +
       pkgRow('ข้อมูลสำหรับผู้แพ้อาหาร', 'มี ปู', 3) + pkgRow('น้ำหนักสุทธิ', esc((p.net || '').replace('g', 'กรัม'))) + pkgRow('ควรบริโภคก่อน', 'ดูที่บรรจุภัณฑ์') + pkgRow('วิธีเก็บรักษา', 'เก็บแช่แข็งที่ -18°C หรือต่ำกว่า') +
       pkgRow('นำเข้าโดย', '(ชื่อและที่ตั้งผู้นำเข้าในประเทศไทย)', 5) + pkgRow('ผลิตโดย', esc(p.factory ? (p.factory.name_en || p.factory.name) : '')) + '</table></div>';
   }
@@ -581,7 +587,7 @@
     var rows = ''; for (var i = 0; i < 7; i++) rows += '<span class="sk-row"><i></i><i></i></span>';
     return '<div class="pk-card skel" aria-hidden="true"><div class="pk-thumb"><div class="sk-doc"><i class="sk-h"></i>' + rows + '<i class="sk-box"></i></div></div><div class="pk-meta"><i class="sk-t"></i><i class="sk-s"></i></div></div>';
   }
-  // 수출 꾸러미 9종(나라별 라벨 5 + 규격서·수정 요청서·패킹리스트·위생증명서 신청값). 한 번에 처리 3단계 맨 위에 나온다
+  // 수출 꾸러미 = 상품 기준 라벨 6종(나라별 라벨 5 + 수정 요청서). 규격서·선적 서류·답장은 바이어별 카드로 (겹치지 않게, 2026-11-01 재윤·TJ 합의)
   // 채우는 동안 100ms마다 다시 그리므로, 기록이 바뀌기 전까지는 한 번 만든 카드를 다시 쓴다
   var packMemo = { key: null, cards: null };
   function packDocs() {
@@ -595,17 +601,14 @@
     var doc = function (title, rows) { return '<div class="doc-mini"><h4>' + title + '</h4><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>'; };
     packMemo.key = key;
     return packMemo.cards = TAG_CTRY.map(function (c) { return [c[1] + ' 라벨', c[2], '#tags/' + c[0], c[3](p)]; }).concat([
-      ['규격서', '바이어 양식', '#spec', specSheet(lot)],
-      ['수정 요청서', '홍콩 라벨 · 수정 ' + hk.filter(function (x) { return x.status === 'fix'; }).length + ' · 확인 ' + hk.filter(function (x) { return x.status === 'check'; }).length, '#label', doc('라벨 수정 요청서 · 홍콩', hk.map(function (x) { return [x.item, x.fix || x.msg]; }))],
-      ['패킹리스트', sh ? sh.no : '선적 없음', '#ship', doc('PACKING LIST' + (sh ? ' · ' + sh.no : ''), sh ? sh.items.slice(0, 6).map(function (i) { return [i.desc, i.ct + ' C/T · ' + i.kg + ' kg']; }).concat([['TOTAL', tot[0] + ' C/T · ' + tot[1] + ' kg']]) : [])],
-      ['위생증명서 신청값', '수품원', '#ship', doc('위생증명서 신청 정보', sh ? [['수출자', p.factory ? p.factory.name : ''], ['수입자', sh.buyer], ['선박', sh.vessel], ['구간', sh.route], ['HS', sh.hs || ''], ['수량', tot[0] + ' C/T / ' + tot[1] + ' kg']] : [])]
+      ['수정 요청서', '홍콩 라벨 · 수정 ' + hk.filter(function (x) { return x.status === 'fix'; }).length + ' · 확인 ' + hk.filter(function (x) { return x.status === 'check'; }).length, '#label', doc('라벨 수정 요청서 · 홍콩', hk.map(function (x) { return [x.item, x.fix || x.msg]; }))]
     ]).map(function (c) { return '<a class="pk-card done" href="' + c[2] + '"><div class="pk-thumb"><div class="pk-scale">' + c[3] + '</div></div><div class="pk-meta"><b>' + c[0] + '</b><span>' + esc(c[1]) + '</span></div><span class="pk-ok">✓</span></a>'; });
   }
-  // 승인 전(pend)에는 회색 틀 9장
+  // 승인 전(pend)에는 회색 틀 6장
   function packBlock(pend) {
     var p = P();
-    return '<div class="card" id="pack-card"><h3>수출 꾸러미 <span class="muted">' + esc(p.code + ' ' + p.name_ko) + ' · 9종</span></h3>' + (pend ? '<p class="muted">전부 승인을 누르면 여기 채워집니다.</p>' : '') +
-      '<div class="pack" id="qk-pack">' + (pend ? Array(10).join(skelCard()) : packDocs().join('')) + '</div></div>';
+    return '<div class="card" id="pack-card"><h3>상품 라벨 <span class="muted">' + esc(p.code + ' ' + p.name_ko) + ' · 나라별 5장 + 수정 요청서</span></h3>' + (pend ? '<p class="muted">전부 승인을 누르면 여기 채워집니다.</p>' : '') +
+      '<div class="pack" id="qk-pack">' + (pend ? Array(7).join(skelCard()) : packDocs().join('')) + '</div></div>';
   }
 
   // 규정 근거: 나라별 라벨에서 쓴 조항을 나라별로 모아 원문 링크와 함께
