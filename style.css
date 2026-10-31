@@ -1,0 +1,150 @@
+/* 라벨코스트 데모 — 발표용 스타일. index.html 의 <style> 뒤에 link 하면 덮어쓴다.
+   원칙: 프로젝터 가독성(큰 글자·넉넉한 행), 바다 톤 남색 강조, 그림자·그라데이션 없음. 외부 리소스 없음. */
+
+:root {
+  --bg: #eef3f7;        /* 옅은 바다 안개 */
+  --card: #ffffff;
+  --line: #cfd9e3;
+  --txt: #15202b;
+  --mut: #5b6b7b;
+  --ok: #16794a;
+  --warn: #a8690f;
+  --bad: #b3261e;
+  --acc: #0b3d6b;       /* 남색 강조 */
+  --acc-soft: #dce8f4;  /* 강조 배경 */
+  --ai: #5b3fb8;        /* AI 배지(보라) */
+  --ai-soft: #ece7fa;
+  --stripe: #f6f9fc;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 100%; }
+@media (min-width: 1400px) { html { font-size: 112%; } }   /* 프로젝터: 한 단계 크게 */
+
+body {
+  margin: 0;
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  background: var(--bg); color: var(--txt);
+  font-size: 15px; line-height: 1.55;
+}
+
+/* ---------- 머리 + 내비 ---------- */
+header {
+  background: var(--card); border-bottom: 3px solid var(--acc);
+  padding: 12px 20px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+}
+header h1 { font-size: 22px; margin: 0; color: var(--acc); letter-spacing: -0.01em; }
+header h1 small { display: block; color: var(--mut); font-weight: normal; font-size: 13px; margin: 2px 0 0; }
+#nav { display: flex; flex-wrap: wrap; gap: 6px; }
+#nav a {
+  display: inline-block; padding: 8px 14px; border-radius: 8px;
+  color: var(--acc); background: var(--acc-soft); text-decoration: none;
+  font-size: 15px; font-weight: 600; border: 2px solid transparent;
+}
+#nav a:hover { border-color: var(--acc); }
+#nav a.on { background: var(--acc); color: #fff; }   /* 멀리서도 보이는 현재 화면 */
+
+#main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+
+/* ---------- 제목 ---------- */
+h2 { margin: 6px 0 4px; font-size: 24px; color: var(--acc); }
+h3 { margin: 0 0 10px; font-size: 17px; }
+h4 { margin: 14px 0 6px; font-size: 15px; color: var(--mut); text-transform: none; }
+.sub { color: var(--mut); margin: 0 0 16px; font-size: 15px; }
+
+/* ---------- 카드·격자 ---------- */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin: 0 0 16px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+/* ---------- 표 ---------- */
+table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: var(--acc-soft); color: var(--acc); font-weight: 700; }
+tbody tr:nth-child(even) td, tr:nth-child(even) td { background: var(--stripe); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td a { color: var(--acc); font-weight: 600; }
+
+/* ---------- 입력 줄 ---------- */
+.row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--mut); }
+label.chk { flex-direction: row; align-items: center; gap: 8px; color: var(--txt); }
+input, select, button { font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--txt); }
+input:focus, select:focus { outline: 2px solid var(--acc); outline-offset: 1px; }
+button { background: var(--acc); color: #fff; border: 0; cursor: pointer; font-weight: 600; }
+button:hover { filter: brightness(1.1); }
+button.ghost { background: #fff; color: var(--acc); border: 1px solid var(--acc); }
+.rawbox { margin: 12px 0; } .rawbox label { margin: 6px 0; }
+
+/* ---------- 상태 배지: 색 + 모양 ---------- */
+.b { display: inline-block; white-space: nowrap; padding: 3px 10px; border-radius: 12px; color: #fff; font-size: 13px; font-weight: 700; margin-right: 6px; line-height: 1.4; }
+.b::before { margin-right: 4px; font-size: 11px; }
+.b.ok   { background: var(--ok); }   .b.ok::before   { content: "●"; }
+.b.warn { background: var(--warn); } .b.warn::before { content: "▲"; }
+.b.bad  { background: var(--bad); }  .b.bad::before  { content: "■"; }
+.badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.muted { color: var(--mut); font-size: 14px; }
+
+.alert { background: #fff6e8; border: 1px solid #efc98f; border-left: 5px solid var(--warn); padding: 10px 12px; border-radius: 8px; font-size: 15px; }
+.alert.ok { background: #e8f5ee; border-color: #a5d6b8; border-left-color: var(--ok); }
+pre { white-space: pre-wrap; font-size: 13px; background: var(--stripe); padding: 10px; border-radius: 8px; }
+
+/* ---------- LOT 조회: 바이어 면 / 회사 면 ---------- */
+.face-buyer, .face-inside { position: relative; padding-top: 34px; }
+.face-buyer  { border-left: 6px solid var(--ok); }
+.face-inside { border-left: 6px solid var(--bad); }
+.face-buyer::before, .face-inside::before {
+  position: absolute; top: 10px; left: 18px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+  padding: 2px 8px; border-radius: 6px; color: #fff;
+}
+.face-buyer::before  { content: "바이어에게 보이는 면"; background: var(--ok); }
+.face-inside::before { content: "회사만"; background: var(--bad); }
+
+/* ---------- ⑦ 서류 넣기: 접수→읽기→검증→결재 4단 ---------- */
+.pipeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 10px 0; }   /* 가로 4단 컨테이너 */
+.stage { background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--acc); border-radius: 10px; padding: 12px 14px; min-height: 120px; position: relative; }
+.stage > h4, .stage > .title { margin: 0 0 8px; font-size: 14px; color: var(--acc); font-weight: 700; }     /* 단 제목: 접수부·읽기부·검증부·결재부 */
+.stage + .stage::before { content: "›"; position: absolute; left: -11px; top: 44%; color: var(--mut); font-size: 20px; }
+.stage.locked { opacity: 0.55; border-top-color: var(--mut); background: repeating-linear-gradient(135deg, #fff 0 10px, #f3f5f8 10px 20px); }  /* 접수 차단: 흐리게 */
+.stage.locked > h4::after, .stage.locked > .title::after { content: " 🔒"; }
+.stage.done { border-color: var(--ok); border-top-color: var(--ok); }   /* 반영 완료 */
+.stage.done > h4::after, .stage.done > .title::after { content: " ✓"; color: var(--ok); }
+
+.kv th:first-child, .kv td:first-child { width: 28%; }          /* 라벨 / 값 / 출처 3열 */
+.kv td:last-child { color: var(--mut); font-size: 13px; width: 24%; }
+
+.badge-ai { display: inline-block; background: var(--ai-soft); color: var(--ai); border: 1px solid var(--ai); border-radius: 12px; padding: 3px 10px; font-size: 13px; font-weight: 700; }  /* "추출: 미리 읽어 둔 값" */
+.badge-ai::before { content: "AI "; opacity: 0.7; }
+
+.log { list-style: none; padding: 0; margin: 8px 0; font-size: 14px; }     /* 처리 기록 */
+.log li { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.log li time, .log li .when { color: var(--mut); margin-right: 8px; font-variant-numeric: tabular-nums; }
+
+.summary-bar { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; background: var(--acc-soft); color: var(--acc); border-radius: 8px; padding: 10px 14px; font-weight: 700; font-size: 15px; }  /* 원장 요약 한 줄 */
+.summary-bar span b { font-size: 18px; margin-left: 4px; }
+
+/* ---------- 규격서(.sheet) ---------- */
+.sheet { background: #fff; border: 1px solid var(--line); padding: 24px; margin-top: 12px; max-width: 900px; }
+.sheet table { font-size: 14px; } .sheet th { width: 26%; background: #f0f3f7; color: var(--txt); }
+
+/* ---------- 모바일 ---------- */
+@media (max-width: 800px) {
+  body { font-size: 14px; }
+  .cols, .pipeline { grid-template-columns: 1fr; }
+  .stage + .stage::before { content: "⌄"; left: 46%; top: -18px; }
+  header h1 { font-size: 18px; } #nav a { padding: 6px 10px; font-size: 14px; }
+  #main { padding: 12px; }
+  table { font-size: 13px; } th, td { padding: 6px; }
+}
+
+/* ---------- 인쇄: 규격서 A4 ---------- */
+@media print {
+  @page { size: A4; margin: 15mm; }
+  header, #nav, button, .sub, .alert, .badge-ai { display: none !important; }
+  body { background: #fff; font-size: 12pt; }
+  #main { max-width: none; padding: 0; }
+  .card:not(.sheet) { border: 0; padding: 0; }
+  .sheet { border: 0; padding: 0; max-width: none; }
+  .sheet th, .sheet td { border: 1px solid #000; }
+  tr:nth-child(even) td { background: #fff; }
+}

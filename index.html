@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>라벨코스트 데모</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --line:#dfe3e8; --txt:#1c2430; --mut:#6b7684; --ok:#1f8a4c; --warn:#b7791f; --bad:#c0392b; --acc:#1b5fb8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif; background:var(--bg); color:var(--txt); font-size:14px; }
+  header { background:#fff; border-bottom:1px solid var(--line); padding:10px 16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; } header h1 small { color:var(--mut); font-weight:normal; margin-left:8px; }
+  #nav a { display:inline-block; padding:6px 10px; margin-right:4px; border-radius:6px; color:var(--txt); text-decoration:none; }
+  #nav a.on { background:var(--acc); color:#fff; }
+  #main { max-width:1200px; margin:0 auto; padding:16px; }
+  h2 { margin:8px 0 4px; } h3 { margin:0 0 8px; font-size:15px; } .sub { color:var(--mut); margin:0 0 14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px; margin:0 0 14px; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:14px; } .grid4 { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+  table { width:100%; border-collapse:collapse; margin:6px 0; } th, td { border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; } th { background:#f0f2f5; font-weight:600; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px; } label { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--mut); } label.chk { flex-direction:row; align-items:center; color:var(--txt); }
+  input, select, button { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; } button { background:var(--acc); color:#fff; border:0; cursor:pointer; } button.ghost { background:#fff; color:var(--txt); border:1px solid var(--line); }
+  .b { display:inline-block; white-space:nowrap; padding:2px 8px; border-radius:10px; color:#fff; font-size:12px; margin-right:6px; } .b.ok { background:var(--ok); } .b.warn { background:var(--warn); } .b.bad { background:var(--bad); }
+  .badges { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px; } .muted { color:var(--mut); font-size:13px; }
+  .alert { background:#fff4e5; border:1px solid #f5c98a; padding:8px 10px; border-radius:6px; } .alert.ok { background:#e9f7ee; border-color:#9fd6b4; }
+  .rawbox { margin:10px 0; } .rawbox label { margin:4px 0; }
+  .sheet { background:#fff; border:1px solid var(--line); padding:18px; margin-top:10px; } .face-inside { border-left:4px solid var(--bad); } .face-buyer { border-left:4px solid var(--ok); }
+  pre { white-space:pre-wrap; font-size:12px; }
+  @media (max-width:800px) { .cols { grid-template-columns:1fr; } }
+  @media print { header, button, .sub, .alert { display:none; } body { background:#fff; } .card:not(.sheet) { border:0; } }
+</style>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><h1>라벨코스트 <small>종이 일지를 사진으로 넣으면 추적·만료·서류 체크 — A사 데모</small></h1><nav id="nav"></nav></header>
+<div id="main"></div>
+<script src="data.js"></script>
+<script src="apply.js"></script>
+<script src="fixtures.js"></script>
+<script src="import.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
