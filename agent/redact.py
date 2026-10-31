@@ -13,6 +13,7 @@ ACCT = re.compile(r'(?<!\d)\d[\d\-]{8,18}\d(?!\d)')                         # �
 MONEY = re.compile(r'(?:[¥₩$]|USD|JPY|KRW)\s?\d[\d,]*(?:\.\d+)?', re.I)     # 통화 기호/코드 + 숫자
 RRN = re.compile(r'(?<!\d)\d{6}-\d{7}(?!\d)')                                # 주민번호
 COL_HDR = re.compile(r'unit\s*price|amount|단가|금액', re.I)                 # 이 헤더 아래 열 전체
+DATE = re.compile(r'\d{4}-\d{2}-\d{2}')                                     # 날짜는 가리지 않는다
 PHONE = re.compile(r'tel|fax|phone|전화|팩스|\+\d', re.I)                         # 전화·팩스 줄의 숫자는 계좌가 아니다
 
 
@@ -111,8 +112,10 @@ def redact(path_in, path_out=None, boxes=None):
             for m in list(MONEY.finditer(t)): found.append({'kind': '금액', 'text_masked': _mask(m.group(0))})
             t = MONEY.sub('■■■', t)
             if not PHONE.search(t):
-                for m in list(ACCT.finditer(t)): found.append({'kind': '긴 숫자열', 'text_masked': _mask(m.group(0))})
-                t = ACCT.sub('■■■■', t)
+                for m in list(ACCT.finditer(t)):
+                    if DATE.fullmatch(m.group(0)): continue   # 2026-10-30 같은 날짜는 계좌가 아니다
+                    found.append({'kind': '긴 숫자열', 'text_masked': _mask(m.group(0))})
+                t = ACCT.sub(lambda m: m.group(0) if DATE.fullmatch(m.group(0)) else '■■■■', t)
             out_lines.append(t)
         out.write_text('\n'.join(out_lines), 'utf-8')
         return {'out': str(out), 'found': found, 'method': 'text', 'safe_for_llm': True, 'note': '금액·계좌 패턴은 가렸다. 단가 질문 문장 자체는 남는다(값이 아님)'}
