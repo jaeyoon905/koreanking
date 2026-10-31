@@ -439,43 +439,34 @@
   };
   var TAG_CTRY = [['JP', '일본', '食品表示基準', tagJP], ['CN', '중국', 'GB 7718-2025 · GB 28050-2025', tagCN], ['HK', '홍콩', 'Cap.132W', tagHK], ['TW', '대만', '식품안전위생관리법', tagTW]];
   screens.tags = function () {
-    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 마우스를 대면 그 라벨이 메인이 되고, 누르면 맨 위로 정렬돼요.</p>' +
+    return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 겹쳐 놓은 라벨을 누르면 그 라벨과 바꾼 이유가 나와요.</p>' +
       '<div class="row">' + productSelect('tg-prod') + '</div>' +
       '<div class="tagview"><section><h3 class="tv-h">한국 원본 <span class="muted">식품등의 표시기준</span></h3><div id="tg-kr"></div></section>' +
-      '<section><h3 class="tv-h">나라별 라벨 <span class="muted">대면 메인 · 누르면 맨 위로</span></h3><div class="tag-deck" id="tg-deck"></div></section>' +
-      '<section class="tv-why"><h3 class="tv-h" id="tg-why-h"></h3><div id="tg-why"></div></section></div>';
+      '<section><h3 class="tv-h">나라별 라벨</h3><div id="tg-main"></div><div class="tag-pile" id="tg-pile"></div></section></div>';
   };
-  screens.tags.bind = function () {
+  screens.tags.bind = function (arg) {
     bindProductSelect('tg-prod');
-    var p = P(), order = TAG_CTRY.map(function (c) { return c[0]; }), main = order[0];
+    var p = P(), sel = arg === 'go' ? TAG_CTRY[0][0] : TAG_WHY[arg] ? arg : null;   // #tags/JP·#tags/go: 바로 펼친 화면
     $('#tg-kr').innerHTML = tagKR(p);
-    var deck = $('#tg-deck');
-    deck.innerHTML = TAG_CTRY.map(function (c) { return '<div class="tag-card" data-c="' + c[0] + '" tabindex="0" role="button" aria-label="' + c[1] + ' 라벨 맨 위로"><span class="tc-tab">' + c[1] + '</span>' + c[3](p) + '</div>'; }).join('');
-    var card = function (code) { return deck.querySelector('[data-c="' + code + '"]'); };
-    function hl(n) { Array.prototype.forEach.call(deck.querySelectorAll('[data-mk]'), function (r) { r.classList.toggle('hl', !!n && r.closest('.tag-card').dataset.c === main && r.dataset.mk === n); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-why .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
-    function setMain(code) {   // 대면 메인: 앞으로 + 바꾼 이유
-      if (main === code && $('#tg-why').innerHTML) return;
-      main = code;
-      order.forEach(function (c, i) { var el = card(c); el.style.zIndex = String(c === main ? 50 : 40 - i); el.classList.toggle('main', c === main); });
-      var c = TAG_CTRY.filter(function (x) { return x[0] === code; })[0];
-      $('#tg-why-h').innerHTML = c[1] + '에서 바꾼 이유 <span class="muted">' + esc(c[2]) + '</span>';
-      $('#tg-why').innerHTML = bubbles(TAG_WHY[code]());
+    var cardHtml = function (c) { return '<div class="tag-card" data-c="' + c[0] + '" tabindex="0" role="button" aria-label="' + c[1] + ' 라벨 보기"><span class="tc-tab">' + c[1] + '</span>' + c[3](p) + '</div>'; };
+    function hl(n) { Array.prototype.forEach.call(document.querySelectorAll('#tg-main [data-mk]'), function (r) { r.classList.toggle('hl', !!n && r.dataset.mk === n); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-main .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
+    function render() {
+      var c = TAG_CTRY.filter(function (x) { return x[0] === sel; })[0];
+      $('#tg-main').innerHTML = c ? '<div class="tv-main">' + cardHtml(c).replace('class="tag-card"', 'class="tag-card main"') + '<div><h3 class="tv-h">' + c[1] + '에서 바꾼 이유 <span class="muted">' + esc(c[2]) + '</span></h3>' + bubbles(TAG_WHY[c[0]]()) + '</div></div>' : '';
+      var pile = $('#tg-pile');
+      pile.innerHTML = TAG_CTRY.filter(function (x) { return x[0] !== sel; }).map(cardHtml).join('');
+      var cards = Array.prototype.slice.call(pile.children);
+      cards.forEach(function (el, i) {   // 겹치기: 앞 라벨은 위쪽 띠(72px)만 보이게
+        if (i) el.style.marginTop = (72 - cards[i - 1].offsetHeight) + 'px';
+        el.style.zIndex = String(i + 1);
+        el.onclick = function () { sel = el.dataset.c; render(); $('#tg-main').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+        el.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.onclick(); } };
+      });
     }
-    function sortTo(code) {    // 누르면 정렬: 누른 라벨이 맨 앞, 나머지는 원래 순서대로
-      order = [code].concat(order.filter(function (c) { return c !== code; }));
-      order.forEach(function (c) { deck.appendChild(card(c)); });
-      main = null; setMain(code);
-    }
-    Array.prototype.forEach.call(deck.children, function (el) {
-      el.onmouseenter = function () { setMain(el.dataset.c); };
-      el.onclick = function () { sortTo(el.dataset.c); };
-      el.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sortTo(el.dataset.c); } };
-      el.onfocus = function () { setMain(el.dataset.c); };
-    });
     var root = $('.tagview');
-    root.onmouseover = function (e) { var t = e.target.closest('.bubble, .tag-card.main [data-mk]'); hl(t ? t.dataset.mk : null); };
+    root.onmouseover = function (e) { var t = e.target.closest('#tg-main .bubble, #tg-main [data-mk]'); hl(t ? t.dataset.mk : null); };
     root.onmouseleave = function () { hl(null); };
-    main = null; setMain(order[0]);
+    render();
   };
 
   function renderProductOut() {

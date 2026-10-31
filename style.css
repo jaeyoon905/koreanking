@@ -240,20 +240,24 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 
 
 /* ---------- 나라별 라벨: 실제 포장 라벨처럼 + 바꾼 이유 말풍선 ---------- */
-.tagview { display: grid; grid-template-columns: minmax(280px, 360px) minmax(320px, 400px) 1fr; gap: 28px; align-items: start; }
+.tagview { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 32px; align-items: start; }
 .tagview > section { min-width: 0; }
 .tv-h { font-size: 22px; margin: 0 0 12px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; } .tv-h .muted { font-weight: 400; }
 
-/* 위에서 아래로 한 줄: 대면 그 라벨이 메인(바꾼 이유가 옆에), 누르면 맨 위로 정렬 */
-.tag-deck { display: flex; flex-direction: column; gap: 44px; padding-top: 30px; }
-.tag-card { position: relative; cursor: pointer; outline: none; transition: opacity .2s ease, transform .2s ease; opacity: .55; }
-.tag-card.main { opacity: 1; transform: translateX(-6px); }
-.tag-card .pkg { border-color: #666; } .tag-card.main .pkg { border-color: #111; box-shadow: 6px 0 0 var(--primary); }
-.tc-tab { position: absolute; top: -30px; left: 10px; height: 30px; padding: 0 14px; display: inline-flex; align-items: center; background: #666; color: #fff; font-size: 14px; font-weight: 700; border-radius: 8px 8px 0 0; }
-.tag-card.main .tc-tab { background: var(--brand); }
-.tag-card:focus-visible .pkg { outline: 3px solid var(--primary); outline-offset: 2px; }
-.tv-why { position: sticky; top: 16px; }
-@media (prefers-reduced-motion: reduce) { .tag-card { transition: none; } }
+/* 겹쳐 놓은 라벨 더미: 위에서 아래로, 각 라벨은 위쪽 띠만 보임. 누르면 위로 꺼내 펼침 */
+.tag-pile { display: flex; flex-direction: column; padding-top: 30px; max-width: 420px; }
+.tag-card { position: relative; outline: none; }
+.tag-pile .tag-card { cursor: pointer; transition: transform .2s ease; }
+.tag-pile .tag-card:nth-child(odd) { transform: rotate(-0.8deg); } .tag-pile .tag-card:nth-child(even) { transform: rotate(0.8deg); }
+.tag-pile .tag-card:hover, .tag-pile .tag-card:focus-visible { transform: translateY(-10px); }
+.tag-pile .tag-card .pkg { border-color: #555; }
+.tc-tab { position: absolute; top: -30px; right: 10px; height: 30px; padding: 0 14px; display: inline-flex; align-items: center; background: #555; color: #fff; font-size: 14px; font-weight: 700; border-radius: 8px 8px 0 0; }
+.tv-main { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 28px; align-items: start; padding-top: 30px; margin-bottom: 24px; }
+.tv-main .tag-card .pkg { border-color: #111; box-shadow: 6px 6px 0 var(--primary-soft); }
+.tv-main .tc-tab { background: var(--brand); }
+.tv-main > div:last-child .tv-h { margin-top: -30px; }
+#tg-main:not(:empty) + .tag-pile { padding-top: 30px; }
+@media (prefers-reduced-motion: reduce) { .tag-pile .tag-card { transition: none; } }
 
 /* 번호에 가까이 대면 그 줄의 가장 오른쪽 칸이 파랗게 */
 .pkg tr.hl td:last-child { background: var(--primary-soft) !important; box-shadow: inset 3px 0 0 var(--primary); }
@@ -286,8 +290,7 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .bubble b { display: block; font-size: 16px; }
 .bubble p { margin: 2px 0 8px; font-size: 14px; color: var(--ink-2); }
 .bubble .ref { max-width: none; white-space: normal; }
-@media (max-width: 1100px) { .tagview { grid-template-columns: 1fr 1fr; } .tagview > section:first-child { grid-column: 1 / -1; } }
-@media (max-width: 800px) { .tagview { grid-template-columns: 1fr; } .tv-why { position: static; } }
+@media (max-width: 1100px) { .tagview, .tv-main { grid-template-columns: 1fr; } }
 
 /* ---------- 모바일 ---------- */
 @media (max-width: 800px) {
