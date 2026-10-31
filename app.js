@@ -358,10 +358,11 @@
       '<table><tr><th>항목</th><th>판정</th><th>근거</th><th>현재</th><th>고칠 것</th></tr>' +
       res.map(function (x) { return '<tr class="' + (x.status === 'fix' ? 'st-bad' : x.status === 'check' ? 'st-check' : '') + '"><td><b>' + esc(x.item) + '</b></td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td>' + refCell(country, x, ref(x)) + '</td><td class="muted">' + fold(x.msg, 40) + '</td><td class="fixto">' + fold(x.fix || '', 40) + '</td></tr>'; }).join('') +
       '</table></div>' +
-      '<div class="actions"><details class="no-print"><summary>읽은 값</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details><button class="ghost" id="lbl-pdf">수정 요청서 PDF</button>' +
+      '<div class="actions"><details class="no-print"><summary>읽은 값</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details><button class="ghost" id="lbl-pdf">수정 요청서 PDF</button><button class="ghost" id="lbl-textpdf">라벨 문안 PDF</button>' +
       (API && (s.fix || s.check) ? '<button class="lg" id="lbl-fix" aria-label="지적된 칸을 고친 라벨 전체를 만들고 다시 판정">고친 라벨 만들기 · 재판정</button>' : '') + '</div><div id="lbl-fixout"></div>';
     $('#lbl-out').innerHTML = html;
     state.lastLabel = { country: country, made: meta.made, file: meta.file, summary: s };
+    $('#lbl-textpdf').onclick = function () { var kb = LABEL_KEY_BY[country] || {}, keys = Object.keys(fields).filter(function (k) { return fields[k] && k !== 'country' && k !== 'made' && k !== 'source'; }); sendGate('라벨 문안 PDF', meta.file || country, { product: P(), fixCount: s.fix, checkCount: s.check }).then(function (ok) { if (ok) downloadPdf('라벨문안_' + (meta.file || country) + '_' + country, '<div class="sheet"><h3>Label text · ' + esc(r.name) + '</h3><p class="muted">' + esc(meta.file || '') + ' · ' + LC.TODAY + '</p><table>' + keys.map(function (k) { return '<tr><th>' + esc(kb[k] || k) + '</th><td>' + esc(fields[k]) + '</td></tr>'; }).join('') + '</table></div>'); }); };
     $('#lbl-pdf').onclick = function () { var el = $('#lbl-out').cloneNode(true); el.querySelectorAll('.actions, .no-print, #lbl-fixout').forEach(function (x) { x.remove(); }); downloadPdf('라벨판정_' + (meta.file || country) + '_' + country, '<h2>라벨 판정 · ' + esc(r.name) + '</h2>' + el.innerHTML); };
     var fb = $('#lbl-fix'); if (fb) fb.onclick = function () { fb.disabled = true; fb.textContent = '고친 라벨 만드는 중 (10~20초)'; labelFix(country, fields, res, meta).then(function () { fb.disabled = false; fb.textContent = '고친 라벨 만들기 · 재판정'; }); };
     document.querySelectorAll('[data-ctry]').forEach(function (b) { b.classList.toggle('on', b.dataset.ctry === country); });
@@ -467,9 +468,9 @@
   function tagJP(p) {
     var n = p.nutrition100;
     var nut = n ? '<div class="pkg-nut jp"><div class="pn-h">栄養成分表示（100gあたり）</div><table>' + nutritionBy.JP().filter(function (r) { return r[1]; }).map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td></tr>'; }).join('') + '</table><p>この表示値は、目安です。</p></div>' : '<div class="pkg-nut jp"><div class="pn-h">栄養成分表示</div><p>성적서 필요</p></div>';
-    var ad = additiveBy.JP.split('／'), u = (LC.buyers || []).filter(function (b) { return b.country === 'JP'; })[0];
+    var ad = additiveBy.JP.split('／'), u = (LC.buyers || []).filter(function (b) { return b.country === 'JP'; })[0], who = String(LC.tagBuyer || (u ? u.code : '輸入者')).replace(/사$/, '社');
     return '<div class="pkg jp"><table>' + pkgRow('名称', esc(p.name_ja || p.name_ko)) + pkgRow('原材料名', '紅ずわいがに、' + esc(ad[0]) + '<b class="sep">／</b>' + esc(ad[1] || ''), 1) + pkgRow('内容量', esc(p.net || '')) +
-      pkgRow('賞味期限', '枠外下部に記載') + pkgRow('保存方法', '−18℃以下で保存してください') + pkgRow('原産国名', '韓国', 2) + pkgRow('輸入者', esc(u ? u.code.replace('사', '社') : '輸入者') + '（日本国内の住所）', 3) + '</table>' +
+      pkgRow('賞味期限', '枠外下部に記載') + pkgRow('保存方法', '−18℃以下で保存してください') + pkgRow('原産国名', '韓国', 2) + pkgRow('輸入者', esc(who) + '（日本国内の住所）', 3) + pkgRow('識別表示', 'プラ トレー:PP／袋:PE,PA') + '</table>' +
       '<p class="pkg-al" data-mk="4"><span class="mk">4</span>アレルギー物質：<b>かに</b></p><div data-mk="5"><div class="mk-wrap"><span class="mk">5</span></div>' + nut + '</div></div>';
   }
   function nutBox(title, rows, foot) { return '<div data-mk="5"><div class="mk-wrap"><span class="mk">5</span></div><div class="pkg-nut"><div class="pn-h">' + title + '</div><table>' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td></tr>'; }).join('') + '</table>' + (foot ? '<p>' + foot + '</p>' : '') + '</div></div>'; }
@@ -1028,6 +1029,9 @@
   var MODE = { llm: ['AI 읽음', 'ok'], fixture: ['예시 서류 값', 'warn'], none: ['직접 입력 필요', 'bad'], manual: ['직접 입력', 'ok'] };
   // 카드 = {name, doc_type, mode, sensitive, blocked, fields, fixture, b64, masked, done, result}. fixture(오프라인)·서버 응답 둘 다 이 모양으로 맞춘다
   function cardFromFixture(f, name) { return { name: name, doc_type: f ? f.doc_type : '', mode: f ? 'fixture' : 'none', sensitive: !!(f && f.sensitive), fields: f ? f.fields : [], fixture: f }; }
+  // 파일 이름으로 종류 먼저 추정(서버 NAME_HINTS 와 같은 목록의 축약). 서버·AI 결과가 오면 그걸로 바뀐다
+  var NAME_GUESS = [[/품목대장|품목기본|product master/i, '품목대장'], [/고시|告示|公告|解读|通则|改正/i, '고시문'], [/메일|mail|問い合わせ|inquiry|문의|질의/i, '메일'], [/規格|규격|spec/i, '규격서양식'], [/라벨|label|제품사진|表示/i, '라벨'], [/영양|성적서/i, '영양성적서'], [/포장\s*일지|포장일지/i, '포장일지'], [/가공일지/i, '가공일지'], [/입고/i, '입고검사서'], [/패킹|packing|인보이스|invoice/i, '패킹리스트'], [/위생증명/i, '위생증명서'], [/haccp/i, 'HACCP인증서'], [/선하증권|B\/L/i, 'BL'], [/declaration|수출신고/i, '수입신고서'], [/DHL|운송장/i, '운송장']];
+  function guessType(name) { var h = NAME_GUESS.filter(function (g) { return g[0].test(name); })[0]; return h ? h[1] : ''; }
   function cardFromServer(name, r, b64) { var f = matchFixture(name); return { name: name, doc_type: r.doc_type || (f && f.doc_type) || '', mode: r.mode || 'none', sensitive: !!(r.blocked || (f && f.sensitive)), blocked: !!r.blocked, fields: r.fields || [], fixture: f, b64: b64 }; }
   function fieldsObj(c) { return typeof LC.fieldsToObj === 'function' ? LC.fieldsToObj(c.fields) : null; }
   function reconcileCard(c) {
@@ -1160,7 +1164,7 @@
     var fr = new FileReader();
     fr.onload = function () {
       var b64 = String(fr.result).split(',')[1] || '';
-      var c = API ? { name: file.name, doc_type: (matchFixture(file.name) || {}).doc_type || '', mode: 'fixture', fields: [], fixture: matchFixture(file.name), b64: b64, loading: true } : cardFromFixture(matchFixture(file.name), file.name);
+      var c = API ? { name: file.name, doc_type: (matchFixture(file.name) || {}).doc_type || guessType(file.name), mode: 'fixture', fields: [], fixture: matchFixture(file.name), b64: b64, loading: true } : cardFromFixture(matchFixture(file.name), file.name);
       intakeCards.push(c); rerender();
       if (API) extractOnServer(c);
     };
@@ -1322,18 +1326,30 @@
       k: { energy: '열량', protein: '단백질', fat: '지방', satfat: '포화지방', transfat: '트랜스지방', carb: '탄수화물', sugar: '당류', sodium: '나트륨', source: '출처', allergen: '해당 알레르겐', others: '기타', shelf: '소비기한', storage: '보관', basis: '근거', cert: '인증·등록', no: '번호', issuer: '발급', expiry: '유효기한', mfg: '제조일', exp: '소비기한', qty: '수량', raw: '원료 입고분', vessel: '어선', received: '입고일', caught: '조업기간', landing: '위판·해역', species: '어종', origin: '원산지', ingredients: '원재료', additives: '첨가물', process: '공정', net: '내용량', pack: '포장', none: '없음' } }
   };
   DOC_T['zh-Hans'] = DOC_T['zh-Hant']; DOC_T.th = DOC_T.en;
+  Object.keys(DOC_T).forEach(function (k) { DOC_T[k].lang = k; });
   function docLang(reply) { var l = String((reply && reply.lang) || 'en').toLowerCase(); if (l.indexOf('zh') === 0) return 'zh-Hant'; return DOC_T[l] ? l : 'en'; }
   var DOC_TOPICS = ['영양', '알레르겐', '소비기한', '보존', '인증', '로트', '원산지', '원재료', '공정', '포장'];
   // 요청 서류 한 장의 행(라벨, 값). 값은 원문(한국어 포함) → 번역은 txOf 로
+  // 자주 나오는 고정 값은 사전으로 (보관 조건·개월·기한 근거·연결 전·연근해). 나머지 자유 문장만 번역 캐시(txOf)
+  var FIX_T = {
+    en: { months: 'months', frozen: 'Keep frozen at -18°C or below', basis: '{n} months from production date, per product specification', noraw: 'Raw material record not yet linked', sea: 'East Sea, Korea (coastal)', none: 'None' },
+    ja: { months: 'か月', frozen: '-18℃以下で冷凍保存', basis: '製造日から{n}か月（商品規格書に基づく）', noraw: '原料入荷記録は未連結', sea: '韓国 東海 沿岸', none: 'なし' },
+    'zh-Hant': { months: '個月', frozen: '-18°C以下冷凍保存', basis: '自製造日起{n}個月（依產品規格書）', noraw: '原料進貨紀錄尚未連結', sea: '韓國 東海 沿岸', none: '無' },
+    'zh-Hans': { months: '个月', frozen: '-18℃以下冷冻保存', basis: '自生产日起{n}个月（依产品规格书）', noraw: '原料入库记录尚未关联', sea: '韩国 东海 沿岸', none: '无' },
+    th: { months: 'เดือน', frozen: 'เก็บแช่แข็งที่ -18°C หรือต่ำกว่า', basis: '{n} เดือนนับจากวันผลิต ตามข้อกำหนดผลิตภัณฑ์', noraw: 'ยังไม่เชื่อมบันทึกวัตถุดิบ', sea: 'ทะเลตะวันออก เกาหลี (ชายฝั่ง)', none: 'ไม่มี' },
+    ko: { months: '개월', frozen: '-18℃ 이하 냉동', basis: '제조일 기준 {n}개월, 품목 규격서 기준', noraw: '입고 기록 연결 전', sea: '동해 연근해', none: '없음' }
+  };
+  function ingName(i, lang) { return (lang === 'ja' && i.name_ja) || (lang !== 'ko' && i.name_en) || i.name_ko; }
   function reqDocRows(topic, p, lot, T) {
-    var K = T.k, n = p.nutrition100, rows = [];
+    var K = T.k, n = p.nutrition100, rows = [], lang = T.lang || 'en', F = FIX_T[lang] || FIX_T.en;
+    var storageT = /-\s*18/.test(String(p.storage || '')) ? F.frozen : p.storage;
     if (topic === '영양') { if (!n) return null; rows = [[K.energy, n.kcal + ' kcal / ' + Math.round(n.kcal * 4.184) + ' kJ'], [K.protein, n.protein + ' g'], [K.fat, n.fat + ' g'], [K.satfat, (n.satfat == null ? '-' : n.satfat + ' g')], [K.transfat, (n.transfat == null ? '-' : n.transfat + ' g')], [K.carb, n.carb + ' g'], [K.sugar, (n.sugar == null ? '-' : n.sugar + ' g')], [K.sodium, n.sodium_mg + ' mg'], [K.source, p.nutrition_source || '']]; }
-    else if (topic === '알레르겐') rows = [[K.allergen, (p.allergens || []).map(function (a) { return a === 'crustacea' ? 'Crustacea (crab) / 甲殻類（かに）/ 甲殼類（蟹）' : a; }).join(', ') || K.none], [K.others, K.none], [K.ingredients, p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')]];
-    else if (topic === '소비기한' || topic === '보존') rows = [[K.shelf, p.shelf_months + ' months / 개월'], [K.storage, p.storage], [K.basis, '제조일 기준 ' + p.shelf_months + '개월, 품목 규격서 기준']];
+    else if (topic === '알레르겐') rows = [[K.allergen, (p.allergens || []).map(function (a) { return a === 'crustacea' ? 'Crustacea (crab) / 甲殻類（かに）/ 甲殼類（蟹）' : a; }).join(', ') || K.none], [K.others, K.none], [K.ingredients, p.ingredients.map(function (i) { return ingName(i, lang) + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')]];
+    else if (topic === '소비기한' || topic === '보존') rows = [[K.shelf, p.shelf_months + ' ' + F.months], [K.storage, storageT], [K.basis, F.basis.replace('{n}', p.shelf_months)]];
     else if (topic === '인증') rows = state.registry.filter(function (r) { return r.kind !== '선적별' && r.kind !== '참고' && !/^KR/.test(String(r.countries || '')); }).map(function (r) { return [r.name, (r.no || '') + (r.issuer ? ' · ' + r.issuer : '') + (r.expiry ? ' · ' + K.expiry + ' ' + r.expiry : '')]; });
-    else if (topic === '로트') { if (!lot) return null; var rl = state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }); rows = [[T.lot || K.lot || 'Lot', lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : '')], [K.mfg, lot.mfg], [K.exp, lot.expiry], [K.qty, lot.qty_ct + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')]].concat(rl.length ? rl.map(function (r) { return [K.raw + ' ' + r.id, (r.vessel || '') + ' · ' + K.received + ' ' + (r.received || '') + (r.caught ? ' · ' + K.caught + ' ' + r.caught : '') + (r.landing ? ' · ' + r.landing : '')]; }) : [[K.raw, '입고 기록 연결 전']]); }
-    else if (topic === '원산지') { var r0 = state.raw[0] || {}; rows = [[K.origin, 'Republic of Korea / 韓国 / 한국'], [K.species, p.species || r0.species || ''], [K.landing, r0.landing || '동해 연근해'], [K.vessel, lot && state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }).map(function (r) { return r.vessel; }).join(', ') || (r0.vessel || '')]]; }
-    else if (topic === '원재료' || topic === '공정' || topic === '포장' || topic === '기타') rows = [[K.ingredients, p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')], [K.additives, p.ingredients.filter(function (i) { return i.type === 'additive'; }).map(function (i) { return i.func + ' ' + i.name_ko + ' (INS ' + i.ins + ')'; }).join(', ') || K.none], [K.process, p.process], [K.net, p.net], [K.pack, p.pack]];
+    else if (topic === '로트') { if (!lot) return null; var rl = state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }); rows = [[T.lot || K.lot || 'Lot', lot.lot + (lot.company_code ? ' (' + lot.company_code + ')' : '')], [K.mfg, lot.mfg], [K.exp, lot.expiry], [K.qty, lot.qty_ct + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')]].concat(rl.length ? rl.map(function (r) { return [K.raw + ' ' + r.id, (r.vessel || '') + ' · ' + K.received + ' ' + (r.received || '') + (r.caught ? ' · ' + K.caught + ' ' + r.caught : '') + (r.landing ? ' · ' + r.landing : '')]; }) : [[K.raw, F.noraw]]); }
+    else if (topic === '원산지') { var r0 = state.raw[0] || {}; rows = [[K.origin, 'Republic of Korea / 韓国 / 한국'], [K.species, p.species || r0.species || ''], [K.landing, /동해/.test(String(r0.landing || '')) || !r0.landing ? F.sea : r0.landing], [K.vessel, lot && state.raw.filter(function (r) { return (lot.raw || []).indexOf(r.id) >= 0; }).map(function (r) { return r.vessel; }).join(', ') || (r0.vessel || '')]]; }
+    else if (topic === '원재료' || topic === '공정' || topic === '포장' || topic === '기타') rows = [[K.ingredients, p.ingredients.map(function (i) { return ingName(i, lang) + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', ')], [K.additives, p.ingredients.filter(function (i) { return i.type === 'additive'; }).map(function (i) { return i.func + ' ' + ingName(i, lang) + ' (INS ' + i.ins + ')'; }).join(', ') || K.none], [K.process, p.process], [K.net, p.net], [K.pack, p.pack]];
     return rows.length ? rows : null;
   }
   function reqDocHtml(topic, lang, p, lot, buyer, rows) {
@@ -1361,6 +1377,25 @@
   function buyerLang(b) { return b.reply ? docLang(b.reply) : (b.form ? formLang(b.form) : 'en'); }
   function buyerCtry(b) { return LANG_CTRY[buyerLang(b)] || null; }
   var LOT_T = { en: ['Lot', 'Production date', 'Best before', 'Quantity', 'Shipment', 'Certificates'], ja: ['ロット', '製造日', '賞味期限', '数量', '出荷', '認証'], 'zh-Hant': ['批號', '製造日期', '此日期前最佳', '數量', '出貨', '認證'], 'zh-Hans': ['批号', '生产日期', '保质期至', '数量', '发货', '认证'], th: ['ล็อต', 'วันผลิต', 'ควรบริโภคก่อน', 'จำนวน', 'การจัดส่ง', 'ใบรับรอง'], ko: ['LOT', '제조일', '소비기한', '수량', '선적', '인증'] };
+  // 우리가 만든 나라별 라벨(표 HTML)을 판정용 칸으로. 같은 규칙 엔진에 넣어 교차 확인한다
+  function labelFieldsFromHtml(ctry, html) {
+    var doc = new DOMParser().parseFromString(html, 'text/html'), kb = LABEL_KEY_BY[ctry] || {}, out = { country: ctry }, nut = [];
+    var head = function (s) { return String(s || '').replace(/^\d+\s*/, '').split(/\s|（|\(/)[0]; };
+    Array.prototype.forEach.call(doc.querySelectorAll('tr'), function (tr) {
+      var th = tr.querySelector('th'), td = tr.querySelector('td'); if (!th || !td) return;
+      var h = th.textContent.replace(/^\d+\s*/, '').trim(), v = td.textContent.replace(/\s+/g, ' ').trim(), hh = head(h);
+      var k = Object.keys(kb).filter(function (x) { var kk = head(kb[x]); return kk && (h.indexOf(kk) === 0 || hh === kk); })[0];
+      if (k) { if (!out[k]) out[k] = v; }
+      else if (/識別|识别|回收|Recycl/i.test(h)) out.pack = v;
+      else if (/\d/.test(v) && v.length < 40) nut.push(h + ' ' + v);
+    });
+    var al = doc.querySelector('.pkg-al'), nb = doc.querySelector('.pkg-nut');
+    if (!out.allergen && al) out.allergen = al.textContent.replace(/^[\d\s]*/, '').replace(/^[^：:]*[：:]/, '').trim();
+    if (!out.nutrition && nb) out.nutrition = nb.textContent.replace(/\s+/g, ' ').replace(/^[\d\s]*/, '').trim();
+    if (!out.nutrition && nut.length) out.nutrition = nut.join(' ');
+    if (!out.allergen && /かに|蟹|crab|ปู/i.test(out.ingredients || '')) out.allergen = (out.ingredients.match(/[（(][^）)]*(かに|蟹|crab|ปู)[^）)]*[）)]/i) || [''])[0] || out.ingredients;
+    return out;
+  }
   function bundleCards(only) {
     var bs = bundleBuyers(); if (!bs.length) return '';
     var withP = function (b, fn) { var prev = state.productCode; setProduct(b.product); try { return fn(); } finally { setProduct(prev); } };
@@ -1372,10 +1407,11 @@
         if (b.form.form_b64) cards.push(pkCard('data-bd-xlsx="' + i + '"', '바이어 엑셀에 채움', esc(b.form.form_name || '.xlsx'), sheet));
       }
       var lang = buyerLang(b), ctry = buyerCtry(b), tc = ctry && TAG_CTRY.filter(function (c) { return c[0] === ctry; })[0];
-      if (tc) cards.push(pkCard('data-bd-tag="' + i + '"', tc[1] + ' 라벨 문안 PDF', esc(tc[2]) + ' 기준, ' + esc(p.code), tc[3](p)));
+      if (tc) { LC.tagBuyer = b.buyer; var tagHtml = tc[3](p); LC.tagBuyer = null; var jr = judge(ctry, labelFieldsFromHtml(ctry, tagHtml)), nf = jr.filter(function (x) { return x.status === 'fix'; }).length, nc = jr.filter(function (x) { return x.status === 'check'; }).length;
+        cards.push(pkCard('data-bd-tag="' + i + '"', tc[1] + ' 라벨 문안', (nf ? '규칙 판정 수정 ' + nf : '규칙 판정 통과 ' + jr.length + '항목') + (nc ? ' · 확인 ' + nc : '') + ' · 누르면 라벨 판정에서 교차 확인', tagHtml)); }
       if (b.reply) cards.push(pkCard('data-bd-reply="' + i + '"', '답장 초안 .txt', b.reply.deadline ? '회신 기한 ' + esc(b.reply.deadline) : '문의 메일 답장', miniText(b.reply.subject || '답장', b.reply.reply_draft)));
       if (state.lastFix && state.lastFix.fields) cards.push(pkCard('data-bd-label="' + i + '"', '고친 라벨 문안 PDF', esc(state.lastFix.country) + ' 규칙으로 고침', miniDoc('Label text (corrected draft)', Object.keys(state.lastFix.fields).slice(0, 8).map(function (k) { return [k, state.lastFix.fields[k]]; }))));
-      if (lot && API) cards.push(pkCard('href="' + API + '/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download', '로트 패키지 zip', esc(lot.lot) + ' · 규격서·LOT 정보·인증', (function (L) { return miniDoc('LOT ' + lot.lot, [[L[0], lot.lot + (lot.company_code ? ' / ' + lot.company_code : '')], [L[1], lot.mfg], [L[2], lot.expiry || ''], [L[3], (lot.qty_ct || 0) + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')], [L[4], lot.ship || '-'], [L[5], certList().join(', ')]]); })(LOT_T[lang] || LOT_T.en)));
+      if (lot && API) cards.push(pkCard('href="' + API + '/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download', '로트 패키지 zip', esc(lot.lot) + ' · 규격서·LOT 정보·인증', (function (L) { return miniDoc('LOT ' + lot.lot, [[L[0], lot.lot + (lot.company_code ? ' / ' + lot.company_code : '')], [L[1], lot.mfg], [L[2], lot.expiry || ''], [L[3], (lot.qty_ct || 0) + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')], [L[4], lot.ship || '-'], [L[5], state.registry.filter(function (r) { return r.kind !== '선적별' && r.kind !== '참고' && !/미등록/.test(r.no); }).map(function (r) { return txOf(lang, r.name); }).join(', ')]]); })(LOT_T[lang] || LOT_T.en)));
       if (state.shipments.length && API) {
         var sh = state.shipments[state.shipments.length - 1], items = (sh.items || []).slice(0, 6).map(function (x) { return [x.desc, x.ct + ' C/T · ' + x.kg + ' kg']; }).concat([['TOTAL', sh.total_ct + ' C/T · ' + sh.total_kg + ' kg']]);
         var mdl = state.ledger.filter(function (l) { return l.ship && String(l.ship).indexOf(sh.no) === 0; }).map(function (l) { return [l.lot, l.mfg + ' · ' + l.qty_ct + ' C/T']; });
@@ -1407,7 +1443,10 @@
   function refreshBundles() { var el = $('#bundle-card'); if (el) { el.outerHTML = bundleCards(); bindBundles(); } else if ($('#home-deal')) { $('#home-deal').outerHTML = homeDeal(); bindBundles(); } }
   function bindBundles() {
     var bs = bundleBuyers();
-    document.querySelectorAll('[data-bd-tag]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdTag], p = LC.products[b.product] || P(), ctry = buyerCtry(b), tc = TAG_CTRY.filter(function (c) { return c[0] === ctry; })[0]; if (!tc) return; sendGate('라벨 문안 PDF', b.buyer + ' · ' + tc[1], { product: p, fixCount: 0, checkCount: 0 }).then(function (ok) { if (ok) downloadPdf('라벨문안_' + ctry + '_' + p.code + '_' + b.buyer, '<div class="sheet"><h3>Label text · ' + esc(tc[1]) + ' · ' + esc(p.name_en) + ' (' + esc(p.code) + ')</h3><p class="muted">' + esc(tc[2]) + ' · ' + LC.TODAY + '</p>' + tc[3](p) + '</div>'); }); }; });
+    document.querySelectorAll('[data-bd-tag]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdTag], p = LC.products[b.product] || P(), ctry = buyerCtry(b), tc = TAG_CTRY.filter(function (c) { return c[0] === ctry; })[0]; if (!tc) return;
+      var prev = state.productCode; setProduct(b.product); LC.tagBuyer = b.buyer; var html = tc[3](p); LC.tagBuyer = null; if (prev !== b.product) setProduct(prev);
+      state.pendingLabel = { country: ctry, fields: labelFieldsFromHtml(ctry, html), file: b.buyer + ' · ' + tc[1] + ' 라벨 문안(우리가 만든 것) · ' + p.code, made: LC.TODAY.slice(0, 7), generated: true, html: html, product: b.product };
+      location.hash = '#label'; }; });
     bs.forEach(function (b, i) {
       var key = b.buyer + '|' + b.product; if (bundleWarm[key] || !API) return; bundleWarm[key] = 1;
       var jobs = [];
@@ -1502,8 +1541,8 @@
     else body = '<table>' + (c.fields || []).slice(0, 9).map(function (x) { var v = x.value !== undefined ? x.value : x.v; v = Array.isArray(v) ? v.length + '건' : v && typeof v === 'object' ? '…' : v; return '<tr><th>' + esc(x.label || x.k) + '</th><td>' + esc(String(v == null ? '' : v).slice(0, 40)) + '</td></tr>'; }).join('') + '</table>';
     var mask = c.doc_type && c.sensitive && !c.masked && !c.done ? '<label class="chk"><input type="checkbox" data-qmask="' + i + '"> 계좌·단가 가렸음</label>' : '';
     return '<div class="pk-card qk-card' + (ok ? ' done' : !c.done && (bad || st[1] === 'bad') ? ' warn' : '') + (i >= qkDrawn || (ok && i >= qkOkDrawn) ? ' qk-in' : '') + '" data-qcard="' + i + '">' +
-      '<div class="pk-thumb"><div class="pk-scale"><div class="doc-mini"><h4>' + esc(c.doc_type || '종류 미확인') + '</h4>' + body + '</div></div></div>' +
-      '<div class="pk-meta"><b>' + esc(c.doc_type || '종류 미확인') + '</b><span>' + esc(c.name) + '</span><div><small class="b ' + st[1] + '">' + st[0] + (bad && !c.done ? ' · 확인 ' + bad : '') + '</small></div>' + mask + '</div><span class="pk-ok">✓</span></div>';
+      '<div class="pk-thumb"><div class="pk-scale"><div class="doc-mini"><h4>' + esc(c.doc_type || (c.loading ? '읽는 중' : '종류 미확인')) + '</h4>' + body + '</div></div></div>' +
+      '<div class="pk-meta"><b>' + esc(c.doc_type || (c.loading ? '읽는 중' : '종류 미확인')) + '</b><span>' + esc(c.name) + '</span><div><small class="b ' + st[1] + '">' + st[0] + (bad && !c.done ? ' · 확인 ' + bad : '') + '</small></div>' + mask + '</div><span class="pk-ok">✓</span></div>';
   }
   screens.quick = function () {
     var fx = fixtures();

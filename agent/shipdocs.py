@@ -152,28 +152,37 @@ def records_bundle(st, d0, d1):
 
 
 # 5) 바이어 패키지 zip -----------------------------------------------------------
+def cert_en(c):   # 위생증명서 표기(한국어 원장 값) → 영문
+    c = str(c or '')
+    if not c: return '-'
+    return c.replace('수품원 위생증명서', 'NFQS Health Certificate').replace('(바이어 요청, 비협약국 양식)', '(on buyer request)').replace('바이어 요청', 'on buyer request').replace('비협약국 양식', 'non-agreement form')
+
+
 def buyer_package(st, lot_no, out_dir=None):
     lot = next((l for l in st['ledger'] if l['lot'] == lot_no), None)
     if not lot: sys.exit(f'LOT {lot_no} 없음')
     p = st['products'].get(lot.get('product')) or {}
     buyer = (lot.get('buyer') or '').replace('일본 바이어 ', '')
-    certs = [f"{r.get('name')} {r.get('no')} (~{r.get('expiry') or '-'})" for r in st['registry'] if r.get('kind') == '법정인증' or 'HACCP' in (r.get('name') or '')]
+    buyer_disp = buyer.replace('사', '社')   # 일문 문서 표기
+    tx = (st.get('tx') or {}).get('ja') or {}   # 화면에서 번역해 둔 값(일본어)이 있으면 바이어 쪽 말로
+    certs = [f"{tx.get(r.get('name'), r.get('name'))} {r.get('no')} (~{r.get('expiry') or '-'})" for r in st['registry'] if r.get('kind') == '법정인증' or 'HACCP' in (r.get('name') or '')]
+    maker = ((p.get('factory') or {}).get('name_en')) or 'A Co. (Republic of Korea)'
     pub = {'lot': lot['lot'], 'company_code': lot.get('company_code'), 'product': p.get('name_en') or lot.get('product'), 'mfg': lot.get('mfg'), 'expiry': lot.get('expiry'),
            'qty_ct': lot.get('qty_ct'), 'kg': lot.get('kg'), 'cert': lot.get('cert') or '', 'spec_sent': lot.get('spec_sent') or '', 'manufacturer': COMPANY, 'certs': certs}
     form = st['specForms'].get(buyer)
     ing = '、'.join(i.get('name_ko', '') for i in p.get('ingredients') or [])
     kv = lambda rows: '<table>' + ''.join(f'<tr><th>{html.escape(k)}</th><td>{html.escape(str(v))}</td></tr>' for k, v in rows) + '</table>'
     if form:  # 바이어 양식 칸 순서대로. 없는 값은 빈칸(추정 안 함)
-        vals = {'会社名': buyer, '作成日': str(__import__('datetime').date.today()), '韓国商品名': p.get('name_ko', ''), '日本商品名': p.get('name_ja', ''), '形態': '', '工場': COMPANY,
-                '規格': p.get('pack', ''), '賞味期限': f"{p.get('shelf_months', '')}개월" if p.get('shelf_months') else '', '単位': '', '商品番号': '', '商品コード': '',
+        vals = {'会社名': buyer_disp, '作成日': str(__import__('datetime').date.today()), '韓国商品名': p.get('name_ko', ''), '日本商品名': p.get('name_ja', ''), '形態': '', '工場': maker,
+                '規格': p.get('pack', ''), '賞味期限': f"{p.get('shelf_months', '')}か月" if p.get('shelf_months') else '', '単位': '', '商品番号': '', '商品コード': '',
                 '重点管理': ' / '.join(form.get('qc') or []), '配合': ', '.join(f"{r['name']} {r.get('pct', '')}%" for r in form.get('recipe') or []),
                 '調味液': ', '.join(f"{r['name']} {r.get('pct', '')}%" for r in form.get('seasoning') or []), '包装資材': ', '.join(form.get('packaging') or [])}
-        body = f"<h2>{html.escape(form.get('form_title') or '規格書')} ({buyer} 양식)</h2>" + kv([(k, vals.get(k, '')) for k in form.get('fields') or []])
+        body = f"<h2>{html.escape(form.get('form_title') or '規格書')} ({buyer_disp} 様式)</h2>" + kv([(k, vals.get(k, '')) for k in form.get('fields') or []])
     else:
-        body = '<h2>로트 규격서 (기본 양식)</h2>' + kv([('製品名 / 제품명', p.get('name_en', '')), ('原材料 / 원재료', ing), ('内容量 / 내용량', p.get('pack', '')), ('保存 / 보존', p.get('storage', ''))])
-    body += '<h2>LOT</h2>' + kv([('LOT', f"{lot['lot']} ({lot.get('company_code')})"), ('製造日 / 제조일', lot.get('mfg')), ('賞味期限 / 소비기한', lot.get('expiry')), ('数量 / 수량', f"{lot.get('qty_ct')} C/T, {lot.get('kg')} kg"),
-                                 ('衛生証明書 / 위생증명서', lot.get('cert') or '해당 없음'), ('製造者 / 제조자', COMPANY), ('認証 / 인증', ' / '.join(certs))])
-    pdf = html_pdf(body, f'규격서_{lot_no}.pdf', f'로트 규격서 {lot_no}')
+        body = '<h2>ロット規格書 / Lot specification</h2>' + kv([('製品名 / Product', p.get('name_en', '')), ('原材料 / Ingredients', ing), ('内容量 / Net', p.get('pack', '')), ('保存 / Storage', 'Keep frozen at -18°C or below' if '-18' in str(p.get('storage', '')) else p.get('storage', ''))])
+    body += '<h2>LOT</h2>' + kv([('LOT', f"{lot['lot']} ({lot.get('company_code')})"), ('製造日 / Production date', lot.get('mfg')), ('賞味期限 / Best before', lot.get('expiry')), ('数量 / Quantity', f"{lot.get('qty_ct')} C/T, {lot.get('kg')} kg"),
+                                 ('衛生証明書 / Health certificate', cert_en(lot.get('cert'))), ('製造者 / Manufacturer', maker), ('認証 / Certificates', ' / '.join(certs))])
+    pdf = html_pdf(body, f'규격서_{lot_no}.pdf', f'Lot specification {lot_no}')
     out = pathlib.Path(out_dir) if out_dir else OUT; out.mkdir(exist_ok=True)
     zp = out / f'바이어패키지_{lot_no}.zip'
     with zipfile.ZipFile(zp, 'w', zipfile.ZIP_DEFLATED) as z:
