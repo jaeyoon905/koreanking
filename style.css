@@ -24,8 +24,10 @@ svg.ico { width: 28px; height: 28px; flex: none; stroke: currentColor; fill: non
 
 /* ---------- 머리 + 메뉴 ---------- */
 header { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 0 32px; }
-header h1 { margin: 0; padding: 18px 0 2px; font-size: 22px; font-weight: 700; color: var(--brand); letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
-header h1::before { content: ""; width: 26px; height: 26px; border-radius: 8px; background: var(--brand) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 16px no-repeat; }
+header h1 { margin: 0; padding: 14px 0 0; font-size: 24px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+header h1 a.logo { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+header h1 a.logo img { width: 36px; height: 36px; }
+header h1 .l1 { color: var(--brand); } header h1 .l2 { color: var(--primary); }
 header h1 small { display: none; }
 #nav { display: block; }
 .nav-main { display: flex; align-items: center; gap: 36px; flex-wrap: wrap; }
