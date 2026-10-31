@@ -9,6 +9,16 @@
 
 ---
 
+## ★ 지금 제일 중요한 것: 서비스 품질보다 발표자료 품질과 임팩트
+
+이번 대회는 **아이디어톤**이다. 점수는 5분 발표와 질의응답에서 나오고, 서비스는 발표에 보이는 만큼만 점수가 된다. 그래서 마감(11/1 09:00)까지는 발표자료가 서비스보다 먼저다.
+
+- 남은 시간은 발표자료 `발표자료/라벨코스트_발표.pptx`(발표자 노트에 대본), 그 안의 시연 영상, 대본 `demo.md`를 좋게 만드는 데 먼저 쓴다.
+- 앱은 발표와 시연 영상에 나오는 화면(수출 꾸러미, 나라별 라벨, 한 번에 처리)이 깨지지 않고 보기 좋게만 손본다. 새 기능은 만들지 않는다.
+- 발표자료·대본은 TJ 담당이다. pptx는 두 사람이 동시에 고치면 합칠 수 없으니, 고칠 점은 직접 고치지 말고 TJ에게 말로 전한다.
+
+---
+
 ## 0. 세션 시작하면 제일 먼저
 
 1. `git branch --show-current`로 내가 누구의 Claude인지 확인한다.
@@ -35,7 +45,7 @@ TJ의 Claude는 토큰이 넉넉하지 않다. 판단이 끝난 반복 작업은
 | 담당 | 파일 |
 |---|---|
 | **재윤의 Claude** | `app.js`, `data.js`, `apply.js`, `fixtures.js`, `import.js`, `agent/`, `server/`, `tests/`, `plan.md`(진행 표시) |
-| **TJ의 Claude** | `style.css`, `index.html`, `.github/`, `run.bat`, `requirements.txt`, `design.md`, `research.md`, `CLAUDE.md` |
+| **TJ의 Claude** | `style.css`, `index.html`, `.github/`, `run.bat`, `requirements.txt`, `design.md`, `research.md`, `CLAUDE.md`, `발표자료/`, `demo.md` |
 
 - 남의 담당 파일을 고쳐야 하면 직접 고치지 않는다. TJ의 Claude는 `plan.md`에 작업으로 적고, 재윤의 Claude는 재윤에게 말해서 TJ에게 전달되게 한다.
 - 예외: 한 줄짜리 버그 수정처럼 아주 작은 것은 고치되 커밋 메시지에 "담당 외 파일 수정"이라고 적는다.
