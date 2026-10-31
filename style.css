@@ -244,7 +244,6 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .tagview { display: grid; grid-template-columns: 360px 360px 1fr; gap: 28px; align-items: start; }
 .tagview > section { min-width: 0; }
 .tv-h { font-size: 22px; margin: 0 0 12px; min-height: 34px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .tv-h .muted { font-weight: 400; font-size: 14px; }
-.tc-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 14px; background: var(--brand); color: #fff; font-size: 14px; font-weight: 700; border-radius: 8px; }
 
 /* 겹쳐 놓은 라벨 더미: 위에서 아래로 반듯하게, 각 라벨은 위쪽 띠만 보임 */
 .tag-pile { display: flex; flex-direction: column; padding-top: 30px; }
@@ -255,6 +254,10 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .tag-pile .tag-card .pkg { border-color: #555; }
 .tc-tab { position: absolute; top: -30px; right: 10px; height: 30px; padding: 0 14px; display: inline-flex; align-items: center; background: #555; color: #fff; font-size: 14px; font-weight: 700; border-radius: 8px 8px 0 0; }
 .tag-card.main .pkg { border-color: #111; }
+/* 맨 위 라벨의 탭은 제목 줄(나라별 라벨 오른쪽)까지 올라와 붙음 → 라벨 윗변이 한국 라벨과 같은 줄 */
+.tag-card.main .tc-tab, #tg-main:empty + .tag-pile .tag-card:first-child .tc-tab { top: -46px; height: 46px; }
+.tag-card.main .tc-tab { background: var(--brand); }
+#tg-main:empty + .tag-pile { padding-top: 0; }
 @media (prefers-reduced-motion: reduce) { .tag-pile .tag-card { transition: none; } }
 
 /* 번호에 가까이 대면 그 줄의 가장 오른쪽 칸이 파랗게 */

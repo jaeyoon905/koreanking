@@ -442,7 +442,7 @@
     return '<h2>나라별 라벨</h2><p class="sub">한국 라벨 하나로 만든 나라별 라벨이에요. 겹쳐 놓은 라벨을 누르면 그 라벨과 바꾼 이유가 나와요.</p>' +
       '<div class="row">' + productSelect('tg-prod') + '</div>' +
       '<div class="tagview"><section><h3 class="tv-h">한국 원본 <span class="muted">식품등의 표시기준</span></h3><div id="tg-kr"></div></section>' +
-      '<section><h3 class="tv-h">나라별 라벨 <span id="tg-chip"></span></h3><div id="tg-main"></div><div class="tag-pile" id="tg-pile"></div></section>' +
+      '<section><h3 class="tv-h">나라별 라벨</h3><div id="tg-main"></div><div class="tag-pile" id="tg-pile"></div></section>' +
       '<section><h3 class="tv-h" id="tg-why-h">바꾼 이유</h3><div id="tg-why"><p class="muted">왼쪽 라벨을 누르면 그 나라에서 바꾼 이유가 나와요.</p></div></section></div>';
   };
   screens.tags.bind = function (arg) {
@@ -453,8 +453,7 @@
     function hl(n) { Array.prototype.forEach.call(document.querySelectorAll('#tg-main [data-mk]'), function (r) { r.classList.toggle('hl', !!n && r.dataset.mk === n); }); Array.prototype.forEach.call(document.querySelectorAll('#tg-why .bubble'), function (b) { b.classList.toggle('hl', b.dataset.mk === n); }); }
     function render() {
       var c = TAG_CTRY.filter(function (x) { return x[0] === sel; })[0];
-      $('#tg-main').innerHTML = c ? '<div class="tag-card main">' + c[3](p) + '</div>' : '';
-      $('#tg-chip').innerHTML = c ? '<span class="tc-chip">' + c[1] + '</span>' : '';
+      $('#tg-main').innerHTML = c ? cardHtml(c).replace('class="tag-card"', 'class="tag-card main"') : '';
       $('#tg-why-h').innerHTML = c ? c[1] + '에서 바꾼 이유 <span class="muted">' + esc(c[2]) + '</span>' : '바꾼 이유';
       if (c) $('#tg-why').innerHTML = bubbles(TAG_WHY[c[0]]());
       var pile = $('#tg-pile');
