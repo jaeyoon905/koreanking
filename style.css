@@ -240,14 +240,30 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 
 
 /* ---------- 나라별 라벨: 실제 포장 라벨처럼 + 바꾼 이유 말풍선 ---------- */
-.tagview { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 32px; align-items: start; }
+.tagview { display: grid; grid-template-columns: minmax(280px, 360px) minmax(360px, 460px) 1fr; gap: 28px; align-items: start; }
 .tagview > section { min-width: 0; }
-.tv-h { font-size: 22px; margin: 0 0 12px; display: flex; align-items: baseline; gap: 8px; } .tv-h .muted { font-weight: 400; }
-.tv-country + .tv-country { margin-top: 40px; }
-.tv-pair { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 24px; align-items: start; }
-#tg-out.shown .tv-country { animation: tv-in .35s ease-out both; } #tg-out.shown .tv-country + .tv-country { animation-delay: .15s; }
-@keyframes tv-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { #tg-out.shown .tv-country { animation: none; } }
+.tv-h { font-size: 22px; margin: 0 0 12px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; } .tv-h .muted { font-weight: 400; }
+
+/* 겹쳐 놓은 라벨: 위(오른쪽 위) 일본, 아래 중국. 올리면 떠오르고, 누르면 맨 위 */
+.tag-stack { position: relative; min-height: 900px; margin-top: 40px; }
+.tag-card { position: absolute; width: calc(100% - 40px); cursor: pointer; transition: transform .2s ease, top .2s ease; outline: none; }
+.tag-card.pos0 { top: 0; right: 0; transform: rotate(1.5deg); }
+.tag-card.pos1 { top: 150px; left: 0; transform: rotate(-1.5deg); }
+.tag-card:hover, .tag-card:focus-visible { z-index: 20 !important; transform: rotate(0) translateY(-8px); }
+.tag-card.top { transform: rotate(0); }
+.tag-card .pkg { transition: border-color .2s; }
+.tag-card:not(.top) .pkg { border-color: #555; }
+.tc-tab { position: absolute; top: -30px; left: 12px; height: 30px; padding: 0 14px; display: inline-flex; align-items: center; background: #111; color: #fff; font-size: 14px; font-weight: 700; border-radius: 8px 8px 0 0; }
+.tag-card:not(.top) .tc-tab { background: #555; }
+.tag-stack .tag-card.pos0 .tc-tab { left: auto; right: 12px; }
+@media (prefers-reduced-motion: reduce) { .tag-card { transition: none; } }
+
+/* 번호에 가까이 대면 그 줄의 가장 오른쪽 칸이 파랗게 */
+.pkg tr.hl td:last-child { background: var(--primary-soft) !important; box-shadow: inset 3px 0 0 var(--primary); }
+.pkg p.hl, .pkg [data-mk].hl .pkg-nut { background: var(--primary-soft); }
+.pkg [data-mk].hl .pkg-nut td { background: var(--primary-soft) !important; }
+.bubble.hl { border-color: var(--primary); background: var(--primary-soft); } .bubble.hl::before { background: var(--primary-soft); border-color: var(--primary); }
+.bubble { cursor: default; transition: border-color .15s, background .15s; }
 
 .pkg { background: #fff; border: 2px solid #111; color: #111; font-family: "Apple SD Gothic Neo", "PingFang SC", "Hiragino Sans", "Noto Sans CJK KR", "Noto Sans SC", "Noto Sans JP", sans-serif; font-size: 13px; line-height: 1.45; padding: 0; }
 .pkg > table { border: 0; border-radius: 0; margin: 0; background: #fff; font-size: 13px; }
@@ -273,8 +289,8 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .bubble b { display: block; font-size: 16px; }
 .bubble p { margin: 2px 0 8px; font-size: 14px; color: var(--ink-2); }
 .bubble .ref { max-width: none; white-space: normal; }
-@media (max-width: 1100px) { .tv-pair { grid-template-columns: 1fr; } }
-@media (max-width: 800px) { .tagview { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .tagview { grid-template-columns: 1fr 1fr; } .tagview > section:last-child { grid-column: 1 / -1; } }
+@media (max-width: 800px) { .tagview { grid-template-columns: 1fr; } .tag-stack { min-height: 980px; } }
 
 /* ---------- 모바일 ---------- */
 @media (max-width: 800px) {
