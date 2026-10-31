@@ -22,7 +22,9 @@
   var state = { lastLabel: null };
   (function load() { var s = seeds(); SAVED.forEach(function (k) { state[k] = JSON.parse(localStorage.getItem('lc.' + k) || 'null') || s[k]; }); })();
   // 서버(server/app.py)가 있으면 서버 상태가 원본, 없으면(file://) 브라우저 저장. 동작은 같다
-  var API = /^https?:/.test(location.protocol) ? '/api' : null;
+  // 서버 주소. 같은 서버에서 열면 '/api'. GitHub Pages 처럼 정적 호스팅이면 api.json 의 주소(노트북 서버 터널)를 쓴다
+  var ORIGIN = '', API = /^https?:/.test(location.protocol) && !/github\.io$/.test(location.hostname) ? '/api' : null;
+  function serverOrigin() { return ORIGIN || location.origin; }
   var health = null; var saveTimer = null;
   function api(path, method, body) {
     return fetch(API + path, { method: method || 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }).then(function (r) { return r.json(); });
@@ -67,10 +69,17 @@
     if (!health) return '서버 확인 중';
     return health.ok ? '서버' + (health.llm ? ' · AI' : '') : '오프라인';
   }
-  if (API) {
+  function bootServer() {
     api('/health').then(function (h) { health = h; if (h && h.today) LC.TODAY = h.today; return api('/state'); })
       .then(function (s) { var seeded = seeds(); SAVED.forEach(function (k) { if (s && s[k] != null) state[k] = s[k]; else if (!localStorage.getItem('lc.' + k)) state[k] = seeded[k]; }); mergeExtraProducts(); setProduct(state.productCode); route(); })
       .catch(function () { health = { ok: false }; route(); });
+  }
+  if (API) bootServer();
+  else if (/^https?:/.test(location.protocol)) {   // 정적 호스팅: api.json 에 적힌 노트북 서버 주소로 연결(없으면 오프라인 모드)
+    fetch('api.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+      var u = String((j && j.api) || '').replace(/\/+$/, ''); if (!/^https?:\/\//.test(u)) return;
+      ORIGIN = u; API = u + '/api'; bootServer();
+    }).catch(function () {});
   }
 
   // ---------- 판정 엔진 ----------
@@ -346,9 +355,9 @@
     var adds = p.ingredients.filter(function (i) { return i.type === 'additive'; }), certs = certList();
     var v = { 'buyer.name': buyer, 'doc.date': LC.TODAY, 'doc.issuer': 'A사',
       'product.name_ko': p.name_ko, 'product.name_en': p.name_en, 'product.name_ja': p.name_ja || '', 'product.code': p.code,
-      'product.species': (p.ingredients[0] || {}).name_ko || '', 'product.origin': '韓国 / 한국산',
+      'product.species': p.species || (p.ingredients[0] || {}).name_ko || '', 'product.origin': '韓国 / 한국산 (Republic of Korea)',
       'product.ingredients': p.ingredients.map(function (i) { return i.name_ko + (i.pct != null ? ' ' + i.pct + '%' : ''); }).join(', '),
-      'product.additives': adds.map(function (i) { return i.func + ' ' + i.name_ko + ' INS ' + i.ins; }).join(', '),
+      'product.additives': adds.length ? adds.map(function (i) { return i.func + ' ' + i.name_ko + ' INS ' + i.ins; }).join(', ') : '없음 / None',
       'product.allergen': Array.isArray(p.allergens) ? p.allergens.join(', ') : (p.allergens || '甲殻類(かに) / 갑각류(게)'),
       'product.nutrition': p.nutrition100 ? nutritionBy.JP().slice(0, 5).map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') : '',
       'product.shelf_life_months': p.shelf_months + '개월 (' + Math.round(p.shelf_months / 12) + '年間)', 'product.net': p.net, 'product.pack': p.pack, 'product.process': p.process, 'product.storage': p.storage,
@@ -377,11 +386,15 @@
     return '<label>양식 <select id="' + id + '"><option value="">기본</option>' + ks.map(function (k) { return '<option value="' + esc(k) + '"' + (k === state.specBuyer ? ' selected' : '') + '>' + esc(k) + ' ' + esc(state.specForms[k].form_title || '規格書') + '</option>'; }).join('') + '</select></label>';
   }
   function sheetFor(lot) { return state.specBuyer && state.specForms[state.specBuyer] ? buyerFormSheet(state.specBuyer, lot) : specSheet(lot); }
+  function specLots() { var code = P().code; return state.ledger.filter(function (l) { return l.product === code; }).sort(function (a, b) { return String(b.mfg).localeCompare(String(a.mfg)); }); }
+  function specLot() { var lots = specLots(); if (!lots.length) return null; if (state.specLot === '') return null; return lots.filter(function (l) { return l.lot === state.specLot; })[0] || lots[0]; }
   screens.spec = function () {
-    return '<h2>규격서</h2><p class="sub">품목과 양식을 고르고 인쇄하세요.</p>' +
-      '<div class="row">' + productSelect('sp-prod') + formSelect('sp-form') + '</div><button onclick="window.print()">PDF로 저장(인쇄)</button>' + sheetFor(null);
+    var lots = specLots(), cur = specLot();
+    var lotSel = lots.length ? '<label>로트 <select id="sp-lot"><option value=""' + (cur ? '' : ' selected') + '>없음(품목 규격서)</option>' + lots.map(function (l) { return '<option value="' + esc(l.lot) + '"' + (cur && cur.lot === l.lot ? ' selected' : '') + '>' + esc(l.lot) + (l.company_code ? ' (' + esc(l.company_code) + ')' : '') + ' · ' + esc(l.mfg) + '</option>'; }).join('') + '</select></label>' : '';
+    return '<h2>규격서</h2><p class="sub">품목·양식·로트를 고르고 인쇄하세요. 로트를 고르면 Lot No.·제조일·소비기한 칸이 채워집니다.</p>' +
+      '<div class="row">' + productSelect('sp-prod') + formSelect('sp-form') + lotSel + '</div><button onclick="window.print()">PDF로 저장(인쇄)</button>' + sheetFor(cur);
   };
-  screens.spec.bind = function () { bindProductSelect('sp-prod'); var el = $('#sp-form'); if (el) el.onchange = function () { state.specBuyer = el.value; route(); }; };
+  screens.spec.bind = function () { bindProductSelect('sp-prod'); var el = $('#sp-form'); if (el) el.onchange = function () { state.specBuyer = el.value; route(); }; var ls = $('#sp-lot'); if (ls) ls.onchange = function () { state.specLot = ls.value; route(); }; };
 
   screens.ship = function () {
     var raw = state.raw.map(function (r) { return '<label class="chk"><input type="checkbox" name="raw" value="' + r.id + '"> ' + r.id + ' · ' + r.species + ' 어획 ' + r.caught + ' ' + r.landing + ' ' + r.kg + 'kg' + (r.note ? ' <small class="muted">' + esc(r.note) + '</small>' : '') + '</label>'; }).join('');
@@ -406,7 +419,7 @@
   function shipDocLinks(no) {
     if (!API) return '<p class="muted">선적 서류 자동 생성(제조일자 리스트·패킹리스트 초안·위생증명서 신청값)은 서버 모드에서 가능</p>';
     var q = encodeURIComponent(no);
-    return '<p class="docs"><b>서류 생성</b> <a href="/api/shipdocs/mdl?no=' + q + '" download>제조일자 리스트 xlsx</a> · <a href="/api/shipdocs/pl?no=' + q + '" download>패킹리스트 초안 xlsx</a> · <a href="/api/shipdocs/cert?no=' + q + '" download>위생증명서 신청값 xlsx</a></p>';
+    return '<p class="docs"><b>서류 생성</b> <a href="' + API + '/shipdocs/mdl?no=' + q + '" download>제조일자 리스트 xlsx</a> · <a href="' + API + '/shipdocs/pl?no=' + q + '" download>패킹리스트 초안 xlsx</a> · <a href="' + API + '/shipdocs/cert?no=' + q + '" download>위생증명서 신청값 xlsx</a></p>';
   }
   function ledgerTable() {
     if (!state.ledger.length) return emptyLedger();
@@ -459,7 +472,7 @@
     if (!lot) { out.innerHTML = '<p class="alert">LOT 없음</p>'; return; }
     var p = (LC.products && LC.products[lot.product]) || LC.product;
     var buyer = [['제품', p.name_en], ['LOT', lot.lot + (lot.company_code ? ' / ' + lot.company_code : '')], ['제조일', lot.mfg], ['소비기한', lot.expiry], ['수량', lot.qty_ct + ' C/T / ' + lot.kg + ' kg'], ['보존', p.storage], ['위생증명서', lot.cert || '해당 없음'], ['규격서', '로트 규격서 발송 ' + (lot.spec_sent || '-')], ['제조자 인증·등록', certList().join(' · ')]];
-    var pub = API ? location.origin + '/lot/' + encodeURIComponent(lot.lot) : '';
+    var pub = API ? serverOrigin() + '/lot/' + encodeURIComponent(lot.lot) : '';
     var html = '<div class="card face-buyer"><h3>바이어 면 · ' + lot.lot + '</h3><table>' + buyer.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table><p class="muted">서류로 이미 보낸 정보만.</p>' +
       (pub ? '<p class="muted">바이어 공개 주소: <a href="' + esc(pub) + '" target="_blank">' + esc(pub) + '</a></p>' : '') + '</div>';
     if (inside) {
@@ -471,7 +484,7 @@
         '<h4>클레임 종류별로 꺼낼 기록 (제조일 ' + lot.mfg + ')</h4><table><tr><th>클레임</th><th>먼저 볼 기록</th><th>원료(배) 추적</th></tr>' +
         LC.claimMap.map(function (c) { return '<tr><td>' + c.kind + '</td><td>' + esc(c.records.split('{mfg}').join(lot.mfg)) + '</td><td>' + (c.raw ? '필요 · 위 원어 로트 ' + raws.length + '건' : '불필요') + '</td></tr>'; }).join('') +
         '</table><p class="muted">원본 일지는 공장 서류함에서.</p>' +
-        (API ? '<p><a href="/api/lot/' + encodeURIComponent(lot.lot) + '/qr.png" target="_blank" aria-label="QR 라벨 열기">QR 라벨 (PNG)</a> <span class="muted">포장·박스에 붙이면 공개 페이지로 연결</span> · <a href="/api/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download aria-label="바이어 패키지 받기">바이어 패키지 zip</a> <span class="muted">규격서·LOT 정보·인증 목록</span></p>' : '<p class="muted">QR 라벨·바이어 패키지 zip 은 서버 모드에서 가능</p>') +
+        (API ? '<p><a href="' + API + '/lot/' + encodeURIComponent(lot.lot) + '/qr.png" target="_blank" aria-label="QR 라벨 열기">QR 라벨 (PNG)</a> <span class="muted">포장·박스에 붙이면 공개 페이지로 연결</span> · <a href="/api/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download aria-label="바이어 패키지 받기">바이어 패키지 zip</a> <span class="muted">규격서·LOT 정보·인증 목록</span></p>' : '<p class="muted">QR 라벨·바이어 패키지 zip 은 서버 모드에서 가능</p>') +
         '<div class="row"><label>클레임 종류 <select id="claim-kind">' + LC.claimMap.map(function (c) { return '<option>' + esc(c.kind) + '</option>'; }).join('') + '</select></label><button id="claim-go">대응 보고서 만들기</button></div></div><div id="claim-out"></div>';
     }
     out.innerHTML = html;
@@ -676,7 +689,7 @@
     if (c.doc_type === '영양성적서') out.push(a('#product', '품목 영양 환산표(나라별)', ' data-out-prod="' + i + '"'));
     if (c.doc_type === '포장일지') (typeof LC.lotRows === 'function' ? LC.lotRows(o) : []).slice(0, 3).forEach(function (r) {
       out.push(a('#lot/' + encodeURIComponent(r.lot), 'LOT ' + r.lot + ' 조회·클레임 보고서'));
-      if (API) out.push(a('/api/shipdocs/buyer?lot=' + encodeURIComponent(r.lot), '바이어 패키지 zip', ' download') + a('/api/lot/' + encodeURIComponent(r.lot) + '/qr.png', 'QR 라벨', ' target="_blank"'));
+      if (API) out.push(a(API + '/shipdocs/buyer?lot=' + encodeURIComponent(r.lot), '바이어 패키지 zip', ' download') + a(API + '/lot/' + encodeURIComponent(r.lot) + '/qr.png', 'QR 라벨', ' target="_blank"'));
     });
     if (c.doc_type === '라벨' && o.name) out.push(a('#label', '라벨 판정 → 수정안 만들기', ' data-out-label="' + i + '"'));
     if (c.doc_type === '고시문') out.push(a('#dash', '대시보드: 개정 → 영향 라벨'));
@@ -884,7 +897,7 @@
       imp = card('#import', '수입 체크', (state.importShipments || []).map(function (x) { var d = (x.checklist || []).filter(function (c) { return c.count_expected; })[0]; var open = (x.checklist || []).filter(function (c) { return c.status !== '있음'; }).length; return '<p><b>' + esc(x.no) + '</b> · 신고서 ' + (d ? (d.count_have || 0) + '/' + d.count_expected + '장' : '-') + ' · 미완 ' + open + '건</p>'; }).join(''));
     }
     var pub = '';
-    if (API) { var sl = state.ledger.filter(shipped); pub = card(null, '바이어 공개 링크', sl.length ? '<ul class="log">' + sl.map(function (l) { var u = location.origin + '/lot/' + encodeURIComponent(l.lot); return '<li><a href="' + esc(u) + '" target="_blank">' + esc(u) + '</a></li>'; }).join('') + '</ul>' : '<p class="muted">선적된 로트가 생기면 링크가 나옴</p>'); }
+    if (API) { var sl = state.ledger.filter(shipped); pub = card(null, '바이어 공개 링크', sl.length ? '<ul class="log">' + sl.map(function (l) { var u = serverOrigin() + '/lot/' + encodeURIComponent(l.lot); return '<li><a href="' + esc(u) + '" target="_blank">' + esc(u) + '</a></li>'; }).join('') + '</ul>' : '<p class="muted">선적된 로트가 생기면 링크가 나옴</p>'); }
     var sd = '';
     if (state.shipments.length) { var last = state.shipments[state.shipments.length - 1]; sd = card('#ship', '선적 서류 · ' + esc(last.no), shipDocLinks(last.no) + (API && state.ledger.filter(shipped).length ? '<p><a href="/api/shipdocs/buyer?lot=' + encodeURIComponent(state.ledger.filter(shipped)[0].lot) + '" download>바이어 패키지 zip (' + esc(state.ledger.filter(shipped)[0].lot) + ')</a></p>' : '')); }
     var ntf = API ? '<details id="qk-notify"><summary class="muted">알림 미리보기 (만료·수입 미완, 매일 08:00 메일용)</summary><pre id="qk-notify-txt" class="muted">불러오는 중…</pre></details>' : '';
@@ -958,7 +971,7 @@
       '<div class="card"><h3>기록 묶음 PDF (HACCP 심사·바이어 실사용)</h3>' + (API ? '<div class="row"><label>부터 <input type="date" id="bd-from" value="' + (months[0] ? months[0] + '-01' : LC.TODAY) + '"></label><label>까지 <input type="date" id="bd-to" value="' + LC.TODAY + '"></label><button id="bd-go" aria-label="기록 묶음 PDF 받기">PDF 받기</button></div><p class="muted">기간 안의 입고·로트(원료 연결 근거)·선적·등록인증·처리 기록을 한 PDF로</p>' : '<p class="muted">서버 모드에서 가능</p>') + '</div>';
   };
   screens.stats.bind = function () {
-    var g = $('#bd-go'); if (g) g.onclick = function () { window.open('/api/shipdocs/bundle?from=' + $('#bd-from').value + '&to=' + $('#bd-to').value, '_blank'); };
+    var g = $('#bd-go'); if (g) g.onclick = function () { window.open(API + '/shipdocs/bundle?from=' + $('#bd-from').value + '&to=' + $('#bd-to').value, '_blank'); };
     document.querySelectorAll('[data-stcsv]').forEach(function (b) { b.onclick = function () { download('라벨코스트_집계_' + b.dataset.stcsv + '_' + LC.TODAY.replace(/-/g, '') + '.csv', '\ufeff' + STAT_CSV[b.dataset.stcsv]); }; });
   };
 

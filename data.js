@@ -268,11 +268,11 @@ LC.revisions = [
 
 // 등록·인증 레지스트리
 LC.registry = [
-  { kind: '법정등록', name: '미국 FDA 식품시설등록 갱신', no: '등록됨 (번호 확인)', issuer: 'US FDA', expiry: '2026-12-31', lead: 30, countries: 'US', note: '짝수년 10~12월 갱신 창. 지금이 갱신 기간(담당자 확인: 등록되어 있음)' },
+  { kind: '법정등록', name: '미국 FDA 식품시설등록 갱신', no: '등록됨 · 등록번호 12345678901 (시연용 가상, 실제 번호 확인)', issuer: 'US FDA', expiry: '2026-12-31', lead: 30, countries: 'US', note: '짝수년 10~12월 갱신 창. 지금이 갱신 기간(담당자 확인: 등록되어 있음)' },
   { kind: '법정등록', name: 'EU 승인 작업장', no: 'KORP-091', issuer: '수품원 → EU', expiry: null, lead: 0, countries: 'EU/IT', note: '공개 목록. 정해진 만료일 없음(수품원 등록 유지 조건). 유지 심사 주기는 수품원에 확인' },
   { kind: '참고', name: '태국 라벨 기재 번호', no: 'KTH-134', issuer: 'Thai FDA', expiry: null, lead: 0, countries: 'TH', note: '라벨에 적힌 번호. 누구 명의인지(수입자/제조자) 확인 필요' },
   { kind: '참고', name: '태국 식품등록번호(수입자 명의)', no: '10-3-00445-5-1408', issuer: 'Thai FDA', expiry: null, lead: 0, countries: 'TH', note: '태국 수입자 허가번호 기반. A사가 관리하는 번호 아님, 바뀌면 라벨 재검토' },
-  { kind: '법정등록', name: '중국 GACC 해외생산기업 등록', no: '등록됨 (번호·만료일 확인)', issuer: 'GACC', expiry: null, lead: 180, countries: 'CN', note: '수품원 수출공장등록 경유(담당자 확인). 5년 유효. 2026-06 시행 280호령부터 대부분 품목 자동 갱신. CIFER 공개 조회' },
+  { kind: '법정등록', name: '중국 GACC 해외생산기업 등록', no: '등록됨 · CKOR0000012345 (시연용 가상, 실제 번호·만료일 확인)', issuer: 'GACC', expiry: null, lead: 180, countries: 'CN', note: '수품원 수출공장등록 경유(담당자 확인). 5년 유효. 2026-06 시행 280호령부터 대부분 품목 자동 갱신. CIFER 공개 조회' },
   { kind: '법정등록', name: '수품원 수출공장등록 (베트남·태국)', no: '등록됨', issuer: '수품원', expiry: null, lead: 0, countries: 'VN TH', note: '협약국. 수출 시 해당국 양식 위생증명서 발급(담당자 확인)' },
   { kind: '법정인증', name: 'HACCP 적용업소 인증 (기타수산물가공품)', no: '제2009-4-8012호', issuer: '식약처 (식품위생법 48조)', expiry: '2029-01-22', lead: 90, countries: 'ALL', note: '유효 2026-01-23~2029-01-22. CCP 자숙·가열(농축)·금속검출. 최초 2009-08-07. 인증서 원본 기준' },
   { kind: '선적별', name: '위생증명서', no: '선적마다', issuer: '수품원', expiry: null, lead: 0, countries: 'TW TH HK JP?', note: '협약국은 해당국 양식. 일본은 국내 유통분은 불필요, 바이어 요청 시 비협약국 양식(담당자 확인). 2026-05 U사 선적은 발급받음' },
@@ -337,3 +337,11 @@ LC.products.CL = {
   process: '원어 입고 → 자숙 → 집게 분리·채육 → 선별 → 급속동결 → 포장 → 금속검출 → 냉동보관', factory: LC.product.factory,
   note: '시연용 추가 품목. 가공일지 "집게" 기준. 규격·배합은 회사 확인 필요', demo: true
 };
+
+// 어종·학명: 원료입고검사서 7-1 기재값(붉은대게 Chionoecetes japonicus). 품목 전부 같은 원료
+Object.keys(LC.products).forEach(function (k) { LC.products[k].species = LC.products[k].species || '붉은대게 Chionoecetes japonicus (Red snow crab)'; });
+LC.product.species = LC.product.species || LC.products.LB.species;
+
+// 시연용 임의 영양값: 성적서가 없는 품목(WF·SR)은 빈칸 대신 임의값(회사 확인 필요). 성적서나 품목대장을 승인하면 그 값으로 덮인다
+if (!LC.products.WF.nutrition100) { LC.products.WF.nutrition100 = { kcal: 41.5, protein: 8.6, fat: 0.3, satfat: 0.1, transfat: 0, carb: 1.1, sugar: 0, sodium_mg: 240 }; LC.products.WF.nutrition_source = '시연용 임의값 (성적서 없음, 회사 확인 필요)'; }
+if (!LC.products.SR.nutrition100) { LC.products.SR.nutrition100 = { kcal: 44.0, protein: 8.1, fat: 0.4, satfat: 0.1, transfat: 0, carb: 2.3, sugar: 0.6, sodium_mg: 310 }; LC.products.SR.nutrition_source = '시연용 임의값 (성적서 없음, 회사 확인 필요)'; }

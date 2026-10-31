@@ -187,6 +187,13 @@ def mfds(svc, qs):
 
 
 class H(BaseHTTPRequestHandler):
+    def end_headers(self):   # GitHub Pages 등 다른 출처의 화면이 이 서버를 부를 수 있게. 쿠키는 안 쓰므로 * 허용
+        self.send_header('Access-Control-Allow-Origin', '*'); self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS'); self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204); self.send_header('Content-Length', '0'); self.end_headers()
+
     def log_message(self, fmt, *a):
         sys.stderr.write('%s %s\n' % (self.command, self.path.split('?')[0]))  # 쿼리는 안 찍음
 
