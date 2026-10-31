@@ -1225,7 +1225,7 @@
     ['바이어·정부가 보낸 것', ['규격서양식', '고시문'], '바이어 규격서 양식(아무 양식) · 개정 고시문', '그 양식대로 채운 규격서 · 바뀐 조항과 영향 라벨'],
     ['수입 (선택)', ['수입인보이스', 'BL', '수입신고서', '운송장'], '인보이스 · 선하증권 · 수입신고서 · 운송장', '수입 서류 체크리스트']
   ];
-  function docGuide() {
+  function docGuide(open) {
     var have = {};
     state.docs.forEach(function (d) { if (!/^반려/.test(String(d.result))) have[d.doc_type] = (have[d.doc_type] || 0) + 1; });
     intakeCards.forEach(function (c) { if (c.doc_type && !c.done) have[c.doc_type] = (have[c.doc_type] || 0) + 1; });
@@ -1233,7 +1233,7 @@
       var got = g[1].filter(function (t) { return have[t]; }), all = got.length === g[1].length, cls = all ? 'ok' : got.length ? 'warn' : '';
       return '<tr><td>' + (all ? '<span class="b ok">✓</span>' : got.length ? '<span class="b warn">' + got.length + '/' + g[1].length + '</span>' : '<span class="muted">—</span>') + '</td><th>' + g[0] + '</th><td>' + g[2] + '</td><td class="muted">' + g[3] + '</td></tr>';
     }).join('');
-    return '<details class="guide"' + (window.innerWidth > 700 ? ' open' : '') + '><summary>올릴 서류와 나오는 것 <span class="muted">사진·PDF·엑셀 그대로. 올린 것은 ✓</span></summary><table><tr><th></th><th>묶음</th><th>올릴 것</th><th>나오는 것</th></tr>' + rows + '</table></details>';
+    return '<details class="guide"' + ((open === undefined ? window.innerWidth > 700 : open) ? ' open' : '') + '><summary>올릴 서류와 나오는 것 <span class="muted">사진·PDF·엑셀 그대로. 올린 것은 ✓</span></summary><table><tr><th></th><th>묶음</th><th>올릴 것</th><th>나오는 것</th></tr>' + rows + '</table></details>';
   }
   // 드롭 영역 + 파일 선택. prefix 로 id 를 나눈다(서류 넣기: in, 한 번에: qk)
   function dropZone(prefix) { return '<div class="drop" id="' + prefix + '-drop"><b>여기에 사진·PDF 놓기</b><span class="muted">또는 파일 선택 · 여러 개 가능</span><label>사진·PDF 올리기 <input type="file" id="' + prefix + '-file" multiple aria-label="서류 파일 선택"></label></div>'; }
@@ -1290,6 +1290,7 @@
       state.docs.push({ file: c.name, doc_type: c.doc_type, at: LC.TODAY, result: result });
       if (API) api('/docs', 'POST', { file: c.name, doc_type: c.doc_type, mode: c.mode, decision: '승인', result: result, fields: c.fields }).catch(function () {});
     });
+    qkShown = intakeCards.length; if (done) qkBd = qkBdDrawn = 0;
     save(); renderQuick();
     var bc = $('#bundle-card') || $('#qk-results'); if (bc) setTimeout(function () { bc.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
     toast('승인 ' + done + '건 반영' + (skipped ? ' · 건너뜀 ' + skipped + '건(가림 미확인·종류 미확인)' : '') + ' → ' + intakeSummary());
@@ -1418,7 +1419,8 @@
     document.querySelectorAll('[data-bd-label]').forEach(function (el) { el.onclick = function () { var fx = state.lastFix, rows = Object.keys(fx.fields).filter(function (k) { return fx.fields[k] && k !== 'country'; }); downloadPdf('라벨문안_' + fx.country + '_' + (fx.file || ''), '<div class="sheet"><h3>라벨 문안 (수정안) · ' + esc(fx.country) + '</h3><table>' + rows.map(function (k) { return '<tr><th>' + esc(k) + '</th><td>' + esc(fx.fields[k]) + '</td></tr>'; }).join('') + '</table></div>'); }; });
   }
   function resultCards() {
-    if (!state.ledger.length) return '';
+    var pend = intakeCards.length && !intakeCards.some(function (c) { return c.done; }), slot = pend ? bundleSkel() : bundleCards();
+    if (!state.ledger.length) return pend ? '<h3 class="step">3. 보낼 서류</h3>' + slot : '';
     var ymd = LC.TODAY.replace(/-/g, '');
     var card = function (href, title, body) { return '<div class="card result"><h3>' + title + (href ? ' <a class="more" href="' + href + '">자세히 보기</a>' : '') + '</h3>' + body + '</div>'; };
     var lots = state.ledger.slice(-5).reverse();
@@ -1445,13 +1447,31 @@
     if (state.shipments.length) { var last = state.shipments[state.shipments.length - 1]; sd = card('#ship', '선적 서류 · ' + esc(last.no), shipDocLinks(last.no) + (API && state.ledger.filter(shipped).length ? '<p><a href="/api/shipdocs/buyer?lot=' + encodeURIComponent(state.ledger.filter(shipped)[0].lot) + '" download>바이어 패키지 zip (' + esc(state.ledger.filter(shipped)[0].lot) + ')</a></p>' : '')); }
     var ntf = API ? '<details id="qk-notify"><summary class="muted">알림 미리보기 (만료·수입 미완, 매일 08:00 메일용)</summary><pre id="qk-notify-txt" class="muted">불러오는 중…</pre></details>' : '';
     var all = card('#export', '전체 CSV 묶음', '<button id="qk-all" aria-label="CSV 7개 전부 받기">CSV ' + EXPORTS.length + '개 전부 받기</button><p class="muted">로트원장·입고분·선적·만료·영양출처·수입체크·처리기록 (파일명 라벨코스트_표_' + ymd + ')</p>');
-    return '<h3 class="step">3. 보낼 서류</h3>' + (bundleCards() || '<p class="muted">바이어 양식이나 문의 메일을 올려 승인하면 바이어별로 보낼 서류가 여기 모입니다.</p>') + '<details class="fold-sec"><summary>회사 내부 기록 (로트 원장 · 선적 서류 · 클레임 · 대시보드 · 수입 · 내보내기)</summary><div class="grid4">' + ledger + link + spec + claim + dash + imp + sd + pub + all + '</div>' + ntf + '</details>';
+    return '<h3 class="step">3. 보낼 서류</h3>' + (slot || '<p class="muted">바이어 양식이나 문의 메일을 올려 승인하면 바이어별로 보낼 서류가 여기 모입니다.</p>') + '<details class="fold-sec"><summary>회사 내부 기록 (로트 원장 · 선적 서류 · 클레임 · 대시보드 · 수입 · 내보내기)</summary><div class="grid4">' + ledger + link + spec + claim + dash + imp + sd + pub + all + '</div>' + ntf + '</details>';
+  }
+  // 회색 틀 → 100ms마다 하나씩 채움 (수출 꾸러미와 같은 방식). 표 줄 먼저, 승인 뒤엔 바이어 카드.
+  // renderQuick 이 통째로 다시 그려도 "몇 개까지 보였나"만 기억하면 끊기지 않는다
+  var qkShown = 0, qkDrawn = 0, qkBd = Infinity, qkBdDrawn = Infinity, qkTick = null;
+  var QK_SK = '<tr class="qk-sk" aria-hidden="true"><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td></tr>';
+  var BD_SK = '<article class="bundle bd-sk" aria-hidden="true"><header class="bd-head"><div class="bd-who"><i class="sk-t"></i><i class="sk-s"></i></div><i class="sk-box"></i></header></article>';
+  function bundleSkel() { return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류</h3><p class="muted">전부 승인을 누르면 여기 채워집니다.</p><div class="bundles">' + Array((bundleBuyers().length || 3) + 1).join(BD_SK) + '</div></div>'; }
+  function qkFill() {
+    var done = function () { clearInterval(qkTick); qkTick = null; qkShown = qkDrawn = intakeCards.length; qkBd = qkBdDrawn = Infinity; };
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { qkShown = intakeCards.length; qkBd = Infinity; return; }
+    if (qkTick) return;
+    qkTick = setInterval(function () {
+      if (!$('#qk-table')) return done();   // 다른 화면으로 가면 멈춤
+      if (qkShown < intakeCards.length) qkShown++;
+      else if (qkBd < document.querySelectorAll('#qk-results article.bundle').length) qkBd++;
+      else return done();
+      renderQuick();
+    }, 100);
   }
   screens.quick = function () {
     var fx = fixtures();
     var g = function (i) { return fx.filter(FX_GROUPS[i][1]).length; };
     return '<h2>한 번에 처리</h2><p class="sub">받은 서류를 한꺼번에 올리면, 확인·승인 뒤 바이어별로 보낼 서류 한 벌이 나옵니다.</p>' +
-      '<h3 class="step">1. 서류 넣기</h3><div class="card"><div id="qk-guide">' + docGuide() + '</div>' + dropZone('qk') +
+      '<h3 class="step">1. 서류 넣기</h3><div class="card"><div id="qk-guide">' + docGuide(false) + '</div>' + dropZone('qk') +
       (fx.length ? '<div class="row"><button id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기 (4월 서류 ' + g(0) + '종 · 사진 2장은 1종)</button><a href="#" id="qk-jun" class="muted">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="기록 비우고 시작">빈 상태로 시작</button></div>' +
       '<details class="docbox-wrap"><summary>서류함 (' + fx.length + ')</summary><div id="qk-docbox">' + docBox() + '</div></details>' : '') + '</div>' +
       '<h3 class="step">2. 확인 <span class="muted">넣은 파일을 읽은 결과가 여기 표로 나옵니다</span></h3><div class="card" id="qk-table"></div>' +
@@ -1459,10 +1479,15 @@
   };
   function renderQuick() {
     var box = $('#qk-table'); if (!box) return;
-    if (!intakeCards.length) { box.innerHTML = '<p class="muted">아직 넣은 서류가 없습니다. 위에서 파일을 올리거나 "서류함 전부 열기"를 누르면 여기 표에 파일별로 종류·읽은 칸·대조 결과가 나오고, "전부 승인"을 누르면 아래 3. 보낼 서류에 바이어별 묶음이 생깁니다.</p>'; }
+    if (qkShown > intakeCards.length) qkShown = qkDrawn = intakeCards.length;
+    if (qkShown < intakeCards.length || qkBd !== Infinity) qkFill();
+    var head = '<thead><tr><th>파일</th><th>종류</th><th class="num">읽은 칸</th><th>대조</th><th>상태</th></tr></thead>';
+    if (!intakeCards.length) { var n9 = fixtures().filter(FX_GROUPS[0][1]).length || 9; box.innerHTML = '<div class="pack-bar"><span class="pk-count">' + n9 + '종</span><span class="muted">서류함 전부 열기를 누르거나 파일을 올리면 여기 채워집니다</span></div><table>' + head + Array(n9 + 1).join(QK_SK) + '</table>'; }
     else {
+      var rows = intakeCards.map(function (c, i) { return i < qkShown ? '<tbody' + (i >= qkDrawn ? ' class="qk-in"' : '') + '>' + quickRow(c, i) + '</tbody>' : QK_SK; }).join('');
+      qkDrawn = qkShown;
       var wait = intakeCards.filter(function (c) { return !c.done && !c.loading; }).length, loading = intakeCards.filter(function (c) { return c.loading; }).length;
-      var tableHtml = '<table><tr><th>파일</th><th>종류</th><th class="num">읽은 칸</th><th>대조</th><th>상태</th></tr>' + intakeCards.map(quickRow).join('') + '</table>' +
+      var tableHtml = '<div class="pack-bar"><span class="pk-count">' + qkShown + ' / ' + intakeCards.length + '</span><span class="muted">읽은 서류</span></div><table>' + head + rows + '</table>' +
         '<div class="row"><button id="qk-approve" ' + (wait ? '' : 'disabled') + ' aria-label="대기 중인 서류 전부 승인">전부 승인 (' + wait + '건)</button>' + (loading ? '<span class="b warn">AI 읽는 중 ' + loading + '건 · 끝나면 표가 바뀝니다</span>' : '') + '<a class="btn ghost" href="#intake">하나씩 보기</a><span class="summary-bar">' + intakeSummary() + '</span></div>';
       var allDone = intakeCards.length && intakeCards.every(function (c) { return c.done; });
       box.innerHTML = allDone ? '<p class="alert ok"><b>' + intakeCards.length + '건 반영됨</b> → 아래 <a href="#qk-results">3. 보낼 서류</a>에서 바이어별 패키지를 받으세요.</p><details class="fold-sec"><summary>처리한 서류 ' + intakeCards.length + '건 보기</summary>' + tableHtml + '</details>' : tableHtml;
@@ -1472,8 +1497,11 @@
       bindManual(renderQuick); bindOutputs(renderQuick);
     }
     if ($('#qk-docbox')) { $('#qk-docbox').innerHTML = docBox(); bindDocBox(renderQuick); }
-    if ($('#qk-guide')) $('#qk-guide').innerHTML = docGuide();
-    $('#qk-results').innerHTML = resultCards(); bindResults(); bindBundles();
+    if ($('#qk-guide')) $('#qk-guide').innerHTML = docGuide(!!($('#qk-guide details') || {}).open);
+    $('#qk-results').innerHTML = resultCards();
+    if (qkBd !== Infinity) document.querySelectorAll('#qk-results article.bundle').forEach(function (a, i) { if (i >= qkBd) a.outerHTML = BD_SK; else if (i >= qkBdDrawn) a.classList.add('qk-in'); });
+    qkBdDrawn = qkBd;
+    bindResults(); bindBundles();
   }
   function bindResults() {
     var b = $('#qk-spec'); if (b) b.onclick = function () { if ($('#qk-prod')) setProduct($('#qk-prod').value); if ($('#qk-form')) state.specBuyer = $('#qk-form').value; location.hash = '#spec'; setTimeout(function () { window.print(); }, 400); };
@@ -1483,7 +1511,7 @@
     var nt = $('#qk-notify'); if (nt) nt.ontoggle = function () { if (nt.open && !nt.dataset.done) { nt.dataset.done = '1'; api('/notify/preview', 'GET').then(function (r) { $('#qk-notify-txt').textContent = r.text || JSON.stringify(r); }).catch(function (e) { $('#qk-notify-txt').textContent = '불러오기 실패: ' + e; }); } };
     var a = $('#qk-all'); if (a) a.onclick = function () { EXPORTS.forEach(function (e, i) { setTimeout(function () { var rc = e[1](); download('라벨코스트_' + e[0] + '_' + LC.TODAY.replace(/-/g, '') + '.csv', csvText(rc[0], rc[1])); }, i * 400); }); toast('CSV ' + EXPORTS.length + '개 내려받는 중'); };
   }
-  screens.quick.bind = function () {
+  screens.quick.bind = function (arg) {
     bindDrop('qk', function (files) { Array.prototype.forEach.call(files, addFile); var t = $('#qk-table'); if (t) setTimeout(function () { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200); toast(files.length + '건 넣음 → 아래 2. 확인 표에 나옵니다' + (API ? ' (AI가 읽는 데 10~30초)' : '')); });
     var addGroup = function (gi) { fixtures().forEach(function (f) { if (FX_GROUPS[gi][1](f) && !intakeCards.some(function (c) { return c.fixture === f; })) queueFixture(f); }); renderQuick(); };
     if ($('#qk-all9')) $('#qk-all9').onclick = function () { addGroup(0); };
@@ -1491,6 +1519,7 @@
     if ($('#qk-imp')) $('#qk-imp').onclick = function (e) { e.preventDefault(); addGroup(2); };
     if ($('#qk-empty')) $('#qk-empty').onclick = function () { confirmDialog('빈 상태로 시작', '지금 들어 있는 로트·입고·선적·서류 기록을 전부 지웁니다. 되돌릴 수 없습니다.', '지우고 시작').then(function (ok) { if (!ok) return; state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderQuick(); toast('빈 원장'); }); };
     renderQuick();
+    if (arg === 'go' && $('#qk-all9')) $('#qk-all9').click();
   };
 
   // ---------- 집계: 본문 계산은 stats.js ----------
