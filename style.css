@@ -324,8 +324,32 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .pack-bar button.lg { width: auto; padding: 0 32px; }
 .pk-count { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .pack { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-.pk-card { position: relative; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; color: var(--ink); text-decoration: none; opacity: .35; transition: opacity .25s, border-color .25s, transform .25s; }
-.pk-card.done { opacity: 1; border-color: var(--pass); transform: translateY(-2px); }
+.pk-card { position: relative; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; color: var(--ink); text-decoration: none; transition: border-color .25s; }
+.pk-card.done { border-color: var(--pass); animation: pk-in .25s ease-out; }
+@keyframes pk-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pk-card.done { animation: none; } }
+
+/* 넣는 칸: 한국 라벨 파일 또는 임시 데이터 */
+.pk-in { display: flex; align-items: stretch; gap: 16px; flex-wrap: wrap; }
+.pk-drop { position: relative; flex: 1 1 260px; border: 2px dashed var(--primary); background: var(--primary-soft); border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column; justify-content: center; gap: 4px; cursor: pointer; color: var(--ink); font-weight: 400; }
+.pk-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pk-drop:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+.pk-drop b { font-size: 17px; } .pk-drop span { font-size: 14px; color: var(--ink-muted); }
+.pk-drop.has { border-style: solid; }
+.pk-or { align-self: center; font-size: 14px; color: var(--ink-subtle); }
+.pk-sample { flex: 1 1 240px; justify-content: center; } .pk-sample select { width: 100%; }
+.pk-in button.lg { flex: 0 0 auto; width: auto; align-self: center; padding: 0 32px; }
+
+/* 회색 더미 문서 (스켈레톤) */
+.pk-card.skel { pointer-events: none; }
+.sk-doc { height: 100%; background: var(--surface); border-radius: 4px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.sk-doc i, .pk-meta i { display: block; background: var(--hairline); border-radius: 4px; }
+.sk-h { height: 14px; width: 55%; margin-bottom: 4px; }
+.sk-row { display: flex; gap: 8px; }
+.sk-row i { height: 9px; } .sk-row i:first-child { width: 28%; } .sk-row i:last-child { flex: 1; }
+.sk-row:nth-child(3n) i:last-child { margin-right: 24%; } .sk-row:nth-child(4n) i:last-child { margin-right: 40%; }
+.sk-box { height: 48px; margin-top: auto; }
+.pk-meta i.sk-t { height: 14px; width: 50%; margin: 4px 0 6px; } .pk-meta i.sk-s { height: 10px; width: 72%; }
 .pk-card:hover { text-decoration: none; border-color: var(--primary); }
 .pk-thumb { height: 230px; overflow: hidden; background: var(--tile); border-bottom: 1px solid var(--hairline); padding: 10px; }
 .pk-scale { width: 400px; transform: scale(.5); transform-origin: top left; pointer-events: none; background: var(--surface); }

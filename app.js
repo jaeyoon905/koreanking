@@ -570,29 +570,48 @@
   };
 
   // ---------- 수출 꾸러미: 결과물을 표가 아니라 실제 서류 미리보기 카드로. 버튼 하나에 하나씩 채워짐 ----------
+  // 회색 더미 문서(스켈레톤): 만들기 전 자리. 로딩 표시가 아니라 "여기에 이런 서류가 나온다"는 빈 틀
+  function skelCard() {
+    var rows = ''; for (var i = 0; i < 7; i++) rows += '<span class="sk-row"><i></i><i></i></span>';
+    return '<div class="pk-card skel" aria-hidden="true"><div class="pk-thumb"><div class="sk-doc"><i class="sk-h"></i>' + rows + '<i class="sk-box"></i></div></div><div class="pk-meta"><i class="sk-t"></i><i class="sk-s"></i></div></div>';
+  }
   screens.pack = function () {
-    return '<h2>수출 꾸러미</h2><p class="sub">한국 라벨 1장과 받은 서류로 만드는 수출 서류예요. 카드를 누르면 그 서류 화면으로 가요.</p>' +
-      '<div class="pack-bar"><button class="lg" id="pk-go">꾸러미 만들기</button><span class="pk-count" id="pk-count">0 / 9</span><span class="muted" id="pk-time"></span></div><div class="pack" id="pk"></div>';
+    var ps = LC.products || { LB: LC.product };
+    return '<h2>수출 꾸러미</h2><p class="sub">한국 라벨을 넣으면 나라별 라벨과 바이어에게 보낼 서류를 만듭니다.</p>' +
+      '<div class="card pk-in">' +
+        '<label class="pk-drop" id="pk-drop"><input type="file" id="pk-file" accept=".pdf,image/*,.xlsx,.xls"><b id="pk-file-name">한국 라벨 PDF 넣기</b><span>PDF · 사진 · 엑셀</span></label>' +
+        '<div class="pk-or">또는</div>' +
+        '<label class="pk-sample">임시 데이터<select id="pk-sample">' + Object.keys(ps).map(function (k) { return '<option value="' + k + '"' + (k === state.productCode ? ' selected' : '') + '>' + k + ' · ' + esc(ps[k].name_ko) + '</option>'; }).join('') + '</select></label>' +
+        '<button class="lg" id="pk-go">꾸러미 만들기</button>' +
+      '</div>' +
+      '<div class="pack-bar"><span class="pk-count" id="pk-count">9종</span><span class="muted" id="pk-time">만들 서류</span></div>' +
+      '<div class="pack" id="pk">' + Array(9).join('x').split('x').map(skelCard).join('') + '</div>';
   };
   screens.pack.bind = function (arg) {
-    var p = P(), lot = state.ledger[state.ledger.length - 1], sh = state.shipments[state.shipments.length - 1];
-    var hk = LC.sampleLabels.HK ? judge('HK', LC.sampleLabels.HK.fields).filter(function (x) { return x.status !== 'pass'; }) : [];
-    var doc = function (title, rows) { return '<div class="doc-mini"><h4>' + title + '</h4><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>'; };
-    var cards = TAG_CTRY.map(function (c) { return [c[1] + ' 라벨', c[2], '#tags/' + c[0], c[3](p)]; }).concat([
-      ['규격서', '바이어 양식', '#spec', specSheet(lot)],
-      ['수정 요청서', '홍콩 라벨 · 수정 ' + hk.filter(function (x) { return x.status === 'fix'; }).length + ' · 확인 ' + hk.filter(function (x) { return x.status === 'check'; }).length, '#label', doc('라벨 수정 요청서 · 홍콩', hk.map(function (x) { return [x.item, x.fix || x.msg]; }))],
-      ['패킹리스트', sh ? sh.no : '선적 없음', '#ship', doc('PACKING LIST' + (sh ? ' · ' + sh.no : ''), sh ? sh.items.slice(0, 6).map(function (i) { return [i.desc, i.ct + ' C/T · ' + i.kg + ' kg']; }).concat([['TOTAL', sh.total_ct + ' C/T · ' + sh.total_kg + ' kg']]) : [])],
-      ['위생증명서 신청값', '수품원', '#ship', doc('위생증명서 신청 정보', sh ? [['수출자', p.factory ? p.factory.name : ''], ['수입자', sh.buyer], ['선박', sh.vessel], ['구간', sh.route], ['HS', sh.hs || ''], ['수량', sh.total_ct + ' C/T / ' + sh.total_kg + ' kg']] : [])]
-    ]);
-    $('#pk').innerHTML = cards.map(function (c, i) { return '<a class="pk-card" href="' + c[2] + '" style="--i:' + i + '"><div class="pk-thumb"><div class="pk-scale">' + c[3] + '</div></div><div class="pk-meta"><b>' + c[0] + '</b><span>' + esc(c[1]) + '</span></div><span class="pk-ok">✓</span></a>'; }).join('');
-    $('#pk-count').textContent = '0 / ' + cards.length;
+    var file = null;
+    $('#pk-file').onchange = function (e) { file = e.target.files[0] || null; $('#pk-file-name').textContent = file ? file.name : '한국 라벨 PDF 넣기'; $('#pk-drop').classList.toggle('has', !!file); };
+    function build() {
+      setProduct($('#pk-sample').value);
+      var p = P(), lot = state.ledger[state.ledger.length - 1], sh = state.shipments[state.shipments.length - 1];
+      var hk = LC.sampleLabels.HK ? judge('HK', LC.sampleLabels.HK.fields).filter(function (x) { return x.status !== 'pass'; }) : [];
+      var doc = function (title, rows) { return '<div class="doc-mini"><h4>' + title + '</h4><table>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table></div>'; };
+      return TAG_CTRY.map(function (c) { return [c[1] + ' 라벨', c[2], '#tags/' + c[0], c[3](p)]; }).concat([
+        ['규격서', '바이어 양식', '#spec', specSheet(lot)],
+        ['수정 요청서', '홍콩 라벨 · 수정 ' + hk.filter(function (x) { return x.status === 'fix'; }).length + ' · 확인 ' + hk.filter(function (x) { return x.status === 'check'; }).length, '#label', doc('라벨 수정 요청서 · 홍콩', hk.map(function (x) { return [x.item, x.fix || x.msg]; }))],
+        ['패킹리스트', sh ? sh.no : '선적 없음', '#ship', doc('PACKING LIST' + (sh ? ' · ' + sh.no : ''), sh ? sh.items.slice(0, 6).map(function (i) { return [i.desc, i.ct + ' C/T · ' + i.kg + ' kg']; }).concat([['TOTAL', sh.total_ct + ' C/T · ' + sh.total_kg + ' kg']]) : [])],
+        ['위생증명서 신청값', '수품원', '#ship', doc('위생증명서 신청 정보', sh ? [['수출자', p.factory ? p.factory.name : ''], ['수입자', sh.buyer], ['선박', sh.vessel], ['구간', sh.route], ['HS', sh.hs || ''], ['수량', sh.total_ct + ' C/T / ' + sh.total_kg + ' kg']] : [])]
+      ]);
+    }
     $('#pk-go').onclick = function () {
-      var els = Array.prototype.slice.call(document.querySelectorAll('.pk-card')), n = 0;
-      els.forEach(function (el) { el.classList.remove('done'); });
-      var tick = setInterval(function () {
-        if (n >= els.length) { clearInterval(tick); $('#pk-time').textContent = '수출 서류 ' + els.length + '종 완성 · 카드를 누르면 원본 화면'; return; }
-        els[n].classList.add('done'); n++; $('#pk-count').textContent = n + ' / ' + els.length;
-      }, 260);
+      var cards = build(), els = Array.prototype.slice.call(document.querySelectorAll('#pk .pk-card')), n = 0;
+      $('#pk-time').textContent = file ? file.name + ' · ' + $('#pk-sample').selectedOptions[0].textContent : $('#pk-sample').selectedOptions[0].textContent;
+      var tick = setInterval(function () {   // 회색 틀 자리에 실제 서류가 하나씩 들어옴
+        if (n >= cards.length) { clearInterval(tick); return; }
+        var c = cards[n], a = document.createElement('a');
+        a.className = 'pk-card done'; a.href = c[2];
+        a.innerHTML = '<div class="pk-thumb"><div class="pk-scale">' + c[3] + '</div></div><div class="pk-meta"><b>' + c[0] + '</b><span>' + esc(c[1]) + '</span></div><span class="pk-ok">✓</span>';
+        els[n].replaceWith(a); n++; $('#pk-count').textContent = n + ' / ' + cards.length;
+      }, 120);
     };
     if (arg === 'go') $('#pk-go').click();
   };
