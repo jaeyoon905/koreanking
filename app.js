@@ -168,13 +168,16 @@
     return '<datalist id="lot-list">' + opts.filter(function (v, i, a) { return a.indexOf(v) === i; }).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('') + '</datalist>';
   }
 
-  screens.label = function () {
-    var sel = Object.keys(LC.sampleLabels).map(function (k) { var sl = LC.sampleLabels[k]; return '<option value="' + k + '">' + ((LC.rules[sl.country] || LC.rules[k] || {}).name || sl.country) + ' — ' + sl.file + '</option>'; }).join('');
+  function labelArg(arg) { var a = String(arg || '').split('/'); return { key: LC.sampleLabels[a[0]] ? a[0] : null, country: LC.rules[a[1]] ? a[1] : null }; }
+  screens.label = function (arg) {
+    var la = labelArg(arg);
+    var sel = Object.keys(LC.sampleLabels).map(function (k) { var sl = LC.sampleLabels[k]; return '<option value="' + k + '"' + (k === la.key ? ' selected' : '') + '>' + ((LC.rules[sl.country] || LC.rules[k] || {}).name || sl.country) + ' — ' + sl.file + '</option>'; }).join('');
     return '<h2>① 라벨 판정</h2><p class="sub">라벨 파일을 올리거나 받은 파일을 고르고 도착국을 정하면 규칙 파일로 항목별 판정. 추출만 자동, 판정은 규칙, 최종 확인은 사람.</p>' +
       '<div class="row"><label>받은 파일 <select id="lbl-sample">' + sel + '</select></label>' +
       '<label>또는 엑셀 업로드 <input type="file" id="lbl-file" accept=".xlsx,.xls"></label>' +
       '<label>도착국 <select id="lbl-country">' + Object.keys(LC.rules).map(function (k) { return '<option value="' + k + '">' + LC.rules[k].name + '</option>'; }).join('') + '</select></label>' +
-      '<label>라벨 기준일 <input type="date" id="lbl-made"></label><button id="lbl-run">판정</button></div><div id="lbl-out"></div>' + nutritionSourceTable();
+      '<label>라벨 기준일 <input type="date" id="lbl-made"></label><button id="lbl-run">판정</button></div>' +
+      '<div class="row" id="lbl-countries"><span class="muted">나라 바꿔 보기</span> ' + Object.keys(LC.rules).map(function (k) { return '<button class="ghost small" data-ctry="' + k + '" aria-label="' + esc(LC.rules[k].name) + ' 규칙으로 판정">' + esc(LC.rules[k].name) + '</button>'; }).join(' ') + '</div><div id="lbl-out"></div>' + nutritionSourceTable();
   };
   // 영양값 출처: 바이어마다 다른 추정값이 어디서 왔는지. 비어 있으면 안 그림
   function nutritionSourceTable() {
@@ -197,10 +200,12 @@
     $('#lbl-out').innerHTML = html;
     state.lastLabel = { country: country, made: meta.made, file: meta.file, summary: s };
   }
-  screens.label.bind = function () {
-    var sampleSel = $('#lbl-sample');
+  screens.label.bind = function (arg) {
+    var sampleSel = $('#lbl-sample'), la = labelArg(arg);
     function syncSample() { var l = LC.sampleLabels[sampleSel.value]; $('#lbl-country').value = l.country; $('#lbl-made').value = l.made && l.made.length === 10 ? l.made : ''; }
     sampleSel.onchange = syncSample; syncSample();
+    if (la.country) $('#lbl-country').value = la.country;   // 대시보드·홈에서 "이 나라 규칙으로" 들어온 경우
+    document.querySelectorAll('[data-ctry]').forEach(function (b) { b.onclick = function () { $('#lbl-country').value = b.dataset.ctry; $('#lbl-run').click(); }; });
     var uploaded = null;
     $('#lbl-file').onchange = function (e) {
       var file = e.target.files[0]; if (!file) return;
@@ -420,6 +425,17 @@
     if (arg) go();
   };
 
+  // 고시 개정 한 줄에 영향받는 라벨: 같은 나라 샘플 중 기준일이 시행일보다 이른 것. 각각 그 나라 규칙으로 판정해 수정 N 배지
+  function affectedLabels(v) {
+    return Object.keys(LC.sampleLabels).filter(function (k) { var l = LC.sampleLabels[k]; return l.country === v.country && (!l.made || l.made < v.effective); })
+      .map(function (k) { var l = LC.sampleLabels[k], s = LC.rules[v.country] ? summarize(judge(v.country, l.fields)) : null; return { key: k, file: l.file, made: l.made, s: s }; });
+  }
+  function revisionLabels(v) {
+    if (!LC.rules[v.country]) return '<span class="muted">규칙 파일 없음</span>';
+    var hits = affectedLabels(v);
+    if (!hits.length) { var alt = LC.sampleLabels.HK ? 'HK' : Object.keys(LC.sampleLabels)[0]; return '<span class="muted">이 나라 라벨 없음</span> · <a href="#label/' + alt + '/' + v.country + '">' + esc(LC.sampleLabels[alt].file) + '로 이 규칙 검사</a>'; }
+    return hits.map(function (h) { return '<a href="#label/' + h.key + '/' + v.country + '">' + esc(h.file) + '</a> <span class="b ' + (h.s.fix ? 'bad' : h.s.check ? 'warn' : 'ok') + '">수정 ' + h.s.fix + '</span><small class="muted"> 확인 ' + h.s.check + ' · 기준일 ' + fmtDate(h.made) + '</small>'; }).join('<br>');
+  }
   function dashCounts() {
     var cnt = { bad: 0, warn: 0, ok: 0 };
     state.registry.forEach(function (r) { if (!r.expiry) return; var d = daysTo(r.expiry); cnt[d <= r.lead || d <= 30 ? 'bad' : d <= 90 ? 'warn' : 'ok']++; });
@@ -434,8 +450,7 @@
     }).join('');
     var rev = LC.revisions.map(function (v) {
       var d = daysTo(v.effective);
-      var hit = state.labels.filter(function (l) { return l.country === v.country && (!l.made || l.made < v.effective); });
-      return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + (hit.length ? hit.map(function (l) { return esc(l.file) + ' (기준일 ' + fmtDate(l.made) + ')'; }).join('<br>') : '-') + '</td><td class="muted">' + esc(v.note) + '</td></tr>';
+      return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + revisionLabels(v) + '</td><td class="muted">' + esc(v.note) + '</td></tr>';
     }).join('');
     return '<h2>⑥ 대시보드 — 등록·인증 D-day, 고시 개정</h2><p class="sub">평소엔 안 봄. 90일·30일 전 알림. HACCP 끊기면 EU·GACC 등록까지 흔들리므로 최상위.</p>' +
       '<div class="badges"><span class="b bad">30일 이내 ' + cnt.bad + '</span><span class="b warn">90일 이내 ' + cnt.warn + '</span><span class="b ok">여유 ' + cnt.ok + '</span></div>' +
