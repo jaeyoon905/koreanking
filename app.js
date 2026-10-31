@@ -680,10 +680,20 @@
     var sections = ['重点管理', '配合', '調味液', '包装資材'], basic = (f.fields || Object.keys(val)).filter(function (k) { return sections.indexOf(k) < 0; });
     if (lot) basic = basic.concat(['LOT', '製造日']);
     var hit = Object.keys(mp).filter(function (k) { return mp[k] && ours[mp[k]]; }).length;
-    return '<div class="sheet"><h3>' + esc(f.form_title || '商品規格書') + ' · ' + esc(buyer) + '</h3><p class="muted">' + esc(buyer) + ' 양식 칸 순서 그대로 · 노란 칸은 우리 데이터에 없는 값' + (f.mapping ? ' · AI가 짝지은 칸 ' + hit + '/' + Object.keys(mp).length + ' (승인됨)' : '') + (lang !== 'ko' ? ' · 값은 ' + lang + '로 번역' + (pend ? ' 중…' : '됨(AI 초안, 보내기 전 확인)') : '') + ' · 발행일 ' + LC.TODAY + '</p><table>' +
+    return '<div class="sheet"><h3>' + esc(f.form_title || '商品規格書') + ' · ' + esc(buyer) + '</h3><p class="muted">' + sheetNote(lang, buyer, pend) + '</p><table>' +
       basic.map(td).join('') + list('重点管理', f.qc) + list('配合', f.recipe) + list('調味液', f.seasoning) + list('包装資材', f.packaging) + '</table></div>';
   }
   // 양식 언어: 칸 이름 글자로 판별. ko 면 번역 없음
+  // 규격서 머리 안내문: 양식 언어로(바이어가 보는 문장). 짝지은 칸 수 같은 내부 정보는 검수창에만
+  var SHEET_NOTE = {
+    en: function (b, d) { return 'Prepared in ' + b + "'s own form layout. Yellow cells: value not on file. Issued " + d + ' by A Co.'; },
+    ja: function (b, d) { return b + ' 様式の項目順に記載。黄色のセルは当社データにない項目。発行日 ' + d + '（A社）'; },
+    'zh-Hant': function (b, d) { return '依 ' + b + ' 表格欄位順序填寫。黃色欄位為尚無資料之項目。發行日 ' + d + '（A公司）'; },
+    'zh-Hans': function (b, d) { return '按 ' + b + ' 表格栏目顺序填写。黄色栏为暂无数据项。签发日 ' + d + '（A公司）'; },
+    th: function (b, d) { return 'จัดทำตามลำดับช่องในแบบฟอร์มของ ' + b + ' ช่องสีเหลืองคือยังไม่มีข้อมูล ออกเมื่อ ' + d + ' (A Co.)'; },
+    ko: function (b, d) { return b + ' 양식 칸 순서 그대로 · 노란 칸은 우리 데이터에 없는 값 · 발행일 ' + d; }
+  };
+  function sheetNote(lang, buyer, pend) { var f = SHEET_NOTE[lang] || SHEET_NOTE.en; return esc(f(buyer, LC.TODAY)) + (pend ? ' <span class="b warn">번역 중</span>' : ''); }
   function formLang(f) {
     var t = ((f && f.fields) || []).join(' ') + ' ' + ((f && f.form_title) || '');
     if (/[぀-ヿ]/.test(t)) return 'ja';
@@ -1239,7 +1249,7 @@
   }
   screens.intake.bind = function () {
     bindDrop('in', function (files) { Array.prototype.forEach.call(files, addFile); });
-    $('#in-empty').onclick = function () { confirmDialog('모두 비우기', '로트·입고·선적·서류 기록을 전부 지웁니다. 되돌릴 수 없습니다. 먼저 내보내기에서 백업을 받아 두세요.', '지우기').then(function (ok) { if (!ok) return; state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderIntake(); toast('모두 비웠습니다'); }); };
+    $('#in-empty').onclick = function () { confirmDialog('모두 비우기', '로트·입고·선적·서류 기록을 전부 지웁니다. 되돌릴 수 없습니다. 먼저 내보내기에서 백업을 받아 두세요.', '지우기').then(function (ok) { if (!ok) return; state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderIntake(); state.replies = []; state.revisions = []; state.productNutrition = {}; state.labels = []; toast('모두 비웠습니다'); }); };
     $('#in-seed').onclick = function () { confirmDialog('예시 데이터로 되돌리기', '지금 기록을 예시 데이터로 바꿉니다. 올린 양식·답장·로트는 사라집니다.', '되돌리기').then(function (ok) { if (!ok) return; resetAll(); intakeCards = []; renderIntake(); }); };
     renderIntake();
   };
@@ -1253,7 +1263,7 @@
     if (c.loading) return ['읽는 중', 'warn'];
     return ['승인 대기', 'warn'];
   }
-  function cardDiffs(c) { if (c.done || !c.doc_type || c.mode === 'none' || (c.sensitive && !c.masked)) return []; try { return reconcileCard(c); } catch (e) { return [{ item: '대조 오류', status: 'bad', note: String(e) }]; } }
+  function cardDiffs(c) { if (c.done || !c.doc_type || c.mode === 'none' || (c.sensitive && !c.masked)) return []; LC.pendingCards = intakeCards; try { return reconcileCard(c); } catch (e) { return [{ item: '대조 오류', status: 'bad', note: String(e) }]; } }
   function quickRow(c, i) {
     var st = cardStatus(c), diffs = c.loading ? [] : cardDiffs(c), bad = diffs.filter(function (d) { return d.status === 'check' || d.status === 'bad'; });
     var cnt = { ok: 0, add: 0, check: 0, bad: 0 }; diffs.forEach(function (d) { cnt[d.status] = (cnt[d.status] || 0) + 1; });
@@ -1347,6 +1357,10 @@
   function miniText(title, text) { return '<div class="doc-mini"><h4>' + esc(title) + '</h4><pre class="pk-txt">' + esc(String(text || '').split('\n').slice(0, 14).join('\n')) + '</pre></div>'; }
   function pkCard(attr, title, sub, thumb) { var tag = /^href=/.test(attr) ? 'a' : 'button'; return '<' + tag + ' class="pk-card done" ' + attr + '><div class="pk-thumb"><div class="pk-scale">' + thumb + '</div></div><div class="pk-meta"><b>' + title + '</b><span>' + sub + '</span></div><span class="pk-ok">✓</span></' + tag + '>'; }
   function pkNeed(title, sub) { return '<div class="pk-card need" title="자료가 없어 아직 못 만드는 서류"><div class="pk-thumb"><div class="sk-doc"><i class="sk-h"></i><span class="sk-row"><i></i><i></i></span><span class="sk-row"><i></i><i></i></span><span class="sk-row"><i></i><i></i></span></div></div><div class="pk-meta"><b>' + title + '</b><span>' + sub + '</span></div></div>'; }
+  var LANG_CTRY = { ja: 'JP', 'zh-Hant': 'HK', 'zh-Hans': 'CN', zh: 'CN', th: 'TH' };
+  function buyerLang(b) { return b.reply ? docLang(b.reply) : (b.form ? formLang(b.form) : 'en'); }
+  function buyerCtry(b) { return LANG_CTRY[buyerLang(b)] || null; }
+  var LOT_T = { en: ['Lot', 'Production date', 'Best before', 'Quantity', 'Shipment', 'Certificates'], ja: ['ロット', '製造日', '賞味期限', '数量', '出荷', '認証'], 'zh-Hant': ['批號', '製造日期', '此日期前最佳', '數量', '出貨', '認證'], 'zh-Hans': ['批号', '生产日期', '保质期至', '数量', '发货', '认证'], th: ['ล็อต', 'วันผลิต', 'ควรบริโภคก่อน', 'จำนวน', 'การจัดส่ง', 'ใบรับรอง'], ko: ['LOT', '제조일', '소비기한', '수량', '선적', '인증'] };
   function bundleCards(only) {
     var bs = bundleBuyers(); if (!bs.length) return '';
     var withP = function (b, fn) { var prev = state.productCode; setProduct(b.product); try { return fn(); } finally { setProduct(prev); } };
@@ -1357,9 +1371,11 @@
         cards.push(pkCard('data-bd-pdf="' + i + '"', '규격서 PDF', esc(b.buyer) + ' 양식 그대로', sheet));
         if (b.form.form_b64) cards.push(pkCard('data-bd-xlsx="' + i + '"', '바이어 엑셀에 채움', esc(b.form.form_name || '.xlsx'), sheet));
       }
+      var lang = buyerLang(b), ctry = buyerCtry(b), tc = ctry && TAG_CTRY.filter(function (c) { return c[0] === ctry; })[0];
+      if (tc) cards.push(pkCard('data-bd-tag="' + i + '"', tc[1] + ' 라벨 문안 PDF', esc(tc[2]) + ' 기준, ' + esc(p.code), tc[3](p)));
       if (b.reply) cards.push(pkCard('data-bd-reply="' + i + '"', '답장 초안 .txt', b.reply.deadline ? '회신 기한 ' + esc(b.reply.deadline) : '문의 메일 답장', miniText(b.reply.subject || '답장', b.reply.reply_draft)));
       if (state.lastFix && state.lastFix.fields) cards.push(pkCard('data-bd-label="' + i + '"', '고친 라벨 문안 PDF', esc(state.lastFix.country) + ' 규칙으로 고침', miniDoc('Label text (corrected draft)', Object.keys(state.lastFix.fields).slice(0, 8).map(function (k) { return [k, state.lastFix.fields[k]]; }))));
-      if (lot && API) cards.push(pkCard('href="' + API + '/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download', '로트 패키지 zip', esc(lot.lot) + ' · 규격서·LOT 정보·인증', miniDoc('LOT ' + lot.lot, [['LOT', lot.lot + (lot.company_code ? ' / ' + lot.company_code : '')], ['제조일', lot.mfg], ['소비기한', lot.expiry || ''], ['수량', (lot.qty_ct || 0) + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')], ['선적', lot.ship || '미선적'], ['인증', certList().join(', ')]])));
+      if (lot && API) cards.push(pkCard('href="' + API + '/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download', '로트 패키지 zip', esc(lot.lot) + ' · 규격서·LOT 정보·인증', (function (L) { return miniDoc('LOT ' + lot.lot, [[L[0], lot.lot + (lot.company_code ? ' / ' + lot.company_code : '')], [L[1], lot.mfg], [L[2], lot.expiry || ''], [L[3], (lot.qty_ct || 0) + ' C/T' + (lot.kg ? ' / ' + lot.kg + ' kg' : '')], [L[4], lot.ship || '-'], [L[5], certList().join(', ')]]); })(LOT_T[lang] || LOT_T.en)));
       if (state.shipments.length && API) {
         var sh = state.shipments[state.shipments.length - 1], items = (sh.items || []).slice(0, 6).map(function (x) { return [x.desc, x.ct + ' C/T · ' + x.kg + ' kg']; }).concat([['TOTAL', sh.total_ct + ' C/T · ' + sh.total_kg + ' kg']]);
         var mdl = state.ledger.filter(function (l) { return l.ship && String(l.ship).indexOf(sh.no) === 0; }).map(function (l) { return [l.lot, l.mfg + ' · ' + l.qty_ct + ' C/T']; });
@@ -1387,8 +1403,18 @@
     var idx = -1; bs.forEach(function (b, i) { if (b.reply) idx = i; }); if (idx < 0) idx = bs.length - 1;
     return '<div class="card" id="home-deal"><div class="sec-head"><h3>바이어에게 보낼 서류</h3><a href="#quick">전체 ' + bs.length + '곳 보기</a></div><div class="bundles">' + bundleCards([idx]) + '</div></div>';
   }
+  var bundleWarm = {};   // 바이어별로 번역 미리 채우기는 한 번만
+  function refreshBundles() { var el = $('#bundle-card'); if (el) { el.outerHTML = bundleCards(); bindBundles(); } else if ($('#home-deal')) { $('#home-deal').outerHTML = homeDeal(); bindBundles(); } }
   function bindBundles() {
     var bs = bundleBuyers();
+    document.querySelectorAll('[data-bd-tag]').forEach(function (el) { el.onclick = function () { var b = bs[+el.dataset.bdTag], p = LC.products[b.product] || P(), ctry = buyerCtry(b), tc = TAG_CTRY.filter(function (c) { return c[0] === ctry; })[0]; if (!tc) return; sendGate('라벨 문안 PDF', b.buyer + ' · ' + tc[1], { product: p, fixCount: 0, checkCount: 0 }).then(function (ok) { if (ok) downloadPdf('라벨문안_' + ctry + '_' + p.code + '_' + b.buyer, '<div class="sheet"><h3>Label text · ' + esc(tc[1]) + ' · ' + esc(p.name_en) + ' (' + esc(p.code) + ')</h3><p class="muted">' + esc(tc[2]) + ' · ' + LC.TODAY + '</p>' + tc[3](p) + '</div>'); }); }; });
+    bs.forEach(function (b, i) {
+      var key = b.buyer + '|' + b.product; if (bundleWarm[key] || !API) return; bundleWarm[key] = 1;
+      var jobs = [];
+      if (b.form) { var raw; (function () { var prev = state.productCode; setProduct(b.product); try { buyerFormSheet(b.buyer, b.lot); raw = buyerFormSheet.lastRaw; } finally { setProduct(prev); } })(); jobs.push(translateMissing(formLang(b.form), raw || {})); }
+      var rds = requestedDocs(b).filter(function (d) { return d.ok; }); if (rds.length) jobs.push(reqDocTranslate(b, rds));
+      if (jobs.length) Promise.all(jobs).then(function (rs) { if (rs.some(Boolean)) refreshBundles(); });
+    });
     document.querySelectorAll('[data-bd-more]').forEach(function (el) { el.onclick = function () { var art = el.closest('.bundle'), fold = art.classList.toggle('fold'); el.setAttribute('aria-expanded', String(!fold)); var n = art.querySelectorAll('.pk-card.done').length; el.textContent = fold ? '서류 ' + n + '장 보기' : '서류 접기'; }; });
     var withProduct = function (b, fn) { var prev = state.productCode; setProduct(b.product); try { fn(); } finally { setProduct(prev); } };
     var prep = function (b) { var raw; withProduct(b, function () { buyerFormSheet(b.buyer, b.lot); raw = buyerFormSheet.lastRaw; }); return translateMissing(formLang(state.specForms[b.buyer]), raw || {}); };
@@ -1542,7 +1568,7 @@
     if ($('#qk-all9')) $('#qk-all9').onclick = function () { addGroup(0); };
     if ($('#qk-jun')) $('#qk-jun').onclick = function (e) { e.preventDefault(); addGroup(1); };
     if ($('#qk-imp')) $('#qk-imp').onclick = function (e) { e.preventDefault(); addGroup(2); };
-    if ($('#qk-empty')) $('#qk-empty').onclick = function () { confirmDialog('빈 상태로 시작', '지금 들어 있는 로트·입고·선적·서류 기록을 전부 지웁니다. 되돌릴 수 없습니다.', '지우고 시작').then(function (ok) { if (!ok) return; state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; intakeCards = []; save(); renderQuick(); toast('빈 원장'); }); };
+    if ($('#qk-empty')) $('#qk-empty').onclick = function () { confirmDialog('빈 상태로 시작', '지금 들어 있는 로트·입고·선적·서류 기록을 전부 지웁니다. 되돌릴 수 없습니다.', '지우고 시작').then(function (ok) { if (!ok) return; state.ledger = []; state.raw = []; state.shipments = []; state.nutritionSources = []; state.docs = []; state.specForms = {}; state.importShipments = []; state.processLog = {}; state.importWaybills = []; state.replies = []; state.revisions = []; state.productNutrition = {}; state.labels = []; intakeCards = []; save(); renderQuick(); toast('빈 원장'); }); };
     renderQuick();
     if (arg === 'go' && $('#qk-all9')) $('#qk-all9').click();
   };
