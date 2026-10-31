@@ -887,7 +887,7 @@
     var g = function (i) { return fx.filter(FX_GROUPS[i][1]).length; };
     return '<h2>한 번에 처리</h2><p class="sub">서류를 넣고, 확인하고, 승인하세요.</p>' +
       '<h3 class="step">1. 서류 넣기</h3><div class="card"><div id="qk-guide">' + docGuide() + '</div>' + dropZone('qk') +
-      (fx.length ? '<div class="row"><button id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기 (4월 ' + g(0) + '건)</button><a href="#" id="qk-jun" class="muted">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="원장 비우기">빈 원장으로 시작</button></div>' +
+      (fx.length ? '<div class="row"><button id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기 (4월 서류 ' + g(0) + '종 · 사진 2장은 1종)</button><a href="#" id="qk-jun" class="muted">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="원장 비우기">빈 원장으로 시작</button></div>' +
       '<details class="docbox-wrap"><summary>서류함 (' + fx.length + ')</summary><div id="qk-docbox">' + docBox() + '</div></details>' : '') + '</div>' +
       '<h3 class="step">2. 확인</h3><div class="card" id="qk-table"></div>' +
       '<div id="qk-results">' + resultCards() + '</div>';
