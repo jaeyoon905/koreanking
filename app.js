@@ -475,7 +475,7 @@
   };
 
   // 고시 개정 목록 = 규칙 파일에 적힌 것 + 서류 넣기에서 고시문을 승인해 추가한 것(state.revisions)
-  function allRevisions() { return LC.revisions.concat(state.revisions || []); }
+  function allRevisions() { var mine = state.revisions || []; return LC.revisions.filter(function (v) { return !mine.some(function (m) { return m.country === v.country && m.effective === v.effective; }); }).concat(mine); }   // 같은 나라·같은 시행일이면 고시문에서 읽은 것이 기존 줄을 대신한다
   // 고시 개정 한 줄에 영향받는 라벨: 같은 나라 샘플 중 기준일이 시행일보다 이른 것. 각각 그 나라 규칙으로 판정해 수정 N 배지
   function affectedLabels(v) {
     return Object.keys(LC.sampleLabels).filter(function (k) { var l = LC.sampleLabels[k]; return l.country === v.country && (!l.made || l.made < v.effective); })
