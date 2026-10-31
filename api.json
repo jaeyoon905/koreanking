@@ -1,1 +1,1 @@
-{"api": "", "note": "노트북 서버 터널 주소. 비어 있으면 오프라인 모드. tools/tunnel.py 가 채운다"}
+{"api": "https://browsing-agreements-occupation-mutual.trycloudflare.com", "note": "노트북 서버 터널 주소. tools/tunnel.py 가 갱신"}
