@@ -60,7 +60,7 @@ b, strong { font-weight: 700; }
 .sec-head a { font-size: 14px; color: var(--ink-muted); }
 
 /* 홈 */
-.home { display: grid; grid-template-columns: 1.7fr 1fr; gap: 20px; align-items: start; }
+.home { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .hero { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.35; margin: 0 0 6px; }
 .hero em { font-style: normal; color: var(--primary); }
 .hero-sub { color: var(--ink-muted); margin: 0 0 20px; }
@@ -302,7 +302,10 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 @media (max-width: 800px) { .tagview { grid-template-columns: 1fr; } }
 
 /* 홈: 한 줄 공식 + 큰 숫자 */
-.formula { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; margin: 0 0 16px; }
+.hero-block { background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; padding: 32px; margin: 0 0 16px; }
+.hero-block .hero { font-size: 30px; margin: 0 0 20px; }
+.hero-go { width: auto !important; margin-top: 20px; padding: 0 40px; }
+.formula { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; margin: 0; }
 .formula .f-in, .formula .f-out { flex: 1 1 160px; border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column; gap: 2px; text-decoration: none; }
 .formula .f-in { background: var(--surface); border: 1px solid var(--hairline); color: var(--ink); }
 .formula .f-out { background: var(--brand); color: #fff; } .formula a.f-out:hover { background: #0e4f8a; text-decoration: none; }

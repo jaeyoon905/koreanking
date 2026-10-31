@@ -167,28 +167,23 @@
     return out;
   }
   function listRow(href, badge, main, meta) { return '<a class="list-row" href="' + href + '">' + badge + '<span class="lr-main">' + main + '</span>' + (meta ? '<span class="lr-meta">' + meta + '</span>' : '') + '<span class="chev">›</span></a>'; }
-  screens.home = function () {
-    var items = todos(), recent = state.ledger.slice(-3).reverse();
-    var k0 = LC.sampleLabels.HK ? 'HK' : Object.keys(LC.sampleLabels)[0], l0 = LC.sampleLabels[k0], s0 = summarize(judge(l0.country, l0.fields)), go0 = '#label/' + k0 + '/' + l0.country;
-    var nLaw = LC.laws ? Object.keys(LC.laws).length : 0;
-    return '<div class="formula" aria-label="한국 라벨 1장과 종이 일지로 5개국 라벨과 수출 서류 9종">' +
+  screens.home = function () {   // 홈은 세 덩어리: 제목+공식+버튼 / 숫자 3개 / 바로 하기·오늘 할 일
+    var items = todos(), nLaw = LC.laws ? Object.keys(LC.laws).length : 0;
+    return '<section class="hero-block"><p class="hero">수출 라벨 규정 위반을 <em>선적 전에</em> 잡습니다</p>' +
+      '<div class="formula" aria-label="한국 라벨 1장과 종이 일지로 5개국 라벨과 수출 서류 9종">' +
         '<div class="f-in"><b>한국 라벨 1장</b><span>품목 원본</span></div><span class="f-op">+</span><div class="f-in"><b>종이 일지·서류</b><span>사진·PDF</span></div><span class="f-op f-arrow">→</span>' +
-        '<a class="f-out" href="#tags/go"><b>5개국 라벨</b><span>일본·중국·홍콩·대만·태국</span></a><span class="f-op">+</span><a class="f-out" href="#pack"><b>수출 서류 9종</b><span>규격서·패킹리스트·수정 요청서…</span></a></div>' +
+        '<div class="f-out"><b>5개국 라벨</b><span>일본·중국·홍콩·대만·태국</span></div><span class="f-op">+</span><div class="f-out"><b>수출 서류 9종</b><span>규격서·패킹리스트·수정 요청서</span></div></div>' +
+      '<a class="btn lg hero-go" href="#pack/go">예시로 보기</a></section>' +
       '<div class="big-nums">' +
         '<div><span class="bn-v">50~100<small>만원</small></span><span class="bn-k">라벨 1장 외부 컨설팅 비용</span><span class="bn-s">업계 설명 · 쿡앤셰프뉴스 2026-06-10</span></div>' +
         '<div><span class="bn-v">20~30<small>분</small> → 즉시</span><span class="bn-k">규격서 1건 작성 시간</span><span class="bn-s">A사 실제 업무 기준</span></div>' +
         '<div><span class="bn-v">' + nLaw + '<small>개</small></span><span class="bn-k">판정 근거 조항 · 모두 원문 링크</span><span class="bn-s"><a href="#laws">규정 근거 보기 ›</a></span></div>' +
       '</div>' +
-      '<div class="home"><div>' +
-      '<p class="hero">수출 라벨 규정 위반을<br><em>선적 전에</em> 잡습니다</p>' +
-      '<p class="hero-sub">홍콩 · 대만 · 태국 · 일본 · 중국 규칙으로 항목별 판정, 공장 LOT 기록까지 한 줄로.</p>' +
-      '<div class="search"><input id="home-q" list="lot-list" placeholder="LOT 번호나 회사 코드로 찾기 (예: 20260410-LB)" aria-label="LOT 찾기"><button id="home-go" aria-label="LOT 조회">찾기</button></div>' + lotDatalist() +
-      '<div class="panel feature"><a class="lead-tile" href="' + go0 + '"><span class="lt-k">라벨 판정 · ' + esc(LC.rules[l0.country].name) + ' 라벨</span><span class="lt-v">' + (s0.fix ? '수정 ' + s0.fix + '항목' : '통과') + '</span><span class="lt-d">확인 ' + s0.check + ' · 통과 ' + s0.pass + ' · ' + esc(l0.file) + '</span></a>' +
-      '<div class="list">' + listRow('#pack/go', '', '수출 꾸러미', '서류 9종 한 번에') + listRow('#tags/go', '', '나라별 라벨', '한국 → 5개국') + listRow('#quick', '', '한 번에 처리', '서류 → 판정 → 기록') + listRow('#lot', '', 'LOT 조회', '원어 입고까지') + listRow('#intake', '', '서류 넣기', '사진·PDF 읽기') + '</div></div>' +
-      '</div><div class="card"><div class="sec-head"><h3>오늘 할 일</h3><span class="muted">' + LC.TODAY + '</span></div>' +
+      '<div class="home"><div class="card"><div class="sec-head"><h3>바로 하기</h3></div><div class="list">' +
+        listRow('#label', '', '라벨 판정', '틀린 곳과 고칠 문구') + listRow('#tags', '', '나라별 라벨', '한국 → 5개국') + listRow('#pack', '', '수출 꾸러미', '서류 9종 한 번에') + listRow('#lot', '', 'LOT 조회', '원어 입고까지 역추적') +
+      '</div></div><div class="card"><div class="sec-head"><h3>오늘 할 일</h3><span class="muted">' + LC.TODAY + '</span></div>' +
       (items.length ? '<div class="list">' + items.map(function (t) { var badge = t.href === '#intake' ? '<span class="tag">대기</span>' : '<span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '수정' : '확인') + '</span>'; return listRow(t.href, badge, esc(t.text), t.go); }).join('') + '</div>' : '<p class="muted">오늘 할 일 없음</p>') +
-      '<p class="muted home-recent">' + (recent.length ? '최근 LOT ' + recent.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + '</a>'; }).join(' · ') : 'LOT 없음') + monthLine() + '</p>' +
-      '<a class="btn lg" href="' + go0 + '">예시로 보기</a></div></div>';
+      '</div></div>';
   };
   // 이달(없으면 데이터가 있는 마지막 달) 생산·선적 한 줄
   function monthLine() {
@@ -198,10 +193,6 @@
     var row = st.monthly[m] || {}, sum = function (pre) { return Object.keys(row).filter(function (k) { return k.indexOf(pre) === 0; }).reduce(function (t, k) { return t + row[k]; }, 0); };
     return ' · ' + (m === LC.TODAY.slice(0, 7) ? '이달' : m) + ' 생산 ' + sum('prod_ct_') + ' C/T · 선적 ' + sum('ship_ct_') + ' C/T · <a href="#stats">집계 ›</a>';
   }
-  screens.home.bind = function () {
-    var go = function () { var q = $('#home-q').value.trim(); if (q) location.hash = '#lot/' + encodeURIComponent(q); };
-    $('#home-go').onclick = go; $('#home-q').onkeydown = function (e) { if (e.key === 'Enter') go(); };
-  };
   // LOT 자동완성: 원장 LOT·회사 코드·입고 ID
   function lotDatalist() {
     var opts = [];
