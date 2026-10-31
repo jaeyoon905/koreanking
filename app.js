@@ -147,7 +147,7 @@
     var first = !localStorage.getItem('lc.visited');
     try { localStorage.setItem('lc.visited', '1'); } catch (e) {}
     return '<h2>오늘 할 일 · ' + LC.TODAY + '</h2>' +
-      (first ? '<p class="alert ok">서류를 넣고 승인하면 원장이 생깁니다. LOT 번호나 회사 코드로 찾고, 만료는 대시보드에서 봅니다.</p>' : '') +
+      (first ? '<p class="sub">서류를 넣고 승인하면 원장이 생깁니다.</p>' : '') +
       '<div class="card">' + (items.length ? '<ul class="log todo">' + items.map(function (t) { return '<li><span class="b ' + t.cls + '">' + (t.cls === 'bad' ? '급함' : '확인') + '</span> ' + esc(t.text) + ' · <a href="' + t.href + '">' + t.go + ' ›</a></li>'; }).join('') + '</ul>' : '<p class="muted">오늘 할 일 없음</p>') + '</div>' +
       '<p class="muted">' + (recent.length ? '최근 로트: ' + recent.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + (l.company_code ? '(' + l.company_code + ')' : '') + '</a> ' + (shipped(l) ? '선적됨' : '미선적'); }).join(' · ') : '로트 없음') + monthLine() + '</p>' +
       '<div class="card"><h3>시작하기</h3><div class="row"><a class="btn" href="#quick" aria-label="한 번에 처리로 이동">한 번에 처리 (서류 넣기 → 결과물)</a>' +
@@ -178,7 +178,7 @@
   screens.label = function (arg) {
     var la = labelArg(arg);
     var sel = Object.keys(LC.sampleLabels).map(function (k) { var sl = LC.sampleLabels[k]; return '<option value="' + k + '"' + (k === la.key ? ' selected' : '') + '>' + ((LC.rules[sl.country] || LC.rules[k] || {}).name || sl.country) + ' — ' + sl.file + '</option>'; }).join('');
-    return '<h2>라벨 판정</h2><p class="sub">라벨 파일을 올리거나 받은 파일을 고르고 도착국을 정하면 규칙 파일로 항목별 판정. 추출만 자동, 판정은 규칙, 최종 확인은 사람.</p>' +
+    return '<h2>라벨 판정</h2><p class="sub">라벨 파일과 도착국을 고르세요.</p>' +
       '<div class="row"><label>받은 파일 <select id="lbl-sample">' + sel + '</select></label>' +
       '<label>또는 엑셀 업로드 <input type="file" id="lbl-file" accept=".xlsx,.xls"></label>' +
       '<label>도착국 <select id="lbl-country">' + Object.keys(LC.rules).map(function (k) { return '<option value="' + k + '">' + LC.rules[k].name + '</option>'; }).join('') + '</select></label>' +
@@ -201,7 +201,7 @@
       (rev.length ? '<p class="alert">고시 개정 이후 라벨: ' + rev.map(function (v) { return esc(v.title) + ' (시행 ' + v.effective + ')'; }).join(', ') + ' → 재검토 필요</p>' : '') +
       '<table><tr><th>항목</th><th>판정</th><th>현재</th><th>고칠 것</th></tr>' +
       res.map(function (x) { return '<tr><td>' + esc(x.item) + '</td><td><span class="b ' + STATUS[x.status][1] + '">' + STATUS[x.status][0] + '</span></td><td>' + esc(x.msg) + '</td><td>' + esc(x.fix || '') + '</td></tr>'; }).join('') +
-      '</table><p class="muted">확인 항목만 모아 검사기관·대행사에 질의. 수정 항목은 품목 화면에서 문구 생성.</p>' +
+      '</table>' +
       '<details><summary>추출된 필드</summary><pre>' + esc(JSON.stringify(fields, null, 1)) + '</pre></details></div>';
     $('#lbl-out').innerHTML = html;
     state.lastLabel = { country: country, made: meta.made, file: meta.file, summary: s };
@@ -231,7 +231,7 @@
     var p = P();
     var ing = p.ingredients.map(function (i) { return '<tr><td>' + esc(i.name_ko) + '</td><td>' + (i.pct != null ? i.pct + '%' : '') + '</td><td>' + (i.type === 'additive' ? esc(i.func) + ' / INS ' + i.ins : '원료') + '</td></tr>'; }).join('');
     var nut = p.nutrition100 ? '<table>' + Object.keys(n).map(function (k) { return '<tr><td>' + k + '</td><td><input data-n="' + k + '" value="' + n[k] + '" size="6"></td></tr>'; }).join('') + '</table>' : '<p class="alert">성적서 필요 · 이 품목은 영양값이 없음</p>';
-    return '<h2>품목</h2><p class="sub">한 번 입력. 배합비는 태국 라벨, 영양값은 대만 라벨에서 가져옴(추정값). 나라별 영양 항목·알레르겐·첨가물 문구가 같은 값에서 나오므로 나라마다 두 배씩 다른 일이 없어짐.</p>' +
+    return '<h2>품목</h2><p class="sub">품목을 고르고 영양값을 확인하세요.</p>' +
       '<div class="row">' + productSelect('prd-prod') + '</div><div class="cols"><div class="card"><h3>' + esc(p.name_ko) + ' (' + p.code + ')</h3><table><tr><th>원재료</th><th>배합비</th><th>구분</th></tr>' + ing + '</table><p class="muted">알레르겐: 갑각류(게) · 공정: ' + esc(p.process) + '</p></div>' +
       '<div class="card"><h3>영양 (100g)</h3>' + nut + '<p class="muted">' + esc(p.nutrition_source) + '</p>' + (p.nutrition100 ? '<button id="prd-apply">환산</button>' : '') + '</div></div>' +
       (API ? '<details class="demo" id="prd-pub"><summary>품목제조보고에서 가져오기 (식약처 OpenAPI)</summary><div id="prd-pub-out" class="muted">열면 조회합니다</div></details>' : '<p class="muted">품목제조보고 가져오기는 서버 모드(run.bat)에서</p>') +
@@ -303,14 +303,14 @@
   }
   function sheetFor(lot) { return state.specBuyer && state.specForms[state.specBuyer] ? buyerFormSheet(state.specBuyer, lot) : specSheet(lot); }
   screens.spec = function () {
-    return '<h2>규격서</h2><p class="sub">품목 값 + 인증 목록이 그대로 들어감. 거래 시작 때 1회. 서류 넣기에서 바이어 규격서 양식을 승인하면 그 양식으로도 나옴. 인쇄 → PDF.</p>' +
+    return '<h2>규격서</h2><p class="sub">품목과 양식을 고르고 인쇄하세요.</p>' +
       '<div class="row">' + productSelect('sp-prod') + formSelect('sp-form') + '</div><button onclick="window.print()">PDF로 저장(인쇄)</button>' + sheetFor(null);
   };
   screens.spec.bind = function () { bindProductSelect('sp-prod'); var el = $('#sp-form'); if (el) el.onchange = function () { state.specBuyer = el.value; route(); }; };
 
   screens.ship = function () {
     var raw = state.raw.map(function (r) { return '<label class="chk"><input type="checkbox" name="raw" value="' + r.id + '"> ' + r.id + ' · ' + r.species + ' 어획 ' + r.caught + ' ' + r.landing + ' ' + r.kg + 'kg' + (r.note ? ' <small class="muted">' + esc(r.note) + '</small>' : '') + '</label>'; }).join('');
-    return '<h2>선적·원장</h2><p class="sub">선적 때 넣는 건 세 칸(제조일·수량·증명서 번호(요구하는 바이어만))과 원어 로트 체크. LOT = 제조일-품목코드. 원장 한 줄과 LOT 링크가 생김.</p>' +
+    return '<h2>선적·원장</h2><p class="sub">제조일·수량을 넣고 원어 로트를 고르세요.</p>' +
       '<div class="card"><div class="row">' + productSelect('sh-prod') + '<label>제조일 <input type="date" id="sh-mfg" value="2026-10-14"></label><label>수량(C/T) <input type="number" id="sh-qty" value="100"></label><label>중량(kg) <input type="number" id="sh-kg" value="1000"></label>' +
       '<label>위생증명서 번호 <input id="sh-cert" value="해당 없음" placeholder="요구하는 바이어만 번호 입력"></label><label>도착국 <select id="sh-country"><option>TW</option><option>JP</option><option>HK</option><option>TH</option><option>CN</option></select></label>' +
       '<label>바이어 <input id="sh-buyer" list="buyer-list" value="' + (LC.buyers && LC.buyers.length ? '일본 바이어 ' + LC.buyers[0].code : '대만 바이어 F사') + '"><datalist id="buyer-list">' + (LC.buyers || []).map(function (b) { return '<option value="' + (b.country === 'JP' ? '일본' : b.country) + ' 바이어 ' + esc(b.code) + '">' + esc(b.port + ' · ' + b.spec_form + ' · 증명서 ' + b.cert) + '</option>'; }).join('') + '</datalist></label><label>선적 <input id="sh-ship" value="2026-10-20 부산→기륭"></label></div><div class="rawbox"><b>원어 입고 로트</b><br>' + raw + '</div><button id="sh-add">원장에 추가 + 로트 규격서</button></div>' +
@@ -356,7 +356,7 @@
   };
 
   screens.lot = function (arg) {
-    return '<h2>LOT 조회</h2><p class="sub">바이어 면은 지금 메일로 보내는 서류 수준만. 회사 면에서만 원어 로트·출고처 역추적. 원어 로트 번호를 넣으면 거꾸로 제품 로트→선적이 나옴.</p>' +
+    return '<h2>LOT 조회</h2><p class="sub">LOT 번호나 회사 코드를 넣으세요.</p>' +
       (state.ledger.length ? '' : emptyLedger()) +
       '<div class="row"><input id="lot-q" list="lot-list" placeholder="LOT · 회사 코드(AJ) · 입고 ID(R-…)" value="' + esc(arg || '') + '" size="34" aria-label="LOT 검색">' + lotDatalist() + '<button id="lot-go" aria-label="조회">조회</button>' +
       '<span class="tabs" role="tablist"><button class="tab' + (lotInside ? ' ghost' : '') + '" id="lot-tab-buyer" role="tab" aria-selected="' + !lotInside + '">바이어 면</button><button class="tab' + (lotInside ? '' : ' ghost') + '" id="lot-tab-inside" role="tab" aria-selected="' + lotInside + '">회사 면(내부)</button></span></div><div id="lot-out"></div>';
@@ -378,7 +378,7 @@
     var p = (LC.products && LC.products[lot.product]) || LC.product;
     var buyer = [['제품', p.name_en], ['LOT', lot.lot + (lot.company_code ? ' / ' + lot.company_code : '')], ['제조일', lot.mfg], ['소비기한', lot.expiry], ['수량', lot.qty_ct + ' C/T / ' + lot.kg + ' kg'], ['보존', p.storage], ['위생증명서', lot.cert || '해당 없음'], ['규격서', '로트 규격서 발송 ' + (lot.spec_sent || '-')], ['제조자 인증·등록', certList().join(' · ')]];
     var pub = API ? location.origin + '/lot/' + encodeURIComponent(lot.lot) : '';
-    var html = '<div class="card face-buyer"><h3>바이어 면 — ' + lot.lot + '</h3><table>' + buyer.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table><p class="muted">새로 공개되는 정보 0. 지금 메일로 보내는 서류와 같은 수준.</p>' +
+    var html = '<div class="card face-buyer"><h3>바이어 면 — ' + lot.lot + '</h3><table>' + buyer.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table><p class="muted">서류로 이미 보낸 정보만.</p>' +
       (pub ? '<p class="muted">바이어 공개 주소: <a href="' + esc(pub) + '" target="_blank">' + esc(pub) + '</a></p>' : '') + '</div>';
     if (inside) {
       var raws = state.raw.filter(function (r) { return lot.raw.indexOf(r.id) >= 0; });
@@ -387,7 +387,7 @@
         '<p><b>출고처</b> ' + esc(lot.buyer) + ' · ' + esc(lot.ship) + ' · ' + lot.country + '</p><p><b>같은 원어가 들어간 다른 로트</b> ' + (siblings.length ? siblings.map(function (l) { return '<a href="#lot/' + l.lot + '">' + l.lot + '</a> (' + l.country + ' ' + esc(l.buyer) + ')'; }).join(', ') : '없음') + '</p>' +
         '<h4>클레임 종류별로 꺼낼 기록 (제조일 ' + lot.mfg + ')</h4><table><tr><th>클레임</th><th>먼저 볼 기록</th><th>원료(배) 추적</th></tr>' +
         LC.claimMap.map(function (c) { return '<tr><td>' + c.kind + '</td><td>' + esc(c.records.split('{mfg}').join(lot.mfg)) + '</td><td>' + (c.raw ? '필요 · 위 원어 로트 ' + raws.length + '건' : '불필요') + '</td></tr>'; }).join('') +
-        '</table><p class="muted">CCP 측정값·일지 원본은 수집하지 않음. 날짜와 장부 이름만 가리키고 원본은 공장 서류함에서 꺼낸다.</p>' +
+        '</table><p class="muted">원본 일지는 공장 서류함에서.</p>' +
         (API ? '<p><a href="/api/lot/' + encodeURIComponent(lot.lot) + '/qr.png" target="_blank" aria-label="QR 라벨 열기">QR 라벨 (PNG)</a> <span class="muted">포장·박스에 붙이면 공개 페이지로 연결</span> · <a href="/api/shipdocs/buyer?lot=' + encodeURIComponent(lot.lot) + '" download aria-label="바이어 패키지 받기">바이어 패키지 zip</a> <span class="muted">규격서·LOT 정보·인증 목록</span></p>' : '<p class="muted">QR 라벨·바이어 패키지 zip 은 서버 모드에서 가능</p>') +
         '<div class="row"><label>클레임 종류 <select id="claim-kind">' + LC.claimMap.map(function (c) { return '<option>' + esc(c.kind) + '</option>'; }).join('') + '</select></label><button id="claim-go">대응 보고서 만들기</button></div></div><div id="claim-out"></div>';
     }
@@ -458,11 +458,11 @@
       var d = daysTo(v.effective);
       return '<tr><td>' + v.country + '</td><td>' + esc(v.title) + '</td><td>' + v.effective + ' (' + (d < 0 ? '시행 중' : 'D-' + d) + ')</td><td>' + revisionLabels(v) + '</td><td class="muted">' + esc(v.note) + '</td></tr>';
     }).join('');
-    return '<h2>대시보드</h2><p class="sub">평소엔 안 봄. 90일·30일 전 알림. HACCP 끊기면 EU·GACC 등록까지 흔들리므로 최상위.</p>' +
+    return '<h2>대시보드</h2>' +
       '<div class="badges"><span class="b bad">30일 이내 ' + cnt.bad + '</span><span class="b warn">90일 이내 ' + cnt.warn + '</span><span class="b ok">여유 ' + cnt.ok + '</span></div>' +
       '<div class="card"><h3>등록·인증 레지스트리 (오늘 ' + LC.TODAY + ')</h3><table><tr><th>층</th><th>종류</th><th>번호</th><th>발급</th><th>만료</th><th>D-day</th><th>국가</th><th>비고</th></tr>' + rows + '</table></div>' +
       '<div class="card"><h3>고시 개정 → 영향받는 라벨</h3><table><tr><th>국</th><th>고시</th><th>시행일</th><th>재검토 라벨</th><th>비고</th></tr>' + rev + '</table></div>' +
-      '<div class="card" id="pub-card"><h3>식약처 공공데이터 조회 (OpenAPI · 키와 회사명은 서버 .env)</h3>' +
+      '<div class="card" id="pub-card"><h3>식약처 공공데이터 조회</h3>' +
       (API ? '<div class="row"><button id="pub-go" aria-label="식약처 조회">조회</button><span class="muted">업소 인허가(I2500) · HACCP(I0610) · 회수(I0490) · 인증서 대조</span></div><div id="pub-out">' + pubView(state.publicData) + '</div>' : '<p class="muted">서버 모드(run.bat)에서 조회. 오프라인에서는 저장된 결과만</p>' + pubView(state.publicData)) + '</div>';
   };
   // 식약처 조회 결과 표시. 값은 그대로, 판단은 note 그대로 보여 준다
@@ -626,7 +626,7 @@
       var btns = fixtures().map(function (f, i) { return g[1](f) ? '<button class="ghost" data-fx="' + i + '">' + esc(f.source) + '</button>' : ''; }).join(' ');
       return btns.trim() ? '<details class="demo"' + (g[2] ? ' open' : '') + '><summary>받은 파일로 시연 · ' + g[0] + '</summary><div class="row">' + btns + '</div></details>' : '';
     }).join('') : '<p class="muted">fixtures.js 없음. 파일명으로 종류만 봄.</p>';
-    return '<h2>서류 넣기</h2><p class="sub">사진·PDF를 올리면 접수부가 종류를 정하고, 읽기부가 칸을 뽑고, 검증부가 원장과 대조하고, 결재(사람)가 승인해야 반영된다. 한꺼번에 처리하려면 <a href="#quick">한 번에 처리</a>.</p>' +
+    return '<h2>서류 넣기</h2><p class="sub">파일을 올리고 승인하세요.</p>' +
       '<div class="card">' + dropZone('in') +
       '<div class="row"><button class="ghost" id="in-empty" aria-label="원장을 비우고 시연 시작">시연 초기화(빈 원장)</button><button class="ghost" id="in-seed" aria-label="시드 데이터로 복원">시드로 복원</button></div>' +
       demo + '<p class="summary-bar" id="in-sum">' + intakeSummary() + '</p></div>' +
@@ -717,7 +717,7 @@
     });
     var link = card('#ship', '원료 · 선적 연결', '<p>선적 <b>' + state.shipments.length + '</b>건 · 입고분 <b>' + state.raw.length + '</b>건 (실측 ' + state.raw.filter(function (r) { return r.kg; }).length + ')</p>' + (combos.length ? '<ul class="log">' + combos.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="muted">선적 구성 제안 없음</p>'));
     var spec = card('#spec', '규격서', '<div class="row">' + productSelect('qk-prod') + formSelect('qk-form') + '<button id="qk-spec" aria-label="규격서 열어서 인쇄">열어서 인쇄</button></div><p class="muted">' + (Object.keys(state.specForms || {}).length ? '바이어 양식 ' + Object.keys(state.specForms).join(', ') + ' 사용 가능' : '바이어 규격서 양식을 넣으면 그 양식으로도 나옴') + '</p>');
-    var claim = card('#lot', '클레임 조회', '<div class="row"><input id="qk-lot" list="lot-list" placeholder="LOT 또는 회사 코드(AJ)" size="22" aria-label="클레임 LOT"><button id="qk-claim" aria-label="회사 면으로 조회">회사 면 열기</button></div>' + lotDatalist() + '<p class="muted">제조일 → 그날 일지·원료 배·같은 날 출고처. 대응 보고서는 거기서 한 번 더</p>');
+    var claim = card('#lot', '클레임 조회', '<div class="row"><input id="qk-lot" list="lot-list" placeholder="LOT 또는 회사 코드(AJ)" size="22" aria-label="클레임 LOT"><button id="qk-claim" aria-label="회사 면으로 조회">회사 면 열기</button></div>' + lotDatalist() + '<p class="muted">회사 면에서 대응 보고서까지.</p>');
     var cnt = dashCounts();
     var dash = card('#dash', '만료 D-day', '<p><span class="b bad">30일 이내 ' + cnt.bad + '</span><span class="b warn">90일 이내 ' + cnt.warn + '</span><span class="b ok">여유 ' + cnt.ok + '</span></p>');
     var imp = '';
@@ -735,7 +735,7 @@
   screens.quick = function () {
     var fx = fixtures();
     var g = function (i) { return fx.filter(FX_GROUPS[i][1]).length; };
-    return '<h2>한 번에 처리</h2><p class="sub">서류를 넣고 → 표에서 확인할 것만 보고 → 전부 승인하면 → 결과물이 나온다. 하나씩 보려면 <a href="#intake">서류 넣기</a>.</p>' +
+    return '<h2>한 번에 처리</h2><p class="sub">서류를 넣고, 확인하고, 승인하세요.</p>' +
       '<h3 class="step">1. 서류 넣기</h3><div class="card">' + dropZone('qk') +
       (fx.length ? '<div class="row"><button id="qk-all9" aria-label="받은 파일 전부 넣기">받은 파일 전부 넣기 (시연 · 4월 수출 ' + g(0) + '건)</button><a href="#" id="qk-jun" class="muted">+ 6월 두 번째 선적 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 서류 ' + g(2) + '건</a><button class="ghost" id="qk-empty" aria-label="원장 비우기">빈 원장으로 시작</button></div>' : '') + '</div>' +
       '<h3 class="step">2. 확인</h3><div class="card" id="qk-table"></div>' +
@@ -789,7 +789,7 @@
     var buyers = '<table><tr><th>바이어</th><th class="num">선적</th><th class="num">C/T</th><th class="num">kg</th><th>마지막</th><th class="num">평균 간격(일)</th></tr>' + st.buyers.map(function (b) { return '<tr><td>' + esc(b.buyer) + '</td><td class="num">' + b.shipments + '</td><td class="num">' + fmt(b.ct) + '</td><td class="num">' + fmt(b.kg) + '</td><td>' + fmt(b.last) + '</td><td class="num">' + fmt(b.avg_gap_days) + '</td></tr>'; }).join('') + '</table>';
     var lt = st.lead_times, lead = '<table><tr><th></th><th class="num">평균(일)</th><th class="num">최대(일)</th></tr><tr><td>입고 → 제조</td><td class="num">' + fmt(lt.raw_to_mfg.avg) + '</td><td class="num">' + fmt(lt.raw_to_mfg.max) + '</td></tr><tr><td>제조 → 선적</td><td class="num">' + fmt(lt.mfg_to_ship.avg) + '</td><td class="num">' + fmt(lt.mfg_to_ship.max) + '</td></tr></table>';
     var dc = st.docs, docs = '<table><tr><th>서류 종류</th><th class="num">건수</th></tr>' + Object.keys(dc.by_type || {}).map(function (k) { return '<tr><td>' + esc(k) + '</td><td class="num">' + dc.by_type[k] + '</td></tr>'; }).join('') + '</table><p class="muted">반려 ' + (dc.rejected || 0) + '건 · 마지막 처리 ' + fmt(dc.last) + '</p>';
-    return '<h2>집계 · 원장에서 바로</h2><p class="sub">월말 엑셀 대신. 생산·선적은 로트와 패킹리스트, 수율은 입고검사서 kg 기준. 전부 CSV로 받을 수 있다.</p><div class="cols">' +
+    return '<h2>집계</h2><p class="sub">원장에서 바로 계산합니다.</p><div class="cols">' +
       cardOf('monthly', '월별 입고·생산·선적', monthly, LC.stats.toCSV(st.monthly)) + cardOf('inventory', '재고 (생산 − 선적)', inv, LC.stats.toCSV(st.inventory)) +
       cardOf('yield', '입고분별 수율', yld, LC.stats.toCSV(st.yield.rows)) + cardOf('buyers', '바이어별 선적', buyers, LC.stats.toCSV(st.buyers)) +
       cardOf('lead', '리드타임', lead, LC.stats.toCSV(lt.lots)) + cardOf('docs', '처리 기록', docs, LC.stats.toCSV(Object.keys(dc.by_type || {}).map(function (k) { return { doc_type: k, count: dc.by_type[k] }; }))) + '</div>' +
@@ -823,7 +823,7 @@
   ];
   screens['export'] = function () {
     var ymd = LC.TODAY.replace(/-/g, '');
-    return '<h2>내보내기</h2><p class="sub">원장을 CSV(엑셀)로. 백업은 JSON 한 파일. 서버 없이 브라우저에서 바로 내려받는다.</p>' + (state.ledger.length ? '' : emptyLedger()) +
+    return '<h2>내보내기</h2><p class="sub">CSV나 JSON으로 내려받습니다.</p>' + (state.ledger.length ? '' : emptyLedger()) +
       '<div class="card"><h3>표 내보내기 (CSV)</h3><div class="row">' + EXPORTS.map(function (e, i) { return '<button data-csv="' + i + '">' + e[0] + '</button>'; }).join('') + '</div><p class="muted">파일명 라벨코스트_표이름_' + ymd + '.csv</p></div>' +
       '<div class="card"><h3>백업</h3><div class="row"><button id="exp-json">전체 백업(JSON)</button><label>백업 불러오기 <input type="file" id="exp-load" accept=".json"></label>' + (API ? '<a href="' + API + '/backup" target="_blank">서버 백업 내려받기</a>' : '') + '</div><p id="exp-msg" class="muted">' + intakeSummary() + '</p></div>';
   };
