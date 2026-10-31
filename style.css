@@ -360,13 +360,20 @@ select, input:not([type=checkbox]):not([type=radio]) { max-width: 100%; }
 .doc-mini { padding: 16px; font-size: 13px; } .doc-mini h4 { margin: 0 0 8px; color: var(--ink); font-size: 15px; }
 .doc-mini table { font-size: 12px; } .doc-mini th, .doc-mini td { padding: 4px 8px; }
 @media (prefers-reduced-motion: reduce) { .pk-card, .pk-ok { transition: none; } }
-/* 한 번에 처리: 표 줄·바이어 카드도 같은 회색 틀에서 하나씩 채움 */
-.qk-sk td { padding-top: 16px; padding-bottom: 16px; }
-.qk-sk i, .bd-sk i { display: block; background: var(--hairline); border-radius: 4px; height: 10px; width: 70%; }
-.qk-sk td:first-child i { width: 85%; } .qk-sk td:nth-child(3) i { width: 30%; margin-left: auto; }
+/* 한 번에 처리: 받은 서류도 같은 카드. 확인할 것이 있으면 노란 테두리, 승인하면 초록 ✓. 바이어 카드도 회색 틀에서 채움 */
+.qk-card { cursor: pointer; }
+.qk-card.done { animation: none; }
+.qk-card.warn { border-color: var(--check); }
+.qk-card .pk-meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qk-card .pk-meta .b { margin-top: 6px; }
+.qk-card label.chk { margin-top: 6px; font-size: 13px; }
+.qk-more { margin-top: 12px; align-items: center; }
+#qk-table .pack-bar { flex-wrap: wrap; }
+.pk-drop.over { border-style: solid; }
+.bd-sk i { display: block; background: var(--hairline); border-radius: 4px; }
 .bd-sk .sk-t { height: 18px; width: 40%; } .bd-sk .sk-s { height: 12px; width: 60%; margin-top: 8px; } .bd-sk .sk-box { width: 220px; height: 56px; }
-.qk-in > tr, .bundle.qk-in { animation: pk-in .25s ease-out; }
-@media (prefers-reduced-motion: reduce) { .qk-in > tr, .bundle.qk-in { animation: none; } }
+.pk-card.qk-in, .bundle.qk-in { animation: pk-in .25s ease-out; }
+@media (prefers-reduced-motion: reduce) { .pk-card.qk-in, .bundle.qk-in { animation: none; } }
 
 /* 라벨 위에서 보기: 틀린 칸은 빨간 취소선, 고칠 문구는 초록 */
 .view-tabs { margin: 0 0 16px; }

@@ -1290,9 +1290,10 @@
       state.docs.push({ file: c.name, doc_type: c.doc_type, at: LC.TODAY, result: result });
       if (API) api('/docs', 'POST', { file: c.name, doc_type: c.doc_type, mode: c.mode, decision: '승인', result: result, fields: c.fields }).catch(function () {});
     });
-    qkShown = intakeCards.length; if (done) qkBd = qkBdDrawn = 0;
+    qkShown = intakeCards.length; if (done) qkOk = qkOkDrawn = qkBd = qkBdDrawn = 0;
     save(); renderQuick();
-    var bc = $('#bundle-card') || $('#qk-results'); if (bc) setTimeout(function () { bc.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
+    // 카드가 초록 ✓로 바뀌는 걸 본 뒤 보낼 서류로 내려감
+    setTimeout(function () { var bc = $('#bundle-card') || $('#qk-results'); if (bc) bc.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, qkTick ? intakeCards.length * 100 + 150 : 150);
     toast('승인 ' + done + '건 반영' + (skipped ? ' · 건너뜀 ' + skipped + '건(가림 미확인·종류 미확인)' : '') + ' → ' + intakeSummary());
   }
   // 바이어별 서류 묶음: 바이어가 보낸 양식·문의마다 "보낼 것" 한 줄 (규격서 PDF·엑셀, 답장, 라벨 문안, 로트 패키지, 선적 서류)
@@ -1449,53 +1450,75 @@
     var all = card('#export', '전체 CSV 묶음', '<button id="qk-all" aria-label="CSV 7개 전부 받기">CSV ' + EXPORTS.length + '개 전부 받기</button><p class="muted">로트원장·입고분·선적·만료·영양출처·수입체크·처리기록 (파일명 라벨코스트_표_' + ymd + ')</p>');
     return '<h3 class="step">3. 보낼 서류</h3>' + (slot || '<p class="muted">바이어 양식이나 문의 메일을 올려 승인하면 바이어별로 보낼 서류가 여기 모입니다.</p>') + '<details class="fold-sec"><summary>회사 내부 기록 (로트 원장 · 선적 서류 · 클레임 · 대시보드 · 수입 · 내보내기)</summary><div class="grid4">' + ledger + link + spec + claim + dash + imp + sd + pub + all + '</div>' + ntf + '</details>';
   }
-  // 회색 틀 → 100ms마다 하나씩 채움 (수출 꾸러미와 같은 방식). 표 줄 먼저, 승인 뒤엔 바이어 카드.
-  // renderQuick 이 통째로 다시 그려도 "몇 개까지 보였나"만 기억하면 끊기지 않는다
-  var qkShown = 0, qkDrawn = 0, qkBd = Infinity, qkBdDrawn = Infinity, qkTick = null;
-  var QK_SK = '<tr class="qk-sk" aria-hidden="true"><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td></tr>';
+  // 받은 서류도 수출 꾸러미처럼 카드로: 회색 틀 → 100ms마다 하나씩 채움 → 전부 승인 누르면 하나씩 초록 ✓ → 바이어 카드.
+  // renderQuick 이 통째로 다시 그려도(서버 응답마다) "몇 개까지 보였나"만 기억하면 끊기지 않는다
+  var qkShown = 0, qkDrawn = 0, qkOk = Infinity, qkOkDrawn = Infinity, qkBd = Infinity, qkBdDrawn = Infinity, qkTick = null;
   var BD_SK = '<article class="bundle bd-sk" aria-hidden="true"><header class="bd-head"><div class="bd-who"><i class="sk-t"></i><i class="sk-s"></i></div><i class="sk-box"></i></header></article>';
   function bundleSkel() { return '<div class="card" id="bundle-card"><h3>바이어별로 보낼 서류</h3><p class="muted">전부 승인을 누르면 여기 채워집니다.</p><div class="bundles">' + Array((bundleBuyers().length || 3) + 1).join(BD_SK) + '</div></div>'; }
   function qkFill() {
-    var done = function () { clearInterval(qkTick); qkTick = null; qkShown = qkDrawn = intakeCards.length; qkBd = qkBdDrawn = Infinity; };
-    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { qkShown = intakeCards.length; qkBd = Infinity; return; }
+    var done = function () { clearInterval(qkTick); qkTick = null; qkShown = qkDrawn = intakeCards.length; qkOk = qkOkDrawn = qkBd = qkBdDrawn = Infinity; };
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { qkShown = intakeCards.length; qkOk = qkBd = Infinity; return; }
     if (qkTick) return;
     qkTick = setInterval(function () {
       if (!$('#qk-table')) return done();   // 다른 화면으로 가면 멈춤
       if (qkShown < intakeCards.length) qkShown++;
+      else if (qkOk < intakeCards.length) qkOk++;
       else if (qkBd < document.querySelectorAll('#qk-results article.bundle').length) qkBd++;
       else return done();
       renderQuick();
     }, 100);
   }
+  // 서류 카드: 읽은 값 미리보기 + 종류·파일·상태. 승인된 것은 초록 ✓ (승인 직후엔 qkOk 순서대로)
+  function qkCard(c, i, bad) {
+    var ok = c.done === '승인' && i < qkOk, st = c.done && !ok ? ['승인 대기', 'warn'] : cardStatus(c), body;
+    if (c.loading) body = '<p class="muted">AI 읽는 중…</p>';
+    else if (c.sensitive && !c.masked && !c.done) body = '<p class="muted">계좌·단가를 가렸는지 확인하면 값이 보입니다</p>';
+    else body = '<table>' + (c.fields || []).slice(0, 9).map(function (x) { var v = x.value !== undefined ? x.value : x.v; v = Array.isArray(v) ? v.length + '건' : v && typeof v === 'object' ? '…' : v; return '<tr><th>' + esc(x.label || x.k) + '</th><td>' + esc(String(v == null ? '' : v).slice(0, 40)) + '</td></tr>'; }).join('') + '</table>';
+    var mask = c.doc_type && c.sensitive && !c.masked && !c.done ? '<label class="chk"><input type="checkbox" data-qmask="' + i + '"> 계좌·단가 가렸음</label>' : '';
+    return '<div class="pk-card qk-card' + (ok ? ' done' : !c.done && (bad || st[1] === 'bad') ? ' warn' : '') + (i >= qkDrawn || (ok && i >= qkOkDrawn) ? ' qk-in' : '') + '" data-qcard="' + i + '">' +
+      '<div class="pk-thumb"><div class="pk-scale"><div class="doc-mini"><h4>' + esc(c.doc_type || '종류 미확인') + '</h4>' + body + '</div></div></div>' +
+      '<div class="pk-meta"><b>' + esc(c.doc_type || '종류 미확인') + '</b><span>' + esc(c.name) + '</span><div><small class="b ' + st[1] + '">' + st[0] + (bad && !c.done ? ' · 확인 ' + bad : '') + '</small></div>' + mask + '</div><span class="pk-ok">✓</span></div>';
+  }
   screens.quick = function () {
     var fx = fixtures();
     var g = function (i) { return fx.filter(FX_GROUPS[i][1]).length; };
     return '<h2>한 번에 처리</h2><p class="sub">받은 서류를 한꺼번에 올리면, 확인·승인 뒤 바이어별로 보낼 서류 한 벌이 나옵니다.</p>' +
-      '<h3 class="step">1. 서류 넣기</h3><div class="card"><div id="qk-guide">' + docGuide(false) + '</div>' + dropZone('qk') +
-      (fx.length ? '<div class="row"><button id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기 (4월 서류 ' + g(0) + '종 · 사진 2장은 1종)</button><a href="#" id="qk-jun" class="muted">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp" class="muted">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="기록 비우고 시작">빈 상태로 시작</button></div>' +
-      '<details class="docbox-wrap"><summary>서류함 (' + fx.length + ')</summary><div id="qk-docbox">' + docBox() + '</div></details>' : '') + '</div>' +
-      '<h3 class="step">2. 확인 <span class="muted">넣은 파일을 읽은 결과가 여기 표로 나옵니다</span></h3><div class="card" id="qk-table"></div>' +
+      '<h3 class="step">1. 서류 넣기</h3><div class="card"><div class="pk-in">' +
+        '<label class="pk-drop" id="qk-drop"><input type="file" id="qk-file" multiple aria-label="서류 파일 선택"><b>받은 서류 넣기</b><span>사진 · PDF · 엑셀, 여러 개 한 번에</span></label>' +
+        (fx.length ? '<div class="pk-or">또는</div><button class="lg" id="qk-all9" aria-label="서류함의 4월 수출 서류 전부 열기">서류함 전부 열기</button>' : '') + '</div>' +
+      (fx.length ? '<div class="row qk-more"><span class="muted">4월 서류 ' + g(0) + '종</span><a href="#" id="qk-jun">+ 6월 ' + g(1) + '건</a><a href="#" id="qk-imp">+ 수입 ' + g(2) + '건</a><button class="ghost small" id="qk-empty" aria-label="기록 비우고 시작">빈 상태로 시작</button></div>' +
+      '<details class="docbox-wrap"><summary>서류함 (' + fx.length + ')</summary><div id="qk-docbox">' + docBox() + '</div></details>' : '') +
+      '<div id="qk-guide">' + docGuide(false) + '</div></div>' +
+      '<h3 class="step">2. 확인 <span class="muted">읽은 값을 보고 승인합니다</span></h3><div id="qk-table"></div>' +
       '<div id="qk-results">' + resultCards() + '</div>';
   };
   function renderQuick() {
     var box = $('#qk-table'); if (!box) return;
-    if (qkShown > intakeCards.length) qkShown = qkDrawn = intakeCards.length;
-    if (qkShown < intakeCards.length || qkBd !== Infinity) qkFill();
-    var head = '<thead><tr><th>파일</th><th>종류</th><th class="num">읽은 칸</th><th>대조</th><th>상태</th></tr></thead>';
-    if (!intakeCards.length) { var n9 = fixtures().filter(FX_GROUPS[0][1]).length || 9; box.innerHTML = '<div class="pack-bar"><span class="pk-count">' + n9 + '종</span><span class="muted">서류함 전부 열기를 누르거나 파일을 올리면 여기 채워집니다</span></div><table>' + head + Array(n9 + 1).join(QK_SK) + '</table>'; }
-    else {
-      var rows = intakeCards.map(function (c, i) { return i < qkShown ? '<tbody' + (i >= qkDrawn ? ' class="qk-in"' : '') + '>' + quickRow(c, i) + '</tbody>' : QK_SK; }).join('');
-      qkDrawn = qkShown;
+    var n = intakeCards.length, bar, cards, table = '';
+    if (qkShown > n) qkShown = qkDrawn = n;
+    if (qkShown < n || qkOk !== Infinity || qkBd !== Infinity) qkFill();
+    if (!n) {
+      var n9 = fixtures().filter(FX_GROUPS[0][1]).length || 9;
+      bar = '<span class="pk-count">' + n9 + '종</span><span class="muted">받은 서류를 넣거나 서류함 전부 열기를 누르면 여기 채워집니다</span>';
+      cards = Array(n9 + 1).join(skelCard());
+    } else {
+      var bads = intakeCards.map(function (c) { return c.loading ? 0 : cardDiffs(c).filter(function (d) { return d.status === 'check' || d.status === 'bad'; }).length; });
       var wait = intakeCards.filter(function (c) { return !c.done && !c.loading; }).length, loading = intakeCards.filter(function (c) { return c.loading; }).length;
-      var tableHtml = '<div class="pack-bar"><span class="pk-count">' + qkShown + ' / ' + intakeCards.length + '</span><span class="muted">읽은 서류</span></div><table>' + head + rows + '</table>' +
-        '<div class="row"><button id="qk-approve" ' + (wait ? '' : 'disabled') + ' aria-label="대기 중인 서류 전부 승인">전부 승인 (' + wait + '건)</button>' + (loading ? '<span class="b warn">AI 읽는 중 ' + loading + '건 · 끝나면 표가 바뀝니다</span>' : '') + '<a class="btn ghost" href="#intake">하나씩 보기</a><span class="summary-bar">' + intakeSummary() + '</span></div>';
-      var allDone = intakeCards.length && intakeCards.every(function (c) { return c.done; });
-      box.innerHTML = allDone ? '<p class="alert ok"><b>' + intakeCards.length + '건 반영됨</b> → 아래 <a href="#qk-results">3. 보낼 서류</a>에서 바이어별 패키지를 받으세요.</p><details class="fold-sec"><summary>처리한 서류 ' + intakeCards.length + '건 보기</summary>' + tableHtml + '</details>' : tableHtml;
-      $('#qk-approve').onclick = approveAll;
-      document.querySelectorAll('[data-qmask]').forEach(function (el) { el.onchange = function () { var c = intakeCards[+el.dataset.qmask]; c.masked = el.checked; if (API && c.blocked && el.checked) extractOnServer(c); else renderQuick(); }; });
-      document.querySelectorAll('[data-qdetail]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.qdetail]; c.detail = !c.detail; renderQuick(); }; });
-      bindManual(renderQuick); bindOutputs(renderQuick);
+      var okN = intakeCards.filter(function (c, i) { return c.done === '승인' && i < qkOk; }).length, checks = bads.reduce(function (a, x) { return a + x; }, 0);
+      bar = (okN ? '<span class="pk-count">' + okN + ' / ' + n + '</span><span class="muted">반영됨</span>' : '<span class="pk-count">' + qkShown + ' / ' + n + '</span><span class="muted">읽은 서류</span>') +
+        (wait ? '<button class="lg" id="qk-approve" aria-label="대기 중인 서류 전부 승인">전부 승인 (' + wait + '건)</button>' : '') +
+        (loading ? '<span class="b warn">AI 읽는 중 ' + loading + '건</span>' : '') + '<a class="btn ghost" href="#intake">하나씩 보기</a>';
+      cards = intakeCards.map(function (c, i) { return i < qkShown ? qkCard(c, i, bads[i]) : skelCard(); }).join('');
+      table = '<details class="fold-sec" id="qk-tbl"' + (($('#qk-tbl') || {}).open ? ' open' : '') + '><summary>표로 보기' + (checks ? ' · 확인할 것 ' + checks + '건' : '') + '</summary><div class="card"><table><thead><tr><th>파일</th><th>종류</th><th class="num">읽은 칸</th><th>대조</th><th>상태</th></tr></thead>' +
+        intakeCards.map(function (c, i) { return '<tbody id="qk-r' + i + '">' + quickRow(c, i) + '</tbody>'; }).join('') + '</table><p class="summary-bar">' + intakeSummary() + '</p></div></details>';
     }
+    box.innerHTML = '<div class="pack-bar">' + bar + '</div><div class="pack">' + cards + '</div>' + table;
+    qkDrawn = qkShown; qkOkDrawn = qkOk;
+    if ($('#qk-approve')) $('#qk-approve').onclick = approveAll;
+    document.querySelectorAll('[data-qcard]').forEach(function (el) { el.onclick = function (e) { if (e.target.closest('label')) return; $('#qk-tbl').open = true; var r = $('#qk-r' + el.dataset.qcard); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }; });
+    document.querySelectorAll('[data-qmask]').forEach(function (el) { el.onchange = function () { var c = intakeCards[+el.dataset.qmask]; c.masked = el.checked; if (API && c.blocked && el.checked) extractOnServer(c); else renderQuick(); }; });
+    document.querySelectorAll('[data-qdetail]').forEach(function (el) { el.onclick = function () { var c = intakeCards[+el.dataset.qdetail]; c.detail = !c.detail; renderQuick(); }; });
+    bindManual(renderQuick); bindOutputs(renderQuick);
     if ($('#qk-docbox')) { $('#qk-docbox').innerHTML = docBox(); bindDocBox(renderQuick); }
     if ($('#qk-guide')) $('#qk-guide').innerHTML = docGuide(!!($('#qk-guide details') || {}).open);
     $('#qk-results').innerHTML = resultCards();
