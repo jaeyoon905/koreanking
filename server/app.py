@@ -172,11 +172,13 @@ def _ident(rec):
     return json.dumps([(k, rec[k]) for k in ks], ensure_ascii=False) if ks else json.dumps(rec, ensure_ascii=False, sort_keys=True)
 
 
-def merge_state(old, new):
+def merge_state(old, new, allow_clear=True):
     out = dict(old)
     for k, v in new.items():
         o = old.get(k)
-        if v in ({}, []) or o is None or type(o) is not type(v):
+        if v in ({}, []):            # 빈 값 = '모두 비우기'. 판 번호를 모르는 옛 화면의 빈 값은 믿지 않는다
+            out[k] = v if allow_clear or o is None else o
+        elif o is None or type(o) is not type(v):
             out[k] = v
         elif isinstance(v, dict):
             m = dict(o); m.update(v); out[k] = m
@@ -471,8 +473,8 @@ class H(BaseHTTPRequestHandler):
             new = self.body(); old = get_state(); rev = state_rev(); merged = False
             if isinstance(new, dict) and isinstance(old, dict):
                 base = new.pop('_base', None)
-                if base is not None and base != rev and old:   # 낡은 판 위에 저장 → 기록 단위 병합 (ponytail: 단건 삭제는 다른 기기 저장 때 되살아날 수 있음)
-                    new = merge_state(old, new); merged = True
+                if (base is None or base != rev) and old:   # 낡은 판 위에 저장, 또는 판 번호를 모르는 옛 화면(캐시) → 기록 단위 병합. 통째 교체는 현재 판을 아는 화면만
+                    new = merge_state(old, new, allow_clear=base is not None); merged = True
                 else:                                            # 같은 판 → 통째 교체. 옛 화면이 모르는 키만 유지
                     for k, v in old.items():
                         if k not in new: new[k] = v
